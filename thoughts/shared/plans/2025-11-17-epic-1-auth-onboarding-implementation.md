@@ -11,6 +11,7 @@
 This plan implements a complete user authentication and onboarding system for Plan Smart, a retirement planning SaaS application. The system enables users to register, verify email, sign in, complete a financial onboarding wizard, and access their retirement plans securely.
 
 **Core Deliverables**:
+
 - Secure authentication system with email verification
 - Password reset with 1-hour TTL tokens
 - 7-day "remember me" sessions
@@ -24,12 +25,14 @@ This plan implements a complete user authentication and onboarding system for Pl
 **Project Status**: Pre-implementation planning phase
 
 **Existing Documentation**:
+
 - [Epic 1 Scope](../../personal/tickets/epic-1/00-scope/scope.md)
 - [Non-Functional Requirements](../../personal/tickets/epic-1/00-scope/nfr.md)
 - [Implementation Readiness Research](../research/2025-11-11-epic-1-implementation-readiness.md)
 - [Final Architecture Decision](../architecture/2025-11-17-authentication-final-architectural-decision.md)
 
 **Architectural Decisions Made**:
+
 - **Frontend**: Next.js 14+ with App Router
 - **Authentication**: Supabase Auth with vendor abstraction layer
 - **Database**: PostgreSQL with Drizzle ORM and Row-Level Security
@@ -39,6 +42,7 @@ This plan implements a complete user authentication and onboarding system for Pl
 - **Testing**: Vitest (unit) + Playwright (E2E)
 
 **What Doesn't Exist Yet**:
+
 - No source code (`src/`, `app/`, `components/`)
 - No framework configuration files
 - No database schema or migrations
@@ -82,6 +86,7 @@ After completing this implementation:
 ## What We're NOT Doing
 
 **Explicitly Out of Scope for Epic 1**:
+
 - Social logins (Google, Apple, GitHub) - future enhancement
 - Multi-Factor Authentication (MFA/2FA) - deferred to Epic 3
 - OAuth flows for financial aggregators - later phase
@@ -99,6 +104,7 @@ After completing this implementation:
 **Strategy**: Incremental, testable phases building from foundation to features.
 
 **Key Principles**:
+
 1. **Security First**: Implement RLS and type-safe abstractions from day 1
 2. **Test as We Build**: Write tests alongside implementation, not after
 3. **Vendor Abstraction**: Never directly import Supabase in application code
@@ -106,6 +112,7 @@ After completing this implementation:
 5. **Performance Budgets**: Monitor <1s and <250ms targets continuously
 
 **Phase Sequence**:
+
 1. Project scaffolding and configuration
 2. Database schema with RLS and migrations
 3. Vendor abstraction layer
@@ -120,6 +127,7 @@ After completing this implementation:
 ## Phase 1: Project Scaffolding & Configuration
 
 ### Overview
+
 Set up the Next.js project structure, install dependencies, configure TypeScript, Tailwind, and establish development tooling.
 
 ### Changes Required
@@ -127,6 +135,7 @@ Set up the Next.js project structure, install dependencies, configure TypeScript
 #### 1. Initialize Next.js Project with App Router
 
 **Commands**:
+
 ```bash
 npx create-next-app@latest plan-smart \
   --typescript \
@@ -140,6 +149,7 @@ cd plan-smart
 ```
 
 **Configuration choices**:
+
 - ✅ TypeScript
 - ✅ Tailwind CSS
 - ✅ App Router
@@ -228,10 +238,7 @@ npm install -D @types/node
 
 ```json
 {
-  "extends": [
-    "next/core-web-vitals",
-    "plugin:@typescript-eslint/recommended"
-  ],
+  "extends": ["next/core-web-vitals", "plugin:@typescript-eslint/recommended"],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
   "rules": {
@@ -405,6 +412,7 @@ mkdir -p e2e
 ```
 
 **Directory structure**:
+
 ```
 src/
 ├── app/                    # Next.js App Router
@@ -439,6 +447,7 @@ e2e/                   # Playwright tests
 #### 11. Initialize Git Repository
 
 **Commands**:
+
 ```bash
 git init
 echo "node_modules/" > .gitignore
@@ -466,14 +475,16 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Formatting check passes: `npm run format:check`
-- [ ] Development server starts: `npm run dev`
-- [ ] Build succeeds: `npm run build`
-- [ ] Test runner starts: `npm test` (no tests yet, but should run)
+
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Formatting check passes: `npm run format:check`
+- [x] Development server starts: `npm run dev`
+- [x] Build succeeds: `npm run build`
+- [x] Test runner starts: `npm test` (no tests yet, but should run)
 
 #### Manual Verification:
+
 - [ ] Navigate to http://localhost:3000 and see Next.js welcome page
 - [ ] Directory structure matches specification above
 - [ ] `.env.example` contains all required environment variables
@@ -486,6 +497,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ## Phase 2: Database Schema & Migrations
 
 ### Overview
+
 Design and implement the PostgreSQL database schema with Row-Level Security policies, create Drizzle ORM schema definitions, and set up migration tooling.
 
 ### Changes Required
@@ -542,7 +554,14 @@ export const userProfile = pgTable('user_profile', {
 **File**: `src/db/schema/financial-snapshot.ts`
 
 ```typescript
-import { pgTable, uuid, integer, numeric, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  integer,
+  numeric,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 import { userProfile } from './user-profile';
 
 export const financialSnapshot = pgTable('financial_snapshot', {
@@ -612,6 +631,7 @@ export * from './plans';
 #### 6. Initial Migration with RLS
 
 **Generate migration**:
+
 ```bash
 npm run db:generate
 ```
@@ -852,9 +872,7 @@ export class SecureQueryBuilder {
     return snapshot;
   }
 
-  async createFinancialSnapshot(
-    data: typeof financialSnapshot.$inferInsert
-  ) {
+  async createFinancialSnapshot(data: typeof financialSnapshot.$inferInsert) {
     // Ensure user_id matches authenticated user
     const [created] = await db
       .insert(financialSnapshot)
@@ -901,6 +919,7 @@ export function createSecureQuery(userId: string) {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] Migration generates: `npm run db:generate`
 - [ ] Migration runs successfully: `npm run db:migrate`
@@ -908,6 +927,7 @@ export function createSecureQuery(userId: string) {
 - [ ] No SQL syntax errors in migration files
 
 #### Manual Verification:
+
 - [ ] Connect to Supabase database and verify tables exist: `user_profile`, `financial_snapshot`, `plans`
 - [ ] Verify RLS is enabled on all three tables (check in Supabase Studio)
 - [ ] Verify indexes exist: `idx_financial_snapshot_user_id`, `idx_plans_user_id`, `idx_user_profile_email`
@@ -921,6 +941,7 @@ export function createSecureQuery(userId: string) {
 ## Phase 3: Vendor Abstraction Layer
 
 ### Overview
+
 Implement the authentication provider abstraction layer to ensure vendor portability. This allows switching between Supabase and Auth0 (or other providers) with minimal code changes.
 
 ### Changes Required
@@ -1440,10 +1461,7 @@ export async function requireAuth(): Promise<User> {
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupabaseAuthProvider } from '../supabase-adapter';
-import {
-  InvalidCredentialsError,
-  UserAlreadyExistsError,
-} from '../errors';
+import { InvalidCredentialsError, UserAlreadyExistsError } from '../errors';
 
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => ({
@@ -1527,12 +1545,14 @@ describe('SupabaseAuthProvider', () => {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] Unit tests pass: `npm test`
 - [ ] Linting passes: `npm run lint`
 - [ ] No circular dependencies in auth module
 
 #### Manual Verification:
+
 - [ ] Review auth provider interface and confirm it covers all Epic 1 requirements
 - [ ] Verify Supabase adapter correctly maps Supabase types to abstract types
 - [ ] Confirm Auth0 adapter skeleton exists for future migration
@@ -1545,6 +1565,7 @@ describe('SupabaseAuthProvider', () => {
 ## Phase 4: Authentication UI Components
 
 ### Overview
+
 Build reusable UI components for authentication flows: signup, login, password reset, and email verification. Use shadcn/ui for consistent design and accessibility.
 
 ### Changes Required
@@ -1552,6 +1573,7 @@ Build reusable UI components for authentication flows: signup, login, password r
 #### 1. Install shadcn/ui CLI and Components
 
 **Commands**:
+
 ```bash
 npx shadcn-ui@latest init
 npx shadcn-ui@latest add button
@@ -1643,7 +1665,10 @@ export function validatePassword(password: string): PasswordStrength {
     score = Math.max(0, score - 1);
   }
 
-  const isValid = password.length >= MIN_LENGTH && characterClasses >= MIN_CHARACTER_CLASSES && !hasCommonPattern;
+  const isValid =
+    password.length >= MIN_LENGTH &&
+    characterClasses >= MIN_CHARACTER_CLASSES &&
+    !hasCommonPattern;
 
   return {
     score: Math.min(4, score),
@@ -2188,12 +2213,14 @@ export function ForgotPasswordForm() {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] Component tests pass: `npm test src/components/auth`
 - [ ] Linting passes: `npm run lint`
 - [ ] Password validation enforces 12+ chars and 3 character classes
 
 #### Manual Verification:
+
 - [ ] Signup form displays password strength meter in real-time
 - [ ] Password strength meter shows correct score and feedback
 - [ ] Login form shows "remember me" checkbox
@@ -2208,6 +2235,7 @@ export function ForgotPasswordForm() {
 ## Phase 5: API Routes & Server Actions
 
 ### Overview
+
 Implement Next.js API routes and server actions for authentication operations: signup, login, logout, password reset, and email verification.
 
 ### Changes Required
@@ -2226,10 +2254,12 @@ import { userProfile } from '@/db/schema';
 
 const signupSchema = z.object({
   email: z.string().email(),
-  password: z.string().refine(
-    (password) => validatePassword(password).isValid,
-    'Password does not meet requirements'
-  ),
+  password: z
+    .string()
+    .refine(
+      (password) => validatePassword(password).isValid,
+      'Password does not meet requirements'
+    ),
 });
 
 export async function POST(request: NextRequest) {
@@ -2372,10 +2402,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Logout successful' });
   } catch (error: any) {
     console.error('Logout error:', error);
-    return NextResponse.json(
-      { message: 'Logout failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Logout failed' }, { status: 500 });
   }
 }
 ```
@@ -2426,10 +2453,12 @@ import { getAuthProvider } from '@/lib/auth';
 import { validatePassword } from '@/lib/auth/password-validator';
 
 const resetPasswordSchema = z.object({
-  newPassword: z.string().refine(
-    (password) => validatePassword(password).isValid,
-    'Password does not meet requirements'
-  ),
+  newPassword: z
+    .string()
+    .refine(
+      (password) => validatePassword(password).isValid,
+      'Password does not meet requirements'
+    ),
 });
 
 export async function POST(request: NextRequest) {
@@ -2662,10 +2691,7 @@ export function verifyCsrfToken(token: string): boolean {
     return false;
   }
 
-  return crypto.timingSafeEqual(
-    Buffer.from(storedToken),
-    Buffer.from(token)
-  );
+  return crypto.timingSafeEqual(Buffer.from(storedToken), Buffer.from(token));
 }
 
 /**
@@ -2680,12 +2706,14 @@ export function getCsrfToken(): string | undefined {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] API route tests pass: `npm test src/app/api/auth`
 - [ ] Linting passes: `npm run lint`
 - [ ] All API routes return correct status codes
 
 #### Manual Verification:
+
 - [ ] POST /api/auth/signup creates user and sends verification email
 - [ ] POST /api/auth/login returns session and sets cookies
 - [ ] POST /api/auth/logout clears cookies and invalidates session
@@ -2703,6 +2731,7 @@ export function getCsrfToken(): string | undefined {
 ## Phase 6: Email Integration with Resend
 
 ### Overview
+
 Integrate Resend email service for transactional emails: email verification and password reset. Create email templates with proper branding and security.
 
 ### Changes Required
@@ -3011,12 +3040,14 @@ export async function getRemainingEmails(email: string): Promise<number> {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] Email template rendering tests pass: `npm test src/lib/email`
 - [ ] Linting passes: `npm run lint`
 - [ ] Resend API key is configured
 
 #### Manual Verification:
+
 - [ ] Send test verification email and verify it arrives
 - [ ] Verification email link redirects to correct URL
 - [ ] Send test password reset email and verify it arrives
@@ -3032,6 +3063,7 @@ export async function getRemainingEmails(email: string): Promise<number> {
 ## Phase 7: Onboarding Wizard & Plan Creation
 
 ### Overview
+
 Build a multi-step onboarding wizard to collect user financial data and automatically create their first retirement plan.
 
 ### Changes Required
@@ -3699,12 +3731,14 @@ export async function POST(request: NextRequest) {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] Onboarding validation tests pass: `npm test src/lib/validation`
 - [ ] Linting passes: `npm run lint`
 - [ ] All form steps validate correctly
 
 #### Manual Verification:
+
 - [ ] Complete full onboarding wizard from step 1 to 4
 - [ ] Progress bar updates correctly at each step
 - [ ] Back button navigates to previous step and preserves data
@@ -3722,6 +3756,7 @@ export async function POST(request: NextRequest) {
 ## Phase 8: Security Hardening & Testing
 
 ### Overview
+
 Implement comprehensive security measures (HTTPS enforcement, HSTS, CSRF protection, brute-force mitigation) and create automated test suites for all critical flows.
 
 ### Changes Required
@@ -3965,7 +4000,7 @@ test.describe('User Signup Flow', () => {
     await page.fill('[id="confirmPassword"]', 'DifferentPassword123!');
 
     await page.click('button[type="submit"]');
-    await expect(page.locator('text=Passwords don\'t match')).toBeVisible();
+    await expect(page.locator("text=Passwords don't match")).toBeVisible();
   });
 });
 ```
@@ -3978,7 +4013,10 @@ test.describe('User Signup Flow', () => {
 import { test, expect } from '@playwright/test';
 
 test.describe('User Login Flow', () => {
-  test('should login successfully with valid credentials', async ({ page, context }) => {
+  test('should login successfully with valid credentials', async ({
+    page,
+    context,
+  }) => {
     await page.goto('/auth/login');
 
     await page.fill('[id="email"]', 'test@example.com');
@@ -3990,7 +4028,10 @@ test.describe('User Login Flow', () => {
     await expect(page).toHaveURL(/dashboard/);
   });
 
-  test('should set 7-day cookie with remember me', async ({ page, context }) => {
+  test('should set 7-day cookie with remember me', async ({
+    page,
+    context,
+  }) => {
     await page.goto('/auth/login');
 
     await page.fill('[id="email"]', 'test@example.com');
@@ -4114,7 +4155,7 @@ describe('Row-Level Security Tests', () => {
     user2Id = 'test-user-2';
   });
 
-  it('should prevent user from accessing another user\'s plans', async () => {
+  it("should prevent user from accessing another user's plans", async () => {
     // Create plan for user1
     const [plan] = await db
       .insert(plans)
@@ -4137,7 +4178,7 @@ describe('Row-Level Security Tests', () => {
     );
   });
 
-  it('should prevent user from accessing another user\'s financial data', async () => {
+  it("should prevent user from accessing another user's financial data", async () => {
     // Create financial snapshot for user1
     const [snapshot] = await db
       .insert(financialSnapshot)
@@ -4167,7 +4208,9 @@ describe('Row-Level Security Tests', () => {
   afterAll(async () => {
     // Cleanup test data
     await db.delete(plans).where(eq(plans.userId, user1Id));
-    await db.delete(financialSnapshot).where(eq(financialSnapshot.userId, user1Id));
+    await db
+      .delete(financialSnapshot)
+      .where(eq(financialSnapshot.userId, user1Id));
   });
 });
 ```
@@ -4175,6 +4218,7 @@ describe('Row-Level Security Tests', () => {
 ### Success Criteria
 
 #### Automated Verification:
+
 - [ ] TypeScript compiles: `npm run typecheck`
 - [ ] All unit tests pass: `npm test`
 - [ ] All E2E tests pass: `npm run test:e2e`
@@ -4182,6 +4226,7 @@ describe('Row-Level Security Tests', () => {
 - [ ] Linting passes: `npm run lint`
 
 #### Manual Verification:
+
 - [ ] Security headers are present in all responses (check DevTools Network tab)
 - [ ] HTTPS is enforced in production
 - [ ] Login attempts are rate-limited (try 6 failed logins, should block)
@@ -4199,6 +4244,7 @@ describe('Row-Level Security Tests', () => {
 ## Phase 9: Multi-Region Deployment & Performance
 
 ### Overview
+
 Deploy the application to multiple Supabase regions with geo-aware routing to meet the <250ms P95 auth latency requirement globally.
 
 ### Changes Required
@@ -4417,12 +4463,13 @@ MONITORING_ENABLED=true
 
 **File**: `DEPLOYMENT.md`
 
-```markdown
+````markdown
 # Production Deployment Checklist
 
 ## Pre-Deployment
 
 ### Supabase Setup
+
 - [ ] Create Supabase projects in 3 regions:
   - [ ] US East (primary)
   - [ ] EU West
@@ -4433,18 +4480,21 @@ MONITORING_ENABLED=true
 - [ ] Upgrade to Supabase Pro ($25/month per region = $75/month)
 
 ### Environment Configuration
+
 - [ ] Set all environment variables in Vercel
 - [ ] Generate production CSRF_SECRET and SESSION_SECRET
 - [ ] Configure Resend API key (upgrade to Pro $20/month)
 - [ ] Set up Upstash Redis for rate limiting ($10/month)
 
 ### Email Configuration
+
 - [ ] Verify domain in Resend
 - [ ] Set up SPF, DKIM, DMARC records
 - [ ] Test email deliverability
 - [ ] Configure email templates
 
 ### Security
+
 - [ ] Review all security headers
 - [ ] Enable HTTPS enforcement
 - [ ] Configure CORS policies
@@ -4459,8 +4509,10 @@ MONITORING_ENABLED=true
    npm run test
    npm run test:e2e
    ```
+````
 
 2. **Deploy to Vercel**
+
    ```bash
    vercel --prod
    ```
@@ -4497,6 +4549,7 @@ MONITORING_ENABLED=true
 - [ ] Set up on-call rotation
 - [ ] Document rollback procedure
 - [ ] Create customer support email: support@plansmart.com
+
 ```
 
 ### Success Criteria
@@ -4731,3 +4784,4 @@ MONITORING_ENABLED=true
 3. Begin Phase 1: Project Scaffolding
 4. Implement phases incrementally with testing at each stage
 5. Deploy to production after all phases complete and tests pass
+```

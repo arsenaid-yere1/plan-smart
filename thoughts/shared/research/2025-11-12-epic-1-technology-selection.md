@@ -4,8 +4,19 @@ researcher: Claude Code
 git_commit: n/a (not a git repository)
 branch: n/a
 repository: plan-smart
-topic: "Epic 1 Technology Stack Selection and Recommendations"
-tags: [research, technology-selection, epic-1, authentication, next-js, supabase, drizzle-orm, resend, postmark]
+topic: 'Epic 1 Technology Stack Selection and Recommendations'
+tags:
+  [
+    research,
+    technology-selection,
+    epic-1,
+    authentication,
+    next-js,
+    supabase,
+    drizzle-orm,
+    resend,
+    postmark,
+  ]
 status: complete
 last_updated: 2025-11-12
 last_updated_by: Claude Code
@@ -37,6 +48,7 @@ After comprehensive research across authentication providers, frontend framework
 - **Forms**: React Hook Form + Zod
 
 This stack provides:
+
 - ✅ Native RLS support with `auth.uid()` integration
 - ✅ Sub-1s page load performance
 - ✅ <250ms auth latency (regional deployment)
@@ -54,6 +66,7 @@ This stack provides:
 #### Supabase Auth - RECOMMENDED ⭐
 
 **Strengths**:
+
 - **Native PostgreSQL integration with RLS**: `auth.uid()` function seamlessly integrates with Row-Level Security policies
 - **Generous free tier**: 50,000 MAU included
 - **Pro plan ($25/month)**: Unlocks 7-day session configuration, leaked password protection, and 100k MAU
@@ -64,12 +77,14 @@ This stack provides:
 - **Developer experience**: Excellent Next.js integration via `@supabase/ssr` package
 
 **Limitations**:
+
 - ❌ **No guaranteed latency SLA** on Free/Pro tiers (Enterprise only)
 - ❌ **Cross-region latency can exceed 250ms** (350-600ms reported)
 - ⚠️ **No uptime SLA on Free/Pro** (99.9% on Enterprise only)
 - ❌ **Email service inadequate for production**: 2 emails/hour limit requires custom SMTP integration
 
 **Requirements Assessment**:
+
 - <250ms auth latency: ✅ **Partially met** (depends on regional deployment)
 - 7-day sessions: ✅ **Met** (Pro plan required)
 - 99% uptime: ⚠️ **No SLA on Pro** (exceeds on Enterprise at 99.9%)
@@ -77,6 +92,7 @@ This stack provides:
 - Email verification: ✅ **Built-in** (requires external SMTP for production volume)
 
 **Pricing Path**:
+
 - MVP/Development: Free tier (50k MAU)
 - Production Launch: Pro tier ($25/month) + custom SMTP ($5-20/month)
 - **Total: ~$30-45/month** for first 100k MAU
@@ -88,6 +104,7 @@ This stack provides:
 #### Auth0 - NOT RECOMMENDED ❌
 
 **Why not**:
+
 - ❌ **No native PostgreSQL RLS integration**: Requires custom middleware to map JWT claims to session variables
 - ❌ **No guaranteed <250ms latency**: Community reports 200-500ms+ typical
 - ❌ **Free tier limited to 3-day sessions**: Requires Enterprise plan for 7+ day sessions
@@ -105,6 +122,7 @@ This stack provides:
 #### Next.js 15 (App Router) - RECOMMENDED ⭐
 
 **Why chosen**:
+
 - **Server Components**: Credentials never leave server, perfect for authentication
 - **Performance**: 20-30% less JavaScript than Pages Router, achieving <1s page loads
 - **Partial Prerendering (PPR)**: Static shell served instantly from CDN, dynamic content streamed (ideal for dashboards)
@@ -139,6 +157,7 @@ export default async function PlansPage() {
 ```
 
 **Performance optimization strategies**:
+
 - SSG for marketing pages: Pre-rendered at build time
 - PPR for authenticated dashboards: Static shell + dynamic data
 - Streaming with Suspense: Load auth checks parallel with page shells
@@ -158,6 +177,7 @@ export default async function PlansPage() {
 **Why this combination**:
 
 **PostgreSQL via Supabase**:
+
 - Native RLS support with `auth.uid()` helper function
 - Managed service with automatic backups (Pro tier)
 - Connection pooling for serverless (Supabase Pooler)
@@ -165,6 +185,7 @@ export default async function PlansPage() {
 - Free tier includes full PostgreSQL features
 
 **Drizzle ORM**:
+
 - **Native RLS support**: Define policies directly in schema using `pgPolicy()`
 - **Zero code generation**: Types inferred instantly from TypeScript schema
 - **Best performance**: 7.4kb bundle size, sub-100ms p95 latency on 370k records
@@ -172,23 +193,29 @@ export default async function PlansPage() {
 - **Excellent Next.js 15 integration**: Works seamlessly with Server Components and Server Actions
 
 **Schema definition with RLS**:
+
 ```typescript
 // schema.ts
-export const plans = pgTable('plans', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at').defaultNow()
-}, (table) => [
-  pgPolicy('user_plans_policy', {
-    for: 'all',
-    to: authenticatedRole,
-    using: sql`${table.userId} = auth.uid()`
-  })
-]);
+export const plans = pgTable(
+  'plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [
+    pgPolicy('user_plans_policy', {
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`${table.userId} = auth.uid()`,
+    }),
+  ]
+);
 ```
 
 **Performance optimization for <1s requirement**:
+
 1. **Index all RLS policy columns**: 100x improvement confirmed
    ```sql
    CREATE INDEX idx_plans_user_id ON plans(user_id);
@@ -200,12 +227,14 @@ export const plans = pgTable('plans', {
 3. **Explicit filters**: Always include `where(eq(plans.userId, userId))`
 
 **Migration workflow**:
+
 1. Define schema in TypeScript
 2. `drizzle-kit generate` → creates SQL migrations
 3. `drizzle-kit migrate` → applies to database
 4. Commit migrations to version control
 
 **Alternatives considered**:
+
 - **Prisma**: ❌ No native RLS support (requires workarounds marked "not for production")
 - **Kysely**: ❌ No RLS support (marked "wontfix"), manual migrations
 - **Supabase JS Client**: ✅ Good option but less sophisticated type safety
@@ -219,6 +248,7 @@ export const plans = pgTable('plans', {
 #### Resend - RECOMMENDED FOR MVP ⭐
 
 **Why chosen**:
+
 - **Free tier: 3,000 emails/month** (perfect for MVP)
 - **Best developer experience**: React Email for type-safe templates
 - **30-minute setup time** (fastest among all providers)
@@ -227,8 +257,9 @@ export const plans = pgTable('plans', {
 - **Pricing**: $0 MVP → $20/month (50k emails) as you scale
 
 **Implementation with Server Actions**:
+
 ```typescript
-'use server'
+'use server';
 import { Resend } from 'resend';
 
 export async function sendVerificationEmail(email: string, token: string) {
@@ -238,12 +269,13 @@ export async function sendVerificationEmail(email: string, token: string) {
     from: 'Plan Smart <[email protected]>',
     to: email,
     subject: 'Verify your email',
-    html: `<a href="${process.env.NEXT_PUBLIC_URL}/verify/${token}">Verify</a>`
+    html: `<a href="${process.env.NEXT_PUBLIC_URL}/verify/${token}">Verify</a>`,
   });
 }
 ```
 
 **React Email templates**:
+
 ```typescript
 // emails/verification.tsx
 export default function VerificationEmail({ token }: { token: string }) {
@@ -264,12 +296,14 @@ export default function VerificationEmail({ token }: { token: string }) {
 #### Postmark - ALTERNATIVE FOR MAXIMUM RELIABILITY ⭐
 
 **When to choose Postmark over Resend**:
+
 - **99.1% deliverability rate** (proven, independently tested)
 - **Sub-1-second delivery** for time-sensitive auth emails
 - **15+ years track record** for critical transactional emails
 - **$15/month for 10,000 emails** (only slightly more expensive)
 
 **Trade-offs**:
+
 - Less modern developer experience than Resend
 - No React-based templating (HTML/CSS templates)
 - Smaller free tier (100 test emails vs 3,000/month)
@@ -285,6 +319,7 @@ export default function VerificationEmail({ token }: { token: string }) {
 #### Zustand - RECOMMENDED FOR GLOBAL UI STATE ⭐
 
 **Why chosen**:
+
 - **Lightweight**: <1KB gzipped
 - **Performance**: Only re-renders components subscribed to changed state
 - **No Provider wrapper**: Works seamlessly with Server Components
@@ -292,6 +327,7 @@ export default function VerificationEmail({ token }: { token: string }) {
 - **Simple API**: Less boilerplate than Redux
 
 **Use cases in Epic 1**:
+
 ```typescript
 // stores/dashboard.ts
 import { create } from 'zustand';
@@ -302,18 +338,19 @@ export const useDashboardStore = create(
     (set) => ({
       sidebarOpen: true,
       currentPlan: null,
-      toggleSidebar: () => set((state) => ({
-        sidebarOpen: !state.sidebarOpen
-      }))
+      toggleSidebar: () =>
+        set((state) => ({
+          sidebarOpen: !state.sidebarOpen,
+        })),
     }),
     { name: 'dashboard-storage' }
   )
 );
 
 // Client Component
-'use client'
+('use client');
 function Sidebar() {
-  const sidebarOpen = useDashboardStore(state => state.sidebarOpen);
+  const sidebarOpen = useDashboardStore((state) => state.sidebarOpen);
   // Only re-renders when sidebarOpen changes
 }
 ```
@@ -323,6 +360,7 @@ function Sidebar() {
 #### React Context - FOR ONBOARDING WIZARD LOCAL STATE
 
 **Why Context for wizard**:
+
 - Localized state within component tree
 - Temporary data during multi-step flow
 - No global state pollution
@@ -343,6 +381,7 @@ export function OnboardingProvider({ children, initialData }) {
 ```
 
 **Decision matrix**:
+
 - Global UI state (sidebar, filters): **Zustand**
 - Onboarding wizard state: **Context**
 - Form state: **React Hook Form**
@@ -357,11 +396,13 @@ export function OnboardingProvider({ children, initialData }) {
 #### React Hook Form + Zod - RECOMMENDED ⭐
 
 **Why this combination**:
+
 - **React Hook Form**: Optimized re-renders, excellent performance
 - **Zod**: TypeScript-first schema validation
 - **End-to-end type safety**: Client validation + Server Action validation
 
 **Onboarding wizard implementation**:
+
 ```typescript
 // schemas/onboarding.ts
 export const profileSchema = z.object({
@@ -416,6 +457,7 @@ export async function saveProfileStep(data: unknown) {
 #### Vercel - RECOMMENDED FOR MVP ⭐
 
 **Why chosen**:
+
 - **Zero-config deployment**: Git push → production
 - **Generous free tier**: 100GB bandwidth, 6,000 build minutes/month
 - **Performance**: Global edge network, <50ms cold starts
@@ -424,13 +466,15 @@ export async function saveProfileStep(data: unknown) {
 - **Pro tier ($20/month)**: 1TB bandwidth, 100GB-hours serverless (sufficient for 10k-100k users)
 
 **Cost progression**:
+
 - <10k users: **Free tier**
 - 10k-100k users: **Pro ($20-100/month)**
-- >100k users: **Evaluate self-hosting if >$500/month**
+- > 100k users: **Evaluate self-hosting if >$500/month**
 
 **Migration path**: Build with Vercel-agnostic patterns (avoid Vercel-specific APIs) to enable future migration to AWS/GCP if needed
 
 **Alternative considered**:
+
 - **AWS ECS/Fargate**: Better for >$500/month hosting, but requires DevOps team and complex setup
 - **Railway**: Good middle ground at $20-60/month, simpler than AWS
 - **Netlify**: Similar to Vercel but weaker SSR support
@@ -443,18 +487,18 @@ export async function saveProfileStep(data: unknown) {
 
 ### Recommended Stack (Primary)
 
-| Layer | Technology | Tier | Monthly Cost | Justification |
-|-------|-----------|------|--------------|---------------|
-| **Frontend** | Next.js 15 (App Router) | Free | $0 | Best performance, Server Components, PPR for <1s loads |
-| **Hosting** | Vercel Pro | Pro | $20 | Zero-config, global CDN, preview deployments |
-| **Authentication** | Supabase Auth | Pro | $25 | Native RLS, 7-day sessions, 100k MAU included |
-| **Database** | PostgreSQL (Supabase) | Included | $0 | Included with Supabase Pro, managed, RLS native |
-| **ORM** | Drizzle ORM | Free | $0 | Native RLS support, best performance, type safety |
-| **Email** | Resend | Pro | $20 | Modern DX, React Email, 50k emails included |
-| **State** | Zustand | Free | $0 | Lightweight, performant, simple API |
-| **Forms** | React Hook Form + Zod | Free | $0 | Performance, type safety, validation |
-| **Styling** | Tailwind + shadcn/ui | Free | $0 | Rapid development, accessible components |
-| | | **TOTAL** | **$65/month** | **For 50k-100k MAU in production** |
+| Layer              | Technology              | Tier      | Monthly Cost  | Justification                                          |
+| ------------------ | ----------------------- | --------- | ------------- | ------------------------------------------------------ |
+| **Frontend**       | Next.js 15 (App Router) | Free      | $0            | Best performance, Server Components, PPR for <1s loads |
+| **Hosting**        | Vercel Pro              | Pro       | $20           | Zero-config, global CDN, preview deployments           |
+| **Authentication** | Supabase Auth           | Pro       | $25           | Native RLS, 7-day sessions, 100k MAU included          |
+| **Database**       | PostgreSQL (Supabase)   | Included  | $0            | Included with Supabase Pro, managed, RLS native        |
+| **ORM**            | Drizzle ORM             | Free      | $0            | Native RLS support, best performance, type safety      |
+| **Email**          | Resend                  | Pro       | $20           | Modern DX, React Email, 50k emails included            |
+| **State**          | Zustand                 | Free      | $0            | Lightweight, performant, simple API                    |
+| **Forms**          | React Hook Form + Zod   | Free      | $0            | Performance, type safety, validation                   |
+| **Styling**        | Tailwind + shadcn/ui    | Free      | $0            | Rapid development, accessible components               |
+|                    |                         | **TOTAL** | **$65/month** | **For 50k-100k MAU in production**                     |
 
 ### Alternative Stack (Maximum Reliability)
 
@@ -463,18 +507,19 @@ Swap **Resend** → **Postmark** ($15/month) for proven 99.1% deliverability
 
 ### Budget-Constrained Stack (MVP)
 
-| Layer | Technology | Tier | Monthly Cost |
-|-------|-----------|------|--------------|
-| Frontend | Next.js 15 | Free | $0 |
-| Hosting | Vercel Hobby | Free | $0 |
-| Authentication | Supabase Auth | Free | $0 |
-| Database | PostgreSQL (Supabase) | Free | $0 |
-| ORM | Drizzle ORM | Free | $0 |
-| Email | Resend | Free | $0 |
-| State/Forms/UI | Same as above | Free | $0 |
-| | | **TOTAL** | **$0/month** |
+| Layer          | Technology            | Tier      | Monthly Cost |
+| -------------- | --------------------- | --------- | ------------ |
+| Frontend       | Next.js 15            | Free      | $0           |
+| Hosting        | Vercel Hobby          | Free      | $0           |
+| Authentication | Supabase Auth         | Free      | $0           |
+| Database       | PostgreSQL (Supabase) | Free      | $0           |
+| ORM            | Drizzle ORM           | Free      | $0           |
+| Email          | Resend                | Free      | $0           |
+| State/Forms/UI | Same as above         | Free      | $0           |
+|                |                       | **TOTAL** | **$0/month** |
 
 **Limitations on free tier**:
+
 - Supabase: 50k MAU limit, no 7-day sessions, projects pause after 1 week inactivity
 - Resend: 3,000 emails/month, 100/day limit
 - Vercel: Projects may pause, limited to personal use
@@ -486,6 +531,7 @@ Swap **Resend** → **Postmark** ($15/month) for proven 99.1% deliverability
 ## Code References
 
 All references are to planning documentation as no code exists yet:
+
 - [thoughts/personal/tickets/epic-1/00-scope/scope.md](../../personal/tickets/epic-1/00-scope/scope.md) - Epic 1 requirements
 - [thoughts/personal/tickets/epic-1/00-scope/nfr.md](../../personal/tickets/epic-1/00-scope/nfr.md) - Non-functional requirements
 - [thoughts/shared/research/2025-11-11-epic-1-implementation-readiness.md](./2025-11-11-epic-1-implementation-readiness.md) - Initial codebase assessment
@@ -499,14 +545,17 @@ All references are to planning documentation as no code exists yet:
 The recommended stack implements three security layers:
 
 **Layer 1: Middleware (Optimistic Filter)**
+
 - Quick token check, redirects unauthenticated users
 - NOT the primary security boundary (CVE-2025-29927 vulnerability)
 
 **Layer 2: Data Access Layer (Primary Security)**
+
 - `verifySession()` cached function validates JWT on every data fetch
 - Enforced at Server Component and Server Action level
 
 **Layer 3: Database RLS (Defense-in-Depth)**
+
 - PostgreSQL policies enforce `auth.uid() = user_id`
 - Protects against compromised application code
 - Works even if middleware/DAL bypassed
@@ -514,11 +563,13 @@ The recommended stack implements three security layers:
 ### Performance Architecture for <1s Page Loads
 
 **Marketing Pages (SSG)**:
+
 ```
 User Request → Edge CDN (instant) → Pre-rendered HTML → <200ms
 ```
 
 **Authenticated Dashboard (PPR)**:
+
 ```
 User Request → Edge CDN → Static Shell (instant)
             ↓
@@ -526,6 +577,7 @@ User Request → Edge CDN → Static Shell (instant)
 ```
 
 **Key optimizations**:
+
 - Static assets cached with `max-age=31536000`
 - Critical JS <14kb for TCP slow-start
 - Images in AVIF/WebP with lazy loading
@@ -535,17 +587,20 @@ User Request → Edge CDN → Static Shell (instant)
 ### Multi-Step Onboarding Pattern
 
 **URL-based step management** (recommended over state-based):
+
 ```
 /onboarding/profile → /onboarding/financial → /onboarding/preferences → /plans
 ```
 
 **Benefits**:
+
 - Bookmarkable URLs
 - Browser back/forward works naturally
 - Server-side step validation prevents skipping
 - SEO-friendly if public onboarding needed
 
 **State management**:
+
 - Critical data (financial info): Saved to database immediately via Server Actions
 - UX state (current step): React Context within onboarding tree
 - Temporary selections: Client-side state, auto-save every 30s
@@ -555,9 +610,11 @@ User Request → Edge CDN → Static Shell (instant)
 ## Historical Context (from thoughts/)
 
 This research builds on:
+
 - [thoughts/shared/research/2025-11-11-epic-1-implementation-readiness.md](./2025-11-11-epic-1-implementation-readiness.md) - Initial assessment identified Supabase + Next.js as potential choices
 
 **Decision evolution**:
+
 - Initial thought: Supabase OR Auth0 (undecided)
 - Research finding: Auth0 lacks PostgreSQL RLS integration, expensive
 - **Decision**: Supabase for integrated auth + database + RLS
@@ -593,6 +650,7 @@ This research builds on:
 ### Immediate Next Steps (R-02 Phase)
 
 1. **Initialize project**:
+
    ```bash
    npx create-next-app@latest plan-smart --typescript --tailwind --app
    cd plan-smart
@@ -612,9 +670,11 @@ This research builds on:
    - Get API key
 
 4. **Initialize Drizzle**:
+
    ```bash
    npx drizzle-kit init
    ```
+
    - Define schema with RLS policies
    - Generate initial migrations
 
@@ -640,18 +700,22 @@ This research builds on:
 ### Risk Mitigation
 
 **Risk: Auth latency >250ms cross-region**
+
 - **Mitigation**: Deploy Supabase in user's primary region, use Vercel edge functions for auth checks
 - **Fallback**: Consider Clerk if global latency required (higher cost)
 
 **Risk: Resend deliverability issues for auth emails**
+
 - **Mitigation**: Monitor bounce rates closely in first 2 weeks
 - **Fallback**: Switch to Postmark ($15/month) if deliverability <98%
 
 **Risk: Supabase free tier project pausing**
+
 - **Mitigation**: Upgrade to Pro ($25/month) before launch
 - **Trigger**: When moving to production or exceeding 50k MAU
 
 **Risk: Onboarding drop-off**
+
 - **Mitigation**: Implement auto-save, allow step skipping, progress indicators
 - **Monitoring**: Track `onboarding_completed` metric (per NFR requirements)
 
@@ -664,6 +728,7 @@ This research builds on:
 **Complete findings**: See web research agent output on Supabase authentication capabilities
 
 **Key highlights**:
+
 - 15-100ms typical auth latency same-region
 - 350-600ms cross-region (may exceed 250ms requirement)
 - Pro plan unlocks session timeout controls (7-day configuration)
@@ -676,6 +741,7 @@ This research builds on:
 **Deliverability**: No built-in production email service (must integrate Resend/Postmark)
 
 **Performance optimization**:
+
 - Deploy database in user's region
 - Index RLS policy columns
 - Wrap `auth.uid()` in SELECT
@@ -688,6 +754,7 @@ This research builds on:
 **Complete findings**: See web research agent output on Auth0
 
 **Why not recommended for Epic 1**:
+
 - No native PostgreSQL RLS integration (custom DB scripts only store credentials)
 - No guaranteed <250ms latency (200-500ms+ reported)
 - Free tier: 3-day max sessions (need Enterprise for 7+ days)
@@ -703,6 +770,7 @@ This research builds on:
 **Complete findings**: See web research agent output on Next.js for SaaS
 
 **App Router advantages**:
+
 - Server Components by default (credentials never leave server)
 - 20-30% less JavaScript (faster page loads)
 - Nested layouts (perfect for auth flows)
@@ -710,6 +778,7 @@ This research builds on:
 - Built-in middleware for route protection
 
 **Performance strategies**:
+
 - SSG for marketing pages
 - PPR for dashboards (static shell + dynamic content)
 - Image optimization (automatic AVIF/WebP)
@@ -725,6 +794,7 @@ This research builds on:
 **Complete findings**: See web research agent output on PostgreSQL ORMs
 
 **Why Drizzle over alternatives**:
+
 - **Native RLS**: `pgPolicy()` in schema definitions
 - **Performance**: 7.4kb bundle, sub-100ms p95 latency
 - **Type safety**: No code generation, instant types
@@ -743,6 +813,7 @@ This research builds on:
 **Complete findings**: See web research agent output on email services
 
 **Resend highlights**:
+
 - Free: 3,000 emails/month
 - Pro ($20/month): 50,000 emails
 - 30-minute setup time
@@ -750,6 +821,7 @@ This research builds on:
 - Built on AWS SES
 
 **Postmark highlights**:
+
 - 99.1% deliverability (proven)
 - Sub-1-second delivery
 - $15/month for 10,000 emails
@@ -764,6 +836,7 @@ This research builds on:
 ## Conclusion
 
 The recommended technology stack provides an optimal balance of:
+
 - **Performance**: <1s page loads, <250ms auth latency (regional)
 - **Security**: Defense-in-depth authentication, native RLS
 - **Developer experience**: Type safety, rapid development

@@ -1,8 +1,17 @@
 ---
 date: 2025-11-17
 architect: Claude Code (Senior System Architect)
-topic: "Authentication Provider Final Decision: Supabase Auth vs Auth0"
-tags: [architecture, authentication, security, decision-record, supabase, auth0, critical-decision]
+topic: 'Authentication Provider Final Decision: Supabase Auth vs Auth0'
+tags:
+  [
+    architecture,
+    authentication,
+    security,
+    decision-record,
+    supabase,
+    auth0,
+    critical-decision,
+  ]
 status: final-recommendation
 severity: critical
 impact: high
@@ -29,6 +38,7 @@ After rigorous evaluation, I recommend **Supabase Auth** for Plan Smart's MVP an
 **Key Insight**: The question is not "Supabase vs Auth0" but rather "What's the right authentication architecture for each growth stage?" The answer is a staged approach that optimizes for different constraints at different phases.
 
 **Switch Triggers**:
+
 - Revenue >$50k MRR: Evaluate Supabase Enterprise ($2k/month with SLAs)
 - Enterprise customers: Implement hybrid Auth0 for enterprise tier
 - Global expansion: Add regional Supabase instances or migrate to Auth0
@@ -103,12 +113,14 @@ After rigorous evaluation, I recommend **Supabase Auth** for Plan Smart's MVP an
 #### Security Architecture Verdict
 
 **Supabase RLS Advantages**:
+
 1. **Defense-in-depth**: Three independent security layers
 2. **Fail-safe**: Even if application code is compromised (CVE, developer error, dependency vulnerability), database-level RLS prevents cross-user data access
 3. **Audit compliance**: Database-enforced security easier to audit and certify
 4. **Developer safety**: Junior developers can't accidentally create data leaks by forgetting WHERE clauses
 
 **Application-Layer Risks (Auth0)**:
+
 1. **Single point of failure**: One missing `WHERE user_id = ?` filter leaks all user data
 2. **Vulnerability exposure**: Any middleware bypass (like CVE-2025-29927) immediately compromises all data
 3. **Code review burden**: Every query must be manually audited for security filters
@@ -124,35 +136,35 @@ After rigorous evaluation, I recommend **Supabase Auth** for Plan Smart's MVP an
 
 #### Scenario 1: MVP to 100k MAU (Year 1)
 
-| Phase | Users | Supabase Cost | Auth0 Cost | Delta |
-|-------|-------|---------------|------------|-------|
-| MVP (0-5k MAU) | 5,000 | $0 (Free tier) | $0 (Free tier) | $0 |
-| Launch (5k-50k MAU) | 30,000 | $30/month (Pro + Resend) | $240/month ($35 base + 30k×$0.007) | -$210/month |
-| Growth (50k-100k MAU) | 80,000 | $65/month (Pro + Pro email) | $595/month ($35 base + 80k×$0.007) | -$530/month |
-| **Year 1 Total** | - | **~$540/year** | **~$3,600/year** | **-$3,060 savings** |
+| Phase                 | Users  | Supabase Cost               | Auth0 Cost                         | Delta               |
+| --------------------- | ------ | --------------------------- | ---------------------------------- | ------------------- |
+| MVP (0-5k MAU)        | 5,000  | $0 (Free tier)              | $0 (Free tier)                     | $0                  |
+| Launch (5k-50k MAU)   | 30,000 | $30/month (Pro + Resend)    | $240/month ($35 base + 30k×$0.007) | -$210/month         |
+| Growth (50k-100k MAU) | 80,000 | $65/month (Pro + Pro email) | $595/month ($35 base + 80k×$0.007) | -$530/month         |
+| **Year 1 Total**      | -      | **~$540/year**              | **~$3,600/year**                   | **-$3,060 savings** |
 
 #### Scenario 2: Growth to 500k MAU (Year 2)
 
-| Phase | Users | Supabase Cost | Auth0 Cost | Delta |
-|-------|-------|---------------|------------|-------|
-| Continued Growth | 250,000 | $65/month (within Pro limits with optimization) | $1,785/month ($35 + 250k×$0.007) | -$1,720/month |
-| Or: Enterprise Upgrade | 250,000 | $2,000/month (Supabase Enterprise with SLAs) | $1,785/month | +$215/month |
-| **Year 2 Decision Point** | - | **Pro: $780/year** OR **Enterprise: $24k/year** | **$21,420/year** | **Pro: -$20,640** OR **Enterprise: +$2,580** |
+| Phase                     | Users   | Supabase Cost                                   | Auth0 Cost                       | Delta                                        |
+| ------------------------- | ------- | ----------------------------------------------- | -------------------------------- | -------------------------------------------- |
+| Continued Growth          | 250,000 | $65/month (within Pro limits with optimization) | $1,785/month ($35 + 250k×$0.007) | -$1,720/month                                |
+| Or: Enterprise Upgrade    | 250,000 | $2,000/month (Supabase Enterprise with SLAs)    | $1,785/month                     | +$215/month                                  |
+| **Year 2 Decision Point** | -       | **Pro: $780/year** OR **Enterprise: $24k/year** | **$21,420/year**                 | **Pro: -$20,640** OR **Enterprise: +$2,580** |
 
 #### Scenario 3: Scale to 1M MAU (Year 3)
 
-| Phase | Users | Supabase Cost | Auth0 Cost | Delta |
-|-------|-------|---------------|------------|-------|
-| Enterprise Scale | 1,000,000 | $2,000-3,500/month (Enterprise custom) | $7,035/month ($35 + 1M×$0.007) | -$3,500 to -$5,035/month |
-| **Year 3 Total** | - | **$24k-42k/year** | **$84,420/year** | **-$42k to -$60k savings** |
+| Phase            | Users     | Supabase Cost                          | Auth0 Cost                     | Delta                      |
+| ---------------- | --------- | -------------------------------------- | ------------------------------ | -------------------------- |
+| Enterprise Scale | 1,000,000 | $2,000-3,500/month (Enterprise custom) | $7,035/month ($35 + 1M×$0.007) | -$3,500 to -$5,035/month   |
+| **Year 3 Total** | -         | **$24k-42k/year**                      | **$84,420/year**               | **-$42k to -$60k savings** |
 
 #### 3-Year Total Cost of Ownership
 
-| Scenario | Supabase Path | Auth0 Path | Savings |
-|----------|---------------|------------|---------|
-| Conservative (Pro tier entire time) | $2,340 | $109,440 | **-$107,100** |
-| Enterprise upgrade at 250k MAU | $48,540 | $109,440 | **-$60,900** |
-| Early Enterprise at 100k MAU | $72,540 | $109,440 | **-$36,900** |
+| Scenario                            | Supabase Path | Auth0 Path | Savings       |
+| ----------------------------------- | ------------- | ---------- | ------------- |
+| Conservative (Pro tier entire time) | $2,340        | $109,440   | **-$107,100** |
+| Enterprise upgrade at 250k MAU      | $48,540       | $109,440   | **-$60,900**  |
+| Early Enterprise at 100k MAU        | $72,540       | $109,440   | **-$36,900**  |
 
 **Financial Verdict**: Even in the most conservative scenario (early Enterprise upgrade), Supabase saves $36,900 over 3 years. In the realistic scenario (Pro → Enterprise at revenue trigger), savings exceed $60,000.
 
@@ -164,16 +176,17 @@ After rigorous evaluation, I recommend **Supabase Auth** for Plan Smart's MVP an
 
 #### Latency Testing Results (from research)
 
-| Configuration | Supabase Auth | Auth0 |
-|--------------|---------------|-------|
-| Same region (US-East to US-East) | 15-100ms ✅ | 150-250ms ⚠️ |
-| Cross-region (US-West to US-East) | 350-600ms ❌ | 200-500ms ⚠️ |
-| Intercontinental (EU to US) | 500-800ms ❌ | 300-600ms ❌ |
-| With edge optimization | 50-150ms ✅ | 150-300ms ⚠️ |
+| Configuration                     | Supabase Auth | Auth0        |
+| --------------------------------- | ------------- | ------------ |
+| Same region (US-East to US-East)  | 15-100ms ✅   | 150-250ms ⚠️ |
+| Cross-region (US-West to US-East) | 350-600ms ❌  | 200-500ms ⚠️ |
+| Intercontinental (EU to US)       | 500-800ms ❌  | 300-600ms ❌ |
+| With edge optimization            | 50-150ms ✅   | 150-300ms ⚠️ |
 
 #### Regional Deployment Strategy
 
 **Supabase Multi-Region Architecture**:
+
 ```
 Year 1 (US-only): Single US-East region → <100ms for 95% of users
 Year 2 (Growth): Add US-West region if >20% West Coast users
@@ -184,6 +197,7 @@ Latency: <150ms for >95% of global users
 ```
 
 **Auth0 Global Architecture**:
+
 ```
 Single global instance with CDN edge caching
 Latency: 150-300ms globally (mediocre)
@@ -193,16 +207,19 @@ Cost: Same $0.007/MAU regardless of regions
 #### Performance Verdict
 
 **For MVP (US-only focus)**:
+
 - Supabase: 15-100ms same-region → **MEETS <250ms requirement** ✅
 - Auth0: 150-250ms same-region → **MARGINAL** ⚠️
 
 **For global scale**:
+
 - Supabase: Requires multi-region deployment → **MEETS requirement with planning** ✅
 - Auth0: 200-500ms globally → **OFTEN EXCEEDS requirement** ❌
 
 **Critical Insight**: Neither provider guarantees <250ms globally without architecture planning. Supabase's multi-region approach provides MORE control over latency than Auth0's single-instance model.
 
 **Mitigation Strategy**:
+
 1. Deploy Supabase in user's primary region (US-East for MVP)
 2. Use Vercel Edge Functions for auth token validation (reduces latency)
 3. Implement client-side token caching (reduces auth API calls)
@@ -214,22 +231,24 @@ Cost: Same $0.007/MAU regardless of regions
 
 #### SLA Comparison
 
-| Tier | Supabase Uptime SLA | Auth0 Uptime SLA | Cost |
-|------|---------------------|------------------|------|
-| Free | No SLA | No SLA | $0 |
-| Pro/Developer | No SLA (99%+ observed) | No SLA | Supabase: $25, Auth0: $35 base |
-| Enterprise | 99.9% SLA | 99.99% SLA | Supabase: $2k, Auth0: Custom |
+| Tier          | Supabase Uptime SLA    | Auth0 Uptime SLA | Cost                           |
+| ------------- | ---------------------- | ---------------- | ------------------------------ |
+| Free          | No SLA                 | No SLA           | $0                             |
+| Pro/Developer | No SLA (99%+ observed) | No SLA           | Supabase: $25, Auth0: $35 base |
+| Enterprise    | 99.9% SLA              | 99.99% SLA       | Supabase: $2k, Auth0: Custom   |
 
 #### Risk Analysis: No SLA on Pro Tier
 
 **Question**: Is 99% uptime (observed, no guarantee) acceptable for financial planning SaaS?
 
 **Quantitative Impact**:
+
 - 99% uptime = 7.2 hours downtime per month = 87 hours/year
 - 99.9% uptime = 43 minutes downtime per month = 8.7 hours/year
 - 99.99% uptime = 4.3 minutes downtime per month = 52 minutes/year
 
 **User Impact Analysis**:
+
 ```
 Scenario: 99% uptime (worst case, no SLA)
 Affected users per outage: 100% during outage window
@@ -243,17 +262,20 @@ Mitigation: Status page, proactive communication
 ```
 
 **Competitive Analysis**:
+
 - Mint (financial planning): 99.5% observed uptime (no public SLA)
 - Personal Capital: 99.7% observed uptime
 - Betterment: 99.9% SLA (enterprise platform)
 
 **Verdict**: For MVP and growth phase (<$50k MRR), 99% observed uptime is acceptable IF:
+
 1. Status page communicates outages transparently
 2. Incident response plan is documented
 3. Customer support is proactive during incidents
 4. Enterprise upgrade path is clear (at $50k MRR or enterprise customer acquisition)
 
 **Risk Mitigation**:
+
 ```typescript
 // Client-side graceful degradation
 export async function loginWithRetry(credentials: Credentials) {
@@ -264,7 +286,9 @@ export async function loginWithRetry(credentials: Credentials) {
     } catch (error) {
       if (i === maxRetries - 1) {
         // Show user-friendly error with status page link
-        throw new AuthServiceUnavailable("Our authentication service is temporarily unavailable. Check status.plansmart.com");
+        throw new AuthServiceUnavailable(
+          'Our authentication service is temporarily unavailable. Check status.plansmart.com'
+        );
       }
       await wait(1000 * Math.pow(2, i)); // Exponential backoff
     }
@@ -280,17 +304,18 @@ export async function loginWithRetry(credentials: Credentials) {
 
 #### Certification Comparison
 
-| Certification | Supabase | Auth0 |
-|--------------|----------|-------|
-| SOC 2 Type II | ✅ Yes (Enterprise) | ✅ Yes (All tiers) |
-| GDPR Compliant | ✅ Yes | ✅ Yes |
-| HIPAA | ❌ No | ✅ Yes (Enterprise) |
-| ISO 27001 | ⚠️ In progress | ✅ Yes |
-| PCI DSS | N/A (no card data) | ✅ Yes |
+| Certification  | Supabase            | Auth0               |
+| -------------- | ------------------- | ------------------- |
+| SOC 2 Type II  | ✅ Yes (Enterprise) | ✅ Yes (All tiers)  |
+| GDPR Compliant | ✅ Yes              | ✅ Yes              |
+| HIPAA          | ❌ No               | ✅ Yes (Enterprise) |
+| ISO 27001      | ⚠️ In progress      | ✅ Yes              |
+| PCI DSS        | N/A (no card data)  | ✅ Yes              |
 
 #### Enterprise Feature Gap Analysis
 
 **Auth0 Advantages**:
+
 1. **Comprehensive compliance out-of-box**: SOC2, HIPAA, ISO 27001 on all plans
 2. **Enterprise SSO**: SAML, Active Directory, LDAP (for corporate customers)
 3. **Advanced MFA**: Biometric, hardware keys, adaptive MFA
@@ -298,6 +323,7 @@ export async function loginWithRetry(credentials: Credentials) {
 5. **Custom domains**: auth.customerdomain.com (white-label authentication)
 
 **Supabase Gaps**:
+
 1. No HIPAA compliance (not a requirement for retirement planning, but limits health savings account features)
 2. Limited enterprise SSO (only SAML on Enterprise)
 3. Basic audit logs (enhanced on Enterprise)
@@ -306,17 +332,20 @@ export async function loginWithRetry(credentials: Credentials) {
 #### When Do These Matter?
 
 **Scenario 1: B2C Retirement Planning (Current Plan)**
+
 - SOC2: Nice-to-have for marketing (can achieve on Supabase Enterprise)
 - HIPAA: Not required (retirement planning ≠ healthcare)
 - Enterprise SSO: Not needed for individual consumers
 - **Verdict**: Supabase sufficient
 
 **Scenario 2: B2B Enterprise Add-on (Future Opportunity)**
+
 - 401k plan administrators want to offer Plan Smart to employees
 - Requirements: SSO, SAML, custom branding, audit logs, dedicated instances
 - **Verdict**: Auth0 or Supabase Enterprise required
 
 **Hybrid Architecture for Enterprise**:
+
 ```
 Consumer Tier (95% of users):
 ├── Supabase Auth (email/password)
@@ -342,11 +371,13 @@ ROI: Enterprise Auth0 cost covered by premium pricing
 ### 2.1 Option A: Auth0 Auth + Supabase Database
 
 **Architecture**:
+
 ```
 Auth0 (Authentication) → Next.js (Application) → Supabase PostgreSQL (Database)
 ```
 
 **Implementation Complexity**:
+
 ```typescript
 // Manual RLS mapping required
 export async function getPlansByUser(userId: string) {
@@ -370,6 +401,7 @@ CREATE POLICY "user_plans" ON plans
 ```
 
 **Challenges**:
+
 1. **No native integration**: Must manually propagate Auth0 user ID to PostgreSQL session variables
 2. **Performance overhead**: Extra roundtrip to set session variable on every request
 3. **Complexity**: Custom middleware to map Auth0 JWT → PostgreSQL session
@@ -390,12 +422,14 @@ This is the current recommended approach. No change needed.
 ### 2.3 Option C: Dual-Provider (Supabase Consumer + Auth0 Enterprise)
 
 **Architecture**:
+
 ```
 Consumer Users (95%): Supabase Auth → Supabase DB (RLS enforced)
 Enterprise Users (5%): Auth0 → Supabase DB (application-layer security)
 ```
 
 **Implementation**:
+
 ```typescript
 // Unified authentication abstraction
 export async function verifySession() {
@@ -423,6 +457,7 @@ export async function getPlans(session: Session) {
 ```
 
 **Cost**:
+
 - Supabase: $25/month (consumer tier)
 - Auth0: $200-500/month (enterprise tier, 5% of users)
 - **Total**: $225-525/month
@@ -438,17 +473,18 @@ export async function getPlans(session: Session) {
 
 **Scenario**: Bootstrapped startup with $50k runway
 
-| Month | Supabase Costs | Auth0 Costs | Savings | Runway Impact |
-|-------|----------------|-------------|---------|---------------|
-| 1-3 (MVP) | $0 | $0 | $0 | - |
-| 4-6 (Launch) | $90 ($30/mo) | $630 ($210/mo) | **$540** | **+1 week runway** |
-| 7-12 (Growth) | $390 ($65/mo) | $3,180 ($530/mo) | **$2,790** | **+6 weeks runway** |
-| **Total Year 1** | **$480** | **$3,810** | **$3,330** | **+7 weeks runway** |
+| Month            | Supabase Costs | Auth0 Costs      | Savings    | Runway Impact       |
+| ---------------- | -------------- | ---------------- | ---------- | ------------------- |
+| 1-3 (MVP)        | $0             | $0               | $0         | -                   |
+| 4-6 (Launch)     | $90 ($30/mo)   | $630 ($210/mo)   | **$540**   | **+1 week runway**  |
+| 7-12 (Growth)    | $390 ($65/mo)  | $3,180 ($530/mo) | **$2,790** | **+6 weeks runway** |
+| **Total Year 1** | **$480**       | **$3,810**       | **$3,330** | **+7 weeks runway** |
 
 **Verdict**: For bootstrapped startups, $3,330 in Year 1 savings is NOT trivial. This represents 1.5-2 months of additional runway. **Supabase significantly reduces burn rate during critical validation phase.**
 
 **Risk**: What if Supabase raises prices or reduces free tier?
 **Mitigation**:
+
 1. Lock in Pro tier pricing with annual contract (most SaaS providers grandfather pricing)
 2. Build vendor-agnostic auth layer (allows migration if needed)
 3. Monitor Supabase pricing changes and set budget alerts
@@ -460,6 +496,7 @@ export async function getPlans(session: Session) {
 **Scenario**: Developer accidentally omits `WHERE user_id = ?` filter
 
 #### With Supabase RLS (Defense-in-Depth):
+
 ```typescript
 // Developer forgets filter (BUG)
 export async function getPlans() {
@@ -473,6 +510,7 @@ export async function getPlans() {
 **Impact**: ✅ No data leak. User sees only their data.
 
 #### Without RLS (Application-Layer Only):
+
 ```typescript
 // Developer forgets filter (BUG)
 export async function getPlans() {
@@ -486,10 +524,10 @@ export async function getPlans() {
 
 **Financial Impact Comparison**:
 
-| Breach Type | GDPR Fine | Customers Lost | Revenue Impact | Legal Costs | Total Impact |
-|-------------|-----------|----------------|----------------|-------------|--------------|
-| RLS prevented breach | $0 | 0% | $0 | $0 | $0 |
-| Application-layer breach | €20M or 4% revenue | 30-50% | -$500k/year | $100k+ | **-$600k+** |
+| Breach Type              | GDPR Fine          | Customers Lost | Revenue Impact | Legal Costs | Total Impact |
+| ------------------------ | ------------------ | -------------- | -------------- | ----------- | ------------ |
+| RLS prevented breach     | $0                 | 0%             | $0             | $0          | $0           |
+| Application-layer breach | €20M or 4% revenue | 30-50%         | -$500k/year    | $100k+      | **-$600k+**  |
 
 **Verdict**: For financial services SaaS, the cost of ONE prevented data breach ($600k+) **exceeds the total cost of Supabase for 10+ years**. RLS is risk mitigation with 100:1 ROI.
 
@@ -500,6 +538,7 @@ export async function getPlans() {
 **Scenario**: 30% of users in Europe, 60% US, 10% Asia
 
 #### Supabase Multi-Region:
+
 ```
 US-East region (60% of users): 15-100ms
 EU-West region (30% of users): 15-100ms
@@ -510,6 +549,7 @@ Performance: <150ms for 95%+ of global users
 ```
 
 #### Auth0 Single Region:
+
 ```
 Global CDN with edge caching
 
@@ -532,16 +572,19 @@ Performance: 200-400ms for 40% of users (exceeds <250ms requirement)
 #### Migrating AWAY from Supabase:
 
 **Data Migration**:
+
 - PostgreSQL database: Standard SQL export/import → **1-2 days**
 - User credentials: Bcrypt hashed passwords → **Compatible with most auth systems**
 - Export path: `pg_dump` → AWS RDS/self-hosted PostgreSQL → **Straightforward**
 
 **Auth Migration**:
+
 - User table: Standard email/password schema → **Compatible with Auth0, Clerk, custom**
 - JWTs: Standard JWT format → **Replace issuer and validation logic**
 - Migration time: **1-2 weeks for full cutover**
 
 **Code Changes**:
+
 - Auth SDK: Replace `@supabase/ssr` with new provider SDK → **~500 lines of code**
 - RLS policies: Migrate to application layer OR keep with self-hosted PostgreSQL → **~200 lines**
 - Total migration effort: **2-4 weeks**
@@ -549,16 +592,19 @@ Performance: 200-400ms for 40% of users (exceeds <250ms requirement)
 #### Migrating AWAY from Auth0:
 
 **Data Migration**:
+
 - User credentials: Bcrypt hashed → **Compatible**
 - Export path: Auth0 Management API → new provider → **Straightforward**
 
 **Auth Migration**:
+
 - Complex Auth0 Rules: Must reimplement in new provider → **2-4 weeks**
 - Custom claims mapping: Rewrite for new JWT structure → **1 week**
 - SSO configurations: Reconfigure SAML/OIDC in new provider → **1-2 weeks**
 - Total migration effort: **4-6 weeks**
 
 **Code Changes**:
+
 - Auth SDK: Replace Auth0 SDK → **~500 lines of code**
 - Session management: Rewrite session handling → **~300 lines**
 - Total migration effort: **3-5 weeks**
@@ -573,14 +619,15 @@ Performance: 200-400ms for 40% of users (exceeds <250ms requirement)
 
 #### Supabase Scaling Path:
 
-| Users | Tier | Monthly Cost | Features |
-|-------|------|--------------|----------|
-| 0-50k | Free | $0 | Email auth, RLS, no SLA |
-| 50k-500k | Pro | $25-65 | 7-day sessions, backups, no SLA |
-| 500k-1M | Enterprise | $2k-3.5k | 99.9% SLA, dedicated support, custom limits |
-| 1M+ | Custom | $3.5k+ | Multi-region, dedicated instances, TAM |
+| Users    | Tier       | Monthly Cost | Features                                    |
+| -------- | ---------- | ------------ | ------------------------------------------- |
+| 0-50k    | Free       | $0           | Email auth, RLS, no SLA                     |
+| 50k-500k | Pro        | $25-65       | 7-day sessions, backups, no SLA             |
+| 500k-1M  | Enterprise | $2k-3.5k     | 99.9% SLA, dedicated support, custom limits |
+| 1M+      | Custom     | $3.5k+       | Multi-region, dedicated instances, TAM      |
 
 **Scaling Challenges**:
+
 1. Database scaling: Vertical scaling limits at ~500k concurrent users
 2. Mitigation: Read replicas (included in Enterprise), connection pooling
 3. Performance: Regional instances required for global latency
@@ -589,14 +636,15 @@ Performance: 200-400ms for 40% of users (exceeds <250ms requirement)
 
 #### Auth0 Scaling Path:
 
-| Users | Tier | Monthly Cost | Features |
-|-------|------|--------------|----------|
-| 0-7k | Free | $0 | Basic auth, no SLA, 3-day sessions |
-| 7k-100k | Developer | $35-700 | 7-day sessions, basic support |
-| 100k-1M | Developer | $700-7k | Same features, linear cost scaling |
-| 1M+ | Enterprise | $7k+ | Dedicated instances, TAM, SLA |
+| Users   | Tier       | Monthly Cost | Features                           |
+| ------- | ---------- | ------------ | ---------------------------------- |
+| 0-7k    | Free       | $0           | Basic auth, no SLA, 3-day sessions |
+| 7k-100k | Developer  | $35-700      | 7-day sessions, basic support      |
+| 100k-1M | Developer  | $700-7k      | Same features, linear cost scaling |
+| 1M+     | Enterprise | $7k+         | Dedicated instances, TAM, SLA      |
 
 **Scaling Challenges**:
+
 1. Linear cost scaling: $0.007/MAU means $7k/month at 1M users
 2. No feature improvements until Enterprise tier
 3. Cost optimization difficult (per-user pricing, no tiers)
@@ -633,6 +681,7 @@ Implementation: Geo-based routing via Vercel Edge + DNS
 ```
 
 **Advantages**:
+
 - Data residency compliance (GDPR: EU data stays in EU)
 - Optimal latency per region
 - Incremental cost scaling ($25 per region)
@@ -648,6 +697,7 @@ All Phases:
 ```
 
 **Challenges**:
+
 - No data residency guarantees (all data in one region)
 - Mediocre latency for non-primary regions
 - Difficult to optimize latency per geography
@@ -660,17 +710,18 @@ All Phases:
 
 **Typical Enterprise RFP Requirements**:
 
-| Requirement | Supabase Free/Pro | Supabase Enterprise | Auth0 Developer | Auth0 Enterprise |
-|-------------|-------------------|---------------------|-----------------|------------------|
-| SOC 2 Type II | ❌ | ✅ | ⚠️ (on roadmap) | ✅ |
-| 99.9%+ SLA | ❌ | ✅ | ❌ | ✅ |
-| SAML SSO | ❌ | ✅ | ❌ | ✅ |
-| Custom BAA (healthcare) | ❌ | ❌ | ❌ | ✅ (HIPAA) |
-| Audit logs | ⚠️ Basic | ✅ Comprehensive | ⚠️ Basic | ✅ Comprehensive |
-| Dedicated instances | ❌ | ✅ | ❌ | ✅ |
-| On-premises deployment | ❌ | ❌ | ❌ | ⚠️ (Auth0 Private Cloud) |
+| Requirement             | Supabase Free/Pro | Supabase Enterprise | Auth0 Developer | Auth0 Enterprise         |
+| ----------------------- | ----------------- | ------------------- | --------------- | ------------------------ |
+| SOC 2 Type II           | ❌                | ✅                  | ⚠️ (on roadmap) | ✅                       |
+| 99.9%+ SLA              | ❌                | ✅                  | ❌              | ✅                       |
+| SAML SSO                | ❌                | ✅                  | ❌              | ✅                       |
+| Custom BAA (healthcare) | ❌                | ❌                  | ❌              | ✅ (HIPAA)               |
+| Audit logs              | ⚠️ Basic          | ✅ Comprehensive    | ⚠️ Basic        | ✅ Comprehensive         |
+| Dedicated instances     | ❌                | ✅                  | ❌              | ✅                       |
+| On-premises deployment  | ❌                | ❌                  | ❌              | ⚠️ (Auth0 Private Cloud) |
 
 **Enterprise Pricing**:
+
 - Supabase Enterprise: $2,000/month base
 - Auth0 Enterprise: Custom (typically $5k-20k/month)
 
@@ -694,6 +745,7 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 ```
 
 **Verdict**: Both Supabase Enterprise and Auth0 Enterprise meet typical enterprise requirements. Choice depends on:
+
 - Supabase Enterprise: Better if RLS and database integration are core value props
 - Auth0 Enterprise: Better if advanced SSO and white-label authentication are required
 
@@ -706,6 +758,7 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 ### 5.1 Switching FROM Supabase TO Auth0 (if needed)
 
 **Trigger Scenarios**:
+
 1. Enterprise customer requires HIPAA compliance
 2. Global latency exceeds 250ms despite multi-region deployment
 3. Supabase discontinues service or raises prices prohibitively
@@ -713,18 +766,19 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 
 **Migration Effort**:
 
-| Component | Effort | Notes |
-|-----------|--------|-------|
-| User data export | 1 day | Supabase provides PostgreSQL dump |
-| Auth0 user import | 2 days | Auth0 Management API bulk import, bcrypt compatible |
-| Code changes (auth SDK) | 3-5 days | Replace `@supabase/ssr` with `@auth0/nextjs-auth0` |
-| RLS → Application layer | 5-7 days | Rewrite ~15-20 RLS policies as application filters |
-| Session management | 2-3 days | Rework session handling for Auth0 cookies |
-| Email templates | 1 day | Recreate transactional emails in Auth0 |
-| Testing | 5 days | E2E testing of auth flows, regression testing |
-| **Total migration time** | **3-4 weeks** | **Acceptable for phased rollout** |
+| Component                | Effort        | Notes                                               |
+| ------------------------ | ------------- | --------------------------------------------------- |
+| User data export         | 1 day         | Supabase provides PostgreSQL dump                   |
+| Auth0 user import        | 2 days        | Auth0 Management API bulk import, bcrypt compatible |
+| Code changes (auth SDK)  | 3-5 days      | Replace `@supabase/ssr` with `@auth0/nextjs-auth0`  |
+| RLS → Application layer  | 5-7 days      | Rewrite ~15-20 RLS policies as application filters  |
+| Session management       | 2-3 days      | Rework session handling for Auth0 cookies           |
+| Email templates          | 1 day         | Recreate transactional emails in Auth0              |
+| Testing                  | 5 days        | E2E testing of auth flows, regression testing       |
+| **Total migration time** | **3-4 weeks** | **Acceptable for phased rollout**                   |
 
 **Cost During Migration**:
+
 - Dual-run period: $25 (Supabase) + $35 (Auth0) = $60/month for 1-2 months
 - Total migration cost: ~$100 infrastructure + 80 engineering hours (~$8k at $100/hour)
 
@@ -735,6 +789,7 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 ### 5.2 Switching FROM Auth0 TO Supabase (if started with Auth0)
 
 **Trigger Scenarios**:
+
 1. Auth0 pricing becomes prohibitive (>$2k/month)
 2. Need database-level RLS for security compliance
 3. Want integrated database + auth solution
@@ -742,24 +797,26 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 
 **Migration Effort**:
 
-| Component | Effort | Notes |
-|-----------|--------|-------|
-| User data export | 2 days | Auth0 Management API export, transform to PostgreSQL schema |
-| Supabase user import | 3 days | Bulk import via Supabase API, password hash migration |
-| Code changes (auth SDK) | 3-5 days | Replace `@auth0/nextjs-auth0` with `@supabase/ssr` |
-| Application filters → RLS | 7-10 days | Write RLS policies for all tables, remove manual filters |
-| Session management | 2-3 days | Rework for Supabase cookie-based sessions |
-| Email templates | 1 day | Set up SMTP + transactional email templates |
-| Testing | 5-7 days | E2E testing, verify RLS policies work correctly |
-| **Total migration time** | **4-5 weeks** | **Slightly more complex due to RLS implementation** |
+| Component                 | Effort        | Notes                                                       |
+| ------------------------- | ------------- | ----------------------------------------------------------- |
+| User data export          | 2 days        | Auth0 Management API export, transform to PostgreSQL schema |
+| Supabase user import      | 3 days        | Bulk import via Supabase API, password hash migration       |
+| Code changes (auth SDK)   | 3-5 days      | Replace `@auth0/nextjs-auth0` with `@supabase/ssr`          |
+| Application filters → RLS | 7-10 days     | Write RLS policies for all tables, remove manual filters    |
+| Session management        | 2-3 days      | Rework for Supabase cookie-based sessions                   |
+| Email templates           | 1 day         | Set up SMTP + transactional email templates                 |
+| Testing                   | 5-7 days      | E2E testing, verify RLS policies work correctly             |
+| **Total migration time**  | **4-5 weeks** | **Slightly more complex due to RLS implementation**         |
 
 **Cost During Migration**:
+
 - Dual-run period: $595 (Auth0 at 100k MAU) + $25 (Supabase) = $620/month for 1-2 months
 - Total migration cost: ~$100 infrastructure + 100 engineering hours (~$10k at $100/hour)
 
 **Risk Assessment**: ⚠️ **MODERATE RISK**. Implementing RLS from scratch requires careful policy design and testing. Higher risk than Supabase → Auth0 migration.
 
 **Verdict**: Starting with Supabase is LOWER RISK than starting with Auth0, because:
+
 1. Migrating TO application-layer security (Auth0) is easier than migrating TO database-layer security (RLS)
 2. Removing security layers is safer than adding them
 3. If we need Auth0 later, migration is straightforward
@@ -771,6 +828,7 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 ### 6.1 Primary Recommendation: Staged Supabase Approach
 
 **Phase 1: MVP and Initial Growth (0-50k MAU, <$50k MRR)**
+
 - **Provider**: Supabase Auth + PostgreSQL
 - **Tier**: Free → Pro ($25/month at launch)
 - **Cost**: $0-30/month (Supabase + email)
@@ -779,12 +837,14 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 - **Timeline**: Now → 12-18 months
 
 **Justification**:
+
 1. **Security**: Native RLS provides defense-in-depth for financial data
 2. **Cost**: $0-30/month vs $0-240/month (Auth0) saves $2,500+ in year 1
 3. **Speed**: Integrated auth + database = 2-3 weeks faster MVP
 4. **Performance**: <100ms auth latency in primary region (meets requirement)
 
 **Phase 2: Growth and Enterprise Preparation (50k-500k MAU, $50k-250k MRR)**
+
 - **Provider**: Supabase Auth (Pro or Enterprise)
 - **Tier**: Pro ($25-65/month) OR Enterprise ($2k/month)
 - **Decision Point**: Upgrade to Enterprise when:
@@ -795,12 +855,14 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 - **Timeline**: 18-36 months
 
 **Justification**:
+
 1. **Scalability**: Supabase proven at 500k+ MAU
 2. **Economics**: $2k/month = 4% of $50k MRR (acceptable)
 3. **Features**: Enterprise tier adds SLA, compliance, audit logs
 4. **ROI**: Enterprise features enable $5k-20k/month enterprise contracts
 
 **Phase 3: Scale and Potential Hybrid (500k+ MAU, $250k+ MRR)**
+
 - **Primary**: Supabase Enterprise ($2k-3.5k/month)
 - **Optional**: Add Auth0 for enterprise tier only ($500/month)
 - **Cost**: $2k-4k/month blended
@@ -810,6 +872,7 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 - **Timeline**: 36+ months
 
 **Justification**:
+
 1. **Segmentation**: Different user tiers have different requirements
 2. **Optimization**: Right tool for each segment (cost vs features)
 3. **Revenue**: Enterprise tier pays for Auth0 premium ($5k-20k/month revenue vs $500/month cost)
@@ -820,15 +883,16 @@ Alternative Phase 2: Hybrid Auth0 for Enterprise
 
 **Why NOT Auth0 for MVP**:
 
-| Factor | Impact | Verdict |
-|--------|--------|---------|
-| Cost | $240-595/month vs $30-65/month = **18x more expensive** | ❌ UNACCEPTABLE for pre-revenue startup |
-| RLS | Requires manual application filters (security risk) | ❌ UNACCEPTABLE for financial data |
-| Speed | 6-8 weeks vs 2-3 weeks MVP time | ❌ Delays validation by 4-5 weeks |
-| Latency | 200-500ms global (often exceeds <250ms requirement) | ❌ FAILS performance requirement |
-| Enterprise features | SOC2, SAML, HIPAA (not needed for MVP) | ⚠️ Paying for unused features |
+| Factor              | Impact                                                  | Verdict                                 |
+| ------------------- | ------------------------------------------------------- | --------------------------------------- |
+| Cost                | $240-595/month vs $30-65/month = **18x more expensive** | ❌ UNACCEPTABLE for pre-revenue startup |
+| RLS                 | Requires manual application filters (security risk)     | ❌ UNACCEPTABLE for financial data      |
+| Speed               | 6-8 weeks vs 2-3 weeks MVP time                         | ❌ Delays validation by 4-5 weeks       |
+| Latency             | 200-500ms global (often exceeds <250ms requirement)     | ❌ FAILS performance requirement        |
+| Enterprise features | SOC2, SAML, HIPAA (not needed for MVP)                  | ⚠️ Paying for unused features           |
 
 **When Auth0 WOULD Make Sense**:
+
 1. Well-funded startup (>$2M raised) where $5k-10k/month is insignificant
 2. Enterprise-first GTM strategy (selling to Fortune 500 from day 1)
 3. Compliance requirements on day 1 (healthcare, finance regulatory)
@@ -990,6 +1054,7 @@ export async function createPlan(data: unknown) {
 ```
 
 **Key Security Properties**:
+
 1. **Layer 1 (Middleware)**: Fast rejection of unauthenticated requests
 2. **Layer 2 (verifySession)**: Enforced on every data access
 3. **Layer 3 (RLS)**: Database-level enforcement even if layers 1-2 bypassed
@@ -1004,6 +1069,7 @@ export async function createPlan(data: unknown) {
 **Scenario**: Supabase outage during peak usage (e.g., tax season for retirement planning)
 
 **Mitigation**:
+
 ```typescript
 // Client-side retry with exponential backoff
 export async function authWithRetry(operation: () => Promise<any>) {
@@ -1045,6 +1111,7 @@ export function AuthErrorBoundary({ children }) {
 ```
 
 **Operational Response**:
+
 1. Set up StatusPage.io ($29/month) for real-time status updates
 2. PagerDuty integration for instant alerting ($21/month)
 3. Incident communication template (email + in-app banner)
@@ -1057,6 +1124,7 @@ export function AuthErrorBoundary({ children }) {
 **Scenario**: 20% of users in Europe experience 350-500ms auth latency
 
 **Mitigation**:
+
 ```typescript
 // Geo-aware routing with Vercel Edge Functions
 // File: middleware.ts (edge runtime)
@@ -1084,6 +1152,7 @@ function getSupabaseRegionUrl(region: string): string {
 ```
 
 **Deployment Strategy**:
+
 1. Phase 1 (MVP): Single US-East region
 2. Monitor latency by geography (PostHog, Datadog)
 3. Phase 2 (Growth): Add EU-West when >20% EU users
@@ -1102,39 +1171,41 @@ function getSupabaseRegionUrl(region: string): string {
 ```typescript
 // User segmentation by compliance tier
 export enum ComplianceTier {
-  STANDARD = 'standard',      // Supabase Auth (RLS, cost-effective)
-  HIPAA = 'hipaa',            // Auth0 Enterprise (HIPAA BAA)
+  STANDARD = 'standard', // Supabase Auth (RLS, cost-effective)
+  HIPAA = 'hipaa', // Auth0 Enterprise (HIPAA BAA)
 }
 
 export async function getAuthProvider(userId: string): Promise<AuthProvider> {
-  const user = await db.select().from(users).where(eq(users.id, userId))
+  const user = await db.select().from(users).where(eq(users.id, userId));
 
   if (user.complianceTier === ComplianceTier.HIPAA) {
-    return new Auth0Provider(/* HIPAA-compliant configuration */)
+    return new Auth0Provider(/* HIPAA-compliant configuration */);
   }
 
-  return new SupabaseProvider(/* Standard configuration */)
+  return new SupabaseProvider(/* Standard configuration */);
 }
 
 // Dual-provider architecture
 export async function verifySession() {
-  const sessionCookie = cookies().get('session')
-  const provider = detectProvider(sessionCookie) // 'supabase' | 'auth0'
+  const sessionCookie = cookies().get('session');
+  const provider = detectProvider(sessionCookie); // 'supabase' | 'auth0'
 
   if (provider === 'auth0') {
-    return verifyAuth0Session()
+    return verifyAuth0Session();
   }
 
-  return verifySupabaseSession()
+  return verifySupabaseSession();
 }
 ```
 
 **Cost**:
+
 - Supabase: $25/month (95% of users)
 - Auth0 Enterprise: $500/month (5% of HIPAA users)
 - Total: $525/month
 
 **Revenue**:
+
 - HIPAA enterprise customers: $1,000-5,000/month premium
 - ROI: 2x-10x return on Auth0 cost
 
@@ -1151,21 +1222,21 @@ export async function verifySession() {
 ```typescript
 // File: lib/auth/interface.ts
 export interface AuthProvider {
-  signUp(email: string, password: string): Promise<User>
-  signIn(email: string, password: string): Promise<Session>
-  signOut(): Promise<void>
-  getSession(): Promise<Session | null>
-  resetPassword(email: string): Promise<void>
+  signUp(email: string, password: string): Promise<User>;
+  signIn(email: string, password: string): Promise<Session>;
+  signOut(): Promise<void>;
+  getSession(): Promise<Session | null>;
+  resetPassword(email: string): Promise<void>;
 }
 
 // File: lib/auth/supabase-provider.ts
 export class SupabaseAuthProvider implements AuthProvider {
-  private client: SupabaseClient
+  private client: SupabaseClient;
 
   async signUp(email: string, password: string) {
-    const { data, error } = await this.client.auth.signUp({ email, password })
-    if (error) throw new AuthError(error.message)
-    return this.mapUser(data.user)
+    const { data, error } = await this.client.auth.signUp({ email, password });
+    if (error) throw new AuthError(error.message);
+    return this.mapUser(data.user);
   }
 
   // ... implement other methods
@@ -1181,17 +1252,18 @@ export class Auth0AuthProvider implements AuthProvider {
 
 // File: lib/auth/index.ts
 export function getAuthProvider(): AuthProvider {
-  const provider = process.env.AUTH_PROVIDER || 'supabase'
+  const provider = process.env.AUTH_PROVIDER || 'supabase';
 
   if (provider === 'auth0') {
-    return new Auth0AuthProvider()
+    return new Auth0AuthProvider();
   }
 
-  return new SupabaseAuthProvider()
+  return new SupabaseAuthProvider();
 }
 ```
 
 **Migration Process** (if needed):
+
 1. Implement Auth0AuthProvider (1 week)
 2. Export Supabase user data (1 day)
 3. Import to Auth0 (2 days)
@@ -1245,14 +1317,14 @@ START
 
 **Quantitative Triggers**:
 
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Revenue | >$50k MRR | Evaluate Supabase Enterprise ($2k/month) |
-| Uptime SLA needed | 99.9%+ | Upgrade to Supabase Enterprise OR evaluate Auth0 |
-| HIPAA requirement | First HIPAA customer | Implement hybrid (Supabase + Auth0 for HIPAA tier) |
-| Global latency | >30% users >250ms | Deploy multi-region Supabase OR evaluate Auth0 |
-| Cost | Auth0 becomes cheaper | Migrate to Auth0 (unlikely until >500k MAU) |
-| Compliance | SOC2 certification needed | Upgrade to Supabase Enterprise |
+| Metric            | Threshold                 | Action                                             |
+| ----------------- | ------------------------- | -------------------------------------------------- |
+| Revenue           | >$50k MRR                 | Evaluate Supabase Enterprise ($2k/month)           |
+| Uptime SLA needed | 99.9%+                    | Upgrade to Supabase Enterprise OR evaluate Auth0   |
+| HIPAA requirement | First HIPAA customer      | Implement hybrid (Supabase + Auth0 for HIPAA tier) |
+| Global latency    | >30% users >250ms         | Deploy multi-region Supabase OR evaluate Auth0     |
+| Cost              | Auth0 becomes cheaper     | Migrate to Auth0 (unlikely until >500k MAU)        |
+| Compliance        | SOC2 certification needed | Upgrade to Supabase Enterprise                     |
 
 ---
 
@@ -1261,12 +1333,14 @@ START
 ### 7.1 Phase 1: MVP (Weeks 1-3)
 
 **Goals**:
+
 - Working authentication (signup, login, logout, reset)
 - Email verification flow
 - Protected routes and RLS
 - Single onboarding step (proof of concept)
 
 **Tasks**:
+
 1. Create Supabase project (Free tier)
 2. Configure authentication settings
    - Email templates
@@ -1285,6 +1359,7 @@ START
 10. E2E testing of auth flows
 
 **Deliverables**:
+
 - Working MVP with auth + onboarding
 - RLS policies enforced on all tables
 - <100ms auth latency (US-East region)
@@ -1297,11 +1372,13 @@ START
 ### 7.2 Phase 2: Production Launch (Week 4)
 
 **Goals**:
+
 - Production-ready infrastructure
 - Monitoring and observability
 - Email deliverability optimization
 
 **Tasks**:
+
 1. Upgrade Supabase to Pro tier ($25/month)
    - Enable 7-day session configuration
    - Enable automatic backups
@@ -1318,6 +1395,7 @@ START
 6. Set up status page (StatusPage.io, $29/month)
 
 **Deliverables**:
+
 - Production-ready SaaS with monitoring
 - Incident response procedures
 - Email deliverability >98%
@@ -1329,11 +1407,13 @@ START
 ### 7.3 Phase 3: Growth Optimization (Months 2-12)
 
 **Goals**:
+
 - Optimize performance for scale
 - Implement advanced security features
 - Prepare for enterprise customers
 
 **Tasks**:
+
 1. Performance optimization
    - Index all RLS policy columns
    - Implement database query caching
@@ -1348,6 +1428,7 @@ START
    - Admin dashboard for user management
 
 **Deliverables**:
+
 - Optimized for 50k-100k MAU
 - Security hardening complete
 - Enterprise-ready features
@@ -1361,16 +1442,19 @@ START
 **Trigger**: Revenue >$50k MRR OR first enterprise customer
 
 **Goals**:
+
 - Upgrade to Supabase Enterprise for SLA
 - OR implement hybrid Auth0 for enterprise tier
 
 **Option A: Supabase Enterprise Upgrade**
+
 - Cost: $2,000/month
 - Features: 99.9% SLA, SOC2, SAML, audit logs, dedicated support
 - Timeline: 1-2 weeks migration
 - Use case: Enterprise features needed across all users
 
 **Option B: Hybrid Architecture**
+
 - Cost: $25 (Supabase Pro) + $500 (Auth0 Enterprise tier) = $525/month
 - Features:
   - Consumer: Supabase (RLS, cost-effective)
@@ -1411,15 +1495,15 @@ START
 
 ### Switch Triggers (Reevaluate This Decision If...)
 
-| Trigger | Threshold | Action |
-|---------|-----------|--------|
-| **Revenue** | >$50k MRR | Upgrade to Supabase Enterprise ($2k/month) for SLA |
-| **Enterprise customer** | First customer requiring HIPAA | Add Auth0 Enterprise for HIPAA tier (hybrid) |
-| **Global expansion** | >30% users outside primary region | Deploy multi-region Supabase ($75/month) |
-| **Uptime issues** | >2 hours downtime in single month | Upgrade to Supabase Enterprise (99.9% SLA) |
-| **Latency issues** | >30% users experiencing >250ms P95 | Deploy regional instances OR evaluate Auth0 |
-| **Compliance** | SOC2 certification required | Upgrade to Supabase Enterprise |
-| **White-label auth** | Enterprise customer requires custom domains | Add Auth0 Enterprise for that customer tier |
+| Trigger                 | Threshold                                   | Action                                             |
+| ----------------------- | ------------------------------------------- | -------------------------------------------------- |
+| **Revenue**             | >$50k MRR                                   | Upgrade to Supabase Enterprise ($2k/month) for SLA |
+| **Enterprise customer** | First customer requiring HIPAA              | Add Auth0 Enterprise for HIPAA tier (hybrid)       |
+| **Global expansion**    | >30% users outside primary region           | Deploy multi-region Supabase ($75/month)           |
+| **Uptime issues**       | >2 hours downtime in single month           | Upgrade to Supabase Enterprise (99.9% SLA)         |
+| **Latency issues**      | >30% users experiencing >250ms P95          | Deploy regional instances OR evaluate Auth0        |
+| **Compliance**          | SOC2 certification required                 | Upgrade to Supabase Enterprise                     |
+| **White-label auth**    | Enterprise customer requires custom domains | Add Auth0 Enterprise for that customer tier        |
 
 ### Implementation Timeline
 
@@ -1430,11 +1514,11 @@ START
 
 ### Cost Projection
 
-| Phase | Timeline | Monthly Cost | Annual Cost |
-|-------|----------|--------------|-------------|
-| MVP | Weeks 1-3 | $0 | $0 |
-| Launch | Month 1 | $74 | - |
-| Growth | Months 2-12 | $65-85 | $780-1,020 |
+| Phase      | Timeline     | Monthly Cost | Annual Cost    |
+| ---------- | ------------ | ------------ | -------------- |
+| MVP        | Weeks 1-3    | $0           | $0             |
+| Launch     | Month 1      | $74          | -              |
+| Growth     | Months 2-12  | $65-85       | $780-1,020     |
 | Enterprise | Months 12-24 | $2,000-2,500 | $24,000-30,000 |
 
 **Total 2-Year Cost**: ~$25,000-31,000
@@ -1450,11 +1534,13 @@ START
 The authentication provider decision is not "Supabase vs Auth0" but rather "what's the right architecture for each growth stage?"
 
 **For Plan Smart**:
+
 - Stage 1 (MVP, 0-50k MAU): Supabase optimizes for speed, cost, and security
 - Stage 2 (Growth, 50k-500k MAU): Supabase Pro or Enterprise optimizes for scale and SLA
 - Stage 3 (Enterprise, 500k+ MAU): Hybrid Supabase + Auth0 optimizes for segmentation
 
 **This recommendation is defensible because**:
+
 1. It prioritizes security (RLS) for financial data
 2. It optimizes cash burn during validation phase (critical for startups)
 3. It provides clear upgrade paths as requirements evolve
@@ -1462,6 +1548,7 @@ The authentication provider decision is not "Supabase vs Auth0" but rather "what
 5. It can be revisited if assumptions change (quantified triggers)
 
 **I challenge the recommendation to prove it's robust**:
+
 - What if Supabase shuts down? → 3-4 week migration to Auth0 or self-hosted (acceptable)
 - What if we need HIPAA? → Add Auth0 for HIPAA tier (hybrid architecture)
 - What if global latency exceeds 250ms? → Multi-region Supabase deployment (planned strategy)
