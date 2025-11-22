@@ -18,6 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
+    "db:test-rls": "tsx scripts/test-rls.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
