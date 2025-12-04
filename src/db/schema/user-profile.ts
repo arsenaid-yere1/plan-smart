@@ -9,6 +9,14 @@ export const userProfile = pgTable('user_profile', {
   emailVerified: boolean('email_verified').default(false).notNull(),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
 
+  // Email verification tokens (for custom Resend email flow)
+  verificationToken: text('verification_token'),
+  verificationTokenExpiresAt: timestamp('verification_token_expires_at'),
+
+  // Password reset tokens (for custom Resend email flow)
+  passwordResetToken: text('password_reset_token'),
+  passwordResetTokenExpiresAt: timestamp('password_reset_token_expires_at'),
+
   // Demographics (collected during onboarding)
   birthYear: text('birth_year'), // YYYY format
   filingStatus: text('filing_status'), // 'single' | 'married' | 'head_of_household'

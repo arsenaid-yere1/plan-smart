@@ -1,0 +1,43 @@
+{
+  "regions": ["iad1", "sfo1", "fra1", "sin1"],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase-url-us-east",
+    "SUPABASE_US_EAST_URL": "@supabase-url-us-east",
+    "SUPABASE_US_WEST_URL": "@supabase-url-us-west",
+    "SUPABASE_EU_WEST_URL": "@supabase-url-eu-west",
+    "SUPABASE_ASIA_SE_URL": "@supabase-url-asia-se"
+  },
+  "functions": {
+    "api/**": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
+  ]
+}
