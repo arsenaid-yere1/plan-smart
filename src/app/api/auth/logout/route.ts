@@ -32,7 +32,8 @@ export async function POST(request: Request) {
 
     if (acceptHeader.includes('text/html')) {
       // Form submission - redirect to login page
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      // Use 303 status to convert POST to GET
+      return NextResponse.redirect(new URL('/auth/login', request.url), 303);
     }
 
     // API request - return JSON
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
     const acceptHeader = request.headers.get('accept') || '';
     if (acceptHeader.includes('text/html')) {
       // Redirect to login even on error (session might already be invalid)
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      // Use 303 status to convert POST to GET
+      return NextResponse.redirect(new URL('/auth/login', request.url), 303);
     }
 
     return NextResponse.json({ message: 'Logout failed' }, { status: 500 });

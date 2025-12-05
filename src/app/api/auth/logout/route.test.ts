@@ -50,7 +50,7 @@ describe('POST /api/auth/logout', () => {
     const request = createMockRequest({ accept: 'text/html,application/xhtml+xml' });
     const response = await POST(request);
 
-    expect(response.status).toBe(307); // Redirect status
+    expect(response.status).toBe(303); // See Other - converts POST to GET
     expect(response.headers.get('location')).toContain('/auth/login');
     expect(mockSignOut).toHaveBeenCalled();
   });
@@ -73,7 +73,7 @@ describe('POST /api/auth/logout', () => {
     const response = await POST(request);
 
     // Should still redirect (session might already be invalid)
-    expect(response.status).toBe(307);
+    expect(response.status).toBe(303); // See Other - converts POST to GET
     expect(response.headers.get('location')).toContain('/auth/login');
   });
 });
