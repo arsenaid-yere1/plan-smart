@@ -18,15 +18,25 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
+function createMockRequest(options: { accept?: string } = {}) {
+  return new Request('http://localhost:3000/api/auth/logout', {
+    method: 'POST',
+    headers: {
+      'accept': options.accept || 'application/json',
+    },
+  });
+}
+
 describe('POST /api/auth/logout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should logout successfully', async () => {
+  it('should logout successfully and return JSON for API requests', async () => {
     mockSignOut.mockResolvedValue({ error: null });
 
-    const response = await POST();
+    const request = createMockRequest({ accept: 'application/json' });
+    const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -34,13 +44,36 @@ describe('POST /api/auth/logout', () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it('should return 500 if logout fails', async () => {
+  it('should redirect to login for form submissions', async () => {
+    mockSignOut.mockResolvedValue({ error: null });
+
+    const request = createMockRequest({ accept: 'text/html,application/xhtml+xml' });
+    const response = await POST(request);
+
+    expect(response.status).toBe(307); // Redirect status
+    expect(response.headers.get('location')).toContain('/auth/login');
+    expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  it('should return 500 if logout fails for API requests', async () => {
     mockSignOut.mockRejectedValue(new Error('Logout failed'));
 
-    const response = await POST();
+    const request = createMockRequest({ accept: 'application/json' });
+    const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(500);
     expect(data.message).toBe('Logout failed');
+  });
+
+  it('should redirect to login even if logout fails for form submissions', async () => {
+    mockSignOut.mockRejectedValue(new Error('Logout failed'));
+
+    const request = createMockRequest({ accept: 'text/html,application/xhtml+xml' });
+    const response = await POST(request);
+
+    // Should still redirect (session might already be invalid)
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/auth/login');
   });
 });
