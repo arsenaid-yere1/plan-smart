@@ -58,19 +58,19 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen py-12">
       <div className="mx-auto max-w-2xl px-4">
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium">Step {currentStep} of 4</span>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm font-medium text-foreground">Step {currentStep} of 4</span>
+            <span className="text-sm text-muted-foreground">
               {currentStep * 25}% complete
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-gray-200">
+          <div className="h-2 w-full rounded-full bg-muted">
             <div
-              className="h-2 rounded-full bg-blue-600 transition-all duration-300"
+              className="h-2 rounded-full bg-primary transition-all duration-300"
               style={{ width: `${currentStep * 25}%` }}
             />
           </div>

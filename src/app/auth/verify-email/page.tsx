@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -47,94 +49,92 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-md">
-      {status === 'loading' && (
-        <>
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            Verifying your email...
-          </h1>
-          <p className="text-gray-600">
-            Please wait while we verify your email address.
-          </p>
-        </>
-      )}
+    <Card className="w-full max-w-md">
+      <CardContent className="p-8 text-center">
+        {status === 'loading' && (
+          <>
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+            <h1 className="mb-2 text-2xl font-bold text-foreground">
+              Verifying your email...
+            </h1>
+            <p className="text-muted-foreground">
+              Please wait while we verify your email address.
+            </p>
+          </>
+        )}
 
-      {status === 'success' && (
-        <>
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <svg
-              className="h-6 w-6 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            Email Verified!
-          </h1>
-          <p className="mb-6 text-gray-600">{message}</p>
-          <Link
-            href="/auth/login"
-            className="inline-block w-full rounded-md bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
-          >
-            Continue to Login
-          </Link>
-        </>
-      )}
+        {status === 'success' && (
+          <>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-foreground">
+              Email Verified!
+            </h1>
+            <p className="mb-6 text-muted-foreground">{message}</p>
+            <Button asChild className="w-full">
+              <Link href="/auth/login">Continue to Login</Link>
+            </Button>
+          </>
+        )}
 
-      {status === 'error' && (
-        <>
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-            <svg
-              className="h-6 w-6 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            Verification Failed
-          </h1>
-          <p className="mb-6 text-gray-600">{message}</p>
-          <Link
-            href="/auth/signup"
-            className="inline-block w-full rounded-md bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
-          >
-            Back to Sign Up
-          </Link>
-        </>
-      )}
-    </div>
+        {status === 'error' && (
+          <>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <svg
+                className="h-6 w-6 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-foreground">
+              Verification Failed
+            </h1>
+            <p className="mb-6 text-muted-foreground">{message}</p>
+            <Button asChild className="w-full">
+              <Link href="/auth/signup">Back to Sign Up</Link>
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function LoadingFallback() {
   return (
-    <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-md">
-      <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600" />
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">Loading...</h1>
-    </div>
+    <Card className="w-full max-w-md">
+      <CardContent className="p-8 text-center">
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+        <h1 className="mb-2 text-2xl font-bold text-foreground">Loading...</h1>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Suspense fallback={<LoadingFallback />}>
         <VerifyEmailContent />
       </Suspense>

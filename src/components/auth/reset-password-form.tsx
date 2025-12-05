@@ -184,9 +184,9 @@ export function ResetPasswordForm() {
             {isLoading ? 'Resetting Password...' : 'Reset Password'}
           </Button>
 
-          <p className="text-sm text-center text-gray-600">
+          <p className="text-sm text-center text-muted-foreground">
             Remember your password?{' '}
-            <a href="/auth/login" className="text-blue-600 hover:underline">
+            <a href="/auth/login" className="text-primary hover:underline">
               Log in
             </a>
           </p>

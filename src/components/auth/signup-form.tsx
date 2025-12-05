@@ -146,9 +146,9 @@ export function SignupForm() {
             {isLoading ? 'Creating account...' : 'Sign up'}
           </Button>
 
-          <p className="text-sm text-center text-gray-600">
+          <p className="text-sm text-center text-muted-foreground">
             Already have an account?{' '}
-            <a href="/auth/login" className="text-blue-600 hover:underline">
+            <a href="/auth/login" className="text-primary hover:underline">
               Log in
             </a>
           </p>

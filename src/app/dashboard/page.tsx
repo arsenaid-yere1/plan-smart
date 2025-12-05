@@ -4,6 +4,9 @@ import { createServerClient } from '@supabase/ssr';
 import { db } from '@/db/client';
 import { userProfile } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { PageContainer } from '@/components/layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -49,31 +52,30 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="rounded-lg bg-white p-8 shadow">
-          <h1 className="mb-4 text-2xl font-bold text-gray-900">
+    <PageContainer>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome to Plan Smart
           </h1>
-          <p className="mb-6 text-gray-600">
+          <p className="text-muted-foreground">
             Your dashboard is being built. Check back soon for your retirement
             planning tools.
           </p>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <p className="text-sm text-blue-800">
-              Logged in as: {user.email}
-            </p>
-          </div>
-          <form action="/api/auth/logout" method="POST" className="mt-6">
-            <button
-              type="submit"
-              className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-            >
-              Sign out
-            </button>
-          </form>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Status</CardTitle>
+            <CardDescription>Your current account information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <AlertDescription>Logged in as: {user.email}</AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
       </div>
-    </main>
+    </PageContainer>
   );
 }

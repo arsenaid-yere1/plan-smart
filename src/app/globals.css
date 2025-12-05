@@ -1,3 +1,109 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Background & Foreground */
+    --background: 0 0% 98%; /* neutral-50 equivalent */
+    --foreground: 0 0% 9%; /* neutral-900 equivalent */
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+
+    /* Primary - Indigo */
+    --primary: 243 75% 59%; /* #4F46E5 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+
+    /* Muted */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Accent */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success & Warning */
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+
+    /* Border & Input */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+
+    /* Ring (focus) */
+    --ring: 243 75% 59%;
+
+    /* Border Radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Background & Foreground */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+
+    /* Card */
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+
+    /* Popover */
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - Indigo (slightly lighter for dark mode) */
+    --primary: 243 75% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted */
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+
+    /* Accent */
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Destructive */
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success & Warning */
+    --success: 160 84% 45%;
+    --warning: 38 92% 55%;
+
+    /* Border & Input */
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+
+    /* Ring */
+    --ring: 243 75% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

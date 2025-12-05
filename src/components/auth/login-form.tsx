@@ -124,7 +124,7 @@ export function LoginForm() {
             </div>
             <a
               href="/auth/forgot-password"
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               Forgot password?
             </a>
@@ -134,9 +134,9 @@ export function LoginForm() {
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
 
-          <p className="text-sm text-center text-gray-600">
+          <p className="text-sm text-center text-muted-foreground">
             Don&apos;t have an account?{' '}
-            <a href="/auth/signup" className="text-blue-600 hover:underline">
+            <a href="/auth/signup" className="text-primary hover:underline">
               Sign up
             </a>
           </p>
