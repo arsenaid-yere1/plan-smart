@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { resend, FROM_EMAIL } from './client';
 import { VerificationEmail } from './templates/verification-email';
 import { PasswordResetEmail } from './templates/password-reset-email';
@@ -20,7 +21,7 @@ export async function sendVerificationEmail(
       from: FROM_EMAIL,
       to: email,
       subject: 'Verify your Plan Smart account',
-      react: VerificationEmail({ verificationUrl, email }),
+      react: VerificationEmail({ verificationUrl, email }) as ReactElement,
     });
 
     console.log('📧 Email sent successfully:', result);
@@ -44,7 +45,7 @@ export async function sendPasswordResetEmail(
       from: FROM_EMAIL,
       to: email,
       subject: 'Reset your Plan Smart password',
-      react: PasswordResetEmail({ resetUrl, email }),
+      react: PasswordResetEmail({ resetUrl, email }) as ReactElement,
     });
   } catch (error) {
     console.error('Failed to send password reset email:', error);

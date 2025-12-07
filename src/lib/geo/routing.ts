@@ -5,6 +5,15 @@ export interface RegionConfig {
   region: string;
 }
 
+// NextRequest.geo is only available in Vercel deployments
+interface GeoData {
+  city?: string;
+  country?: string;
+  region?: string;
+  latitude?: string;
+  longitude?: string;
+}
+
 // Map countries to continents for geo-routing
 const EUROPEAN_COUNTRIES = new Set([
   'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
@@ -21,7 +30,8 @@ const ASIA_PACIFIC_COUNTRIES = new Set([
  * Determine optimal Supabase region based on user geography
  */
 export function getOptimalRegion(request: NextRequest): RegionConfig {
-  const geo = request.geo;
+  // geo property is only available in Vercel deployments
+  const geo = (request as NextRequest & { geo?: GeoData }).geo;
 
   // US East (default)
   if (!geo || geo.country === 'US') {

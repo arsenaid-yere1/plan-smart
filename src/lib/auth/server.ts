@@ -6,7 +6,7 @@ import type { User, Session } from './types';
  * Get the current session from server components.
  */
 export async function getServerSession(): Promise<Session | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
