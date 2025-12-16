@@ -4,6 +4,7 @@ import type { User, Session } from './types';
 
 /**
  * Get the current session from server components.
+ * Uses getUser() to securely verify the session with Supabase Auth server.
  */
 export async function getServerSession(): Promise<Session | null> {
   const cookieStore = await cookies();
@@ -20,25 +21,33 @@ export async function getServerSession(): Promise<Session | null> {
     }
   );
 
+  // Use getUser() instead of getSession() to securely verify the session
+  // getSession() reads from cookies without verification, which is insecure
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  // Get the session for tokens (only after user is verified)
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) {
-    return null;
-  }
-
   return {
     user: {
-      id: session.user.id,
-      email: session.user.email!,
-      emailVerified: session.user.email_confirmed_at !== null,
-      createdAt: new Date(session.user.created_at),
-      metadata: session.user.user_metadata,
+      id: user.id,
+      email: user.email!,
+      emailVerified: user.email_confirmed_at !== null,
+      createdAt: new Date(user.created_at),
+      metadata: user.user_metadata,
     },
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
-    expiresAt: new Date(session.expires_at! * 1000),
+    accessToken: session?.access_token ?? '',
+    refreshToken: session?.refresh_token ?? '',
+    expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : new Date(),
   };
 }
 
