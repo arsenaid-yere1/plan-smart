@@ -5,8 +5,37 @@ import {
   numeric,
   text,
   timestamp,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { userProfile } from './user-profile';
+
+// Type definitions for JSONB columns
+export type InvestmentAccountJson = {
+  id: string;
+  label: string;
+  type: string;
+  balance: number;
+  monthlyContribution?: number;
+};
+
+export type DebtJson = {
+  id: string;
+  label: string;
+  type: string;
+  balance: number;
+  interestRate?: number;
+};
+
+export type PrimaryResidenceJson = {
+  estimatedValue?: number;
+  mortgageBalance?: number;
+  interestRate?: number;
+};
+
+export type IncomeExpensesJson = {
+  monthlyEssential?: number;
+  monthlyDiscretionary?: number;
+};
 
 export const financialSnapshot = pgTable('financial_snapshot', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,13 +43,19 @@ export const financialSnapshot = pgTable('financial_snapshot', {
     .notNull()
     .references(() => userProfile.id, { onDelete: 'cascade' }),
 
-  // Financial data from onboarding
-  birthYear: integer('birth_year').notNull(), // e.g., 1985
-  targetRetirementAge: integer('target_retirement_age').notNull(), // e.g., 65
-  filingStatus: text('filing_status').notNull(), // 'single' | 'married' | 'head_of_household'
-  annualIncome: numeric('annual_income', { precision: 12, scale: 2 }).notNull(), // e.g., 75000.00
-  savingsRate: numeric('savings_rate', { precision: 5, scale: 2 }).notNull(), // Percentage, e.g., 15.00
-  riskTolerance: text('risk_tolerance').notNull(), // 'conservative' | 'moderate' | 'aggressive'
+  // Financial data from onboarding (existing)
+  birthYear: integer('birth_year').notNull(),
+  targetRetirementAge: integer('target_retirement_age').notNull(),
+  filingStatus: text('filing_status').notNull(),
+  annualIncome: numeric('annual_income', { precision: 12, scale: 2 }).notNull(),
+  savingsRate: numeric('savings_rate', { precision: 5, scale: 2 }).notNull(),
+  riskTolerance: text('risk_tolerance').notNull(),
+
+  // Epic 2: New JSONB columns
+  investmentAccounts: jsonb('investment_accounts').$type<InvestmentAccountJson[]>(),
+  primaryResidence: jsonb('primary_residence').$type<PrimaryResidenceJson>(),
+  debts: jsonb('debts').$type<DebtJson[]>(),
+  incomeExpenses: jsonb('income_expenses').$type<IncomeExpensesJson>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

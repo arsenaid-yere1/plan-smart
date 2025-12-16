@@ -15,6 +15,13 @@
       "when": 1764197013963,
       "tag": "0001_even_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765472750526,
+      "tag": "0002_many_talos",
+      "breakpoints": true
     }
   ]
 }
