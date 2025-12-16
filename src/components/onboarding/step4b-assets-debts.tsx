@@ -122,7 +122,7 @@ export function Step4bAssetsDebts({
                 <button
                   type="button"
                   onClick={() => remove(index)}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                   aria-label="Remove debt"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function Step4bAssetsDebts({
                       {...register(`debts.${index}.label`)}
                     />
                     {errors.debts?.[index]?.label && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-sm text-red-500 dark:text-red-400">
                         {errors.debts[index]?.label?.message}
                       </p>
                     )}
@@ -173,7 +173,7 @@ export function Step4bAssetsDebts({
                       })}
                     />
                     {errors.debts?.[index]?.balance && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-sm text-red-500 dark:text-red-400">
                         {errors.debts[index]?.balance?.message}
                       </p>
                     )}

@@ -85,7 +85,7 @@ export function Step2bSavingsContributions({
                 <button
                   type="button"
                   onClick={() => remove(index)}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                   aria-label="Remove account"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function Step2bSavingsContributions({
                     {...register(`investmentAccounts.${index}.label`)}
                   />
                   {errors.investmentAccounts?.[index]?.label && (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-red-500 dark:text-red-400">
                       {errors.investmentAccounts[index]?.label?.message}
                     </p>
                   )}
@@ -141,7 +141,7 @@ export function Step2bSavingsContributions({
                     })}
                   />
                   {errors.investmentAccounts?.[index]?.balance && (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-red-500 dark:text-red-400">
                       {errors.investmentAccounts[index]?.balance?.message}
                     </p>
                   )}
@@ -168,7 +168,7 @@ export function Step2bSavingsContributions({
           ))}
 
           {errors.investmentAccounts?.message && (
-            <p className="text-sm text-red-500">
+            <p className="text-sm text-red-500 dark:text-red-400">
               {errors.investmentAccounts.message}
             </p>
           )}

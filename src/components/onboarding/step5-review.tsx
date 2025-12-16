@@ -97,17 +97,17 @@ export function Step5Review({
         >
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-600">Current Age</dt>
+              <dt className="text-muted-foreground">Current Age</dt>
               <dd className="font-medium">{currentAge || 'Not provided'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-600">Target Retirement Age</dt>
+              <dt className="text-muted-foreground">Target Retirement Age</dt>
               <dd className="font-medium">
                 {formData.targetRetirementAge || 'Not provided'}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-600">Filing Status</dt>
+              <dt className="text-muted-foreground">Filing Status</dt>
               <dd className="font-medium capitalize">
                 {formData.filingStatus?.replace('_', ' ') || 'Not provided'}
               </dd>
@@ -122,13 +122,13 @@ export function Step5Review({
         >
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-600">Annual Income</dt>
+              <dt className="text-muted-foreground">Annual Income</dt>
               <dd className="font-medium">
                 {formatCurrency(formData.annualIncome)}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-600">Savings Rate</dt>
+              <dt className="text-muted-foreground">Savings Rate</dt>
               <dd className="font-medium">
                 {formatPercent(formData.savingsRate)}
               </dd>
@@ -150,7 +150,7 @@ export function Step5Review({
                 >
                   <div>
                     <p className="font-medium">{account.label}</p>
-                    <p className="text-gray-500 text-xs">
+                    <p className="text-muted-foreground text-xs">
                       {account.type} • {formatCurrency(account.monthlyContribution)}/mo
                     </p>
                   </div>
@@ -172,7 +172,7 @@ export function Step5Review({
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">No accounts added</p>
+            <p className="text-muted-foreground text-sm">No accounts added</p>
           )}
         </Collapsible>
 
@@ -183,13 +183,13 @@ export function Step5Review({
         >
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-600">Essential Expenses</dt>
+              <dt className="text-muted-foreground">Essential Expenses</dt>
               <dd className="font-medium">
                 {formatCurrency(formData.incomeExpenses?.monthlyEssential)}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-600">Discretionary Expenses</dt>
+              <dt className="text-muted-foreground">Discretionary Expenses</dt>
               <dd className="font-medium">
                 {formatCurrency(formData.incomeExpenses?.monthlyDiscretionary)}
               </dd>
@@ -208,15 +208,15 @@ export function Step5Review({
                 <h4 className="font-medium mb-2">Primary Residence</h4>
                 <dl className="space-y-1 pl-4">
                   <div className="flex justify-between">
-                    <dt className="text-gray-600">Home Value</dt>
+                    <dt className="text-muted-foreground">Home Value</dt>
                     <dd>{formatCurrency(formData.primaryResidence.estimatedValue)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-600">Mortgage Balance</dt>
+                    <dt className="text-muted-foreground">Mortgage Balance</dt>
                     <dd>{formatCurrency(formData.primaryResidence.mortgageBalance)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-600">Interest Rate</dt>
+                    <dt className="text-muted-foreground">Interest Rate</dt>
                     <dd>{formatPercent(formData.primaryResidence.interestRate)}</dd>
                   </div>
                 </dl>
@@ -233,11 +233,11 @@ export function Step5Review({
                   >
                     <div>
                       <p>{debt.label}</p>
-                      <p className="text-gray-500 text-xs">
+                      <p className="text-muted-foreground text-xs">
                         {debt.type} • {formatPercent(debt.interestRate)} APR
                       </p>
                     </div>
-                    <span className="font-medium text-red-600">
+                    <span className="font-medium text-red-600 dark:text-red-400">
                       {formatCurrency(debt.balance)}
                     </span>
                   </div>
@@ -247,7 +247,7 @@ export function Step5Review({
 
             {!formData.primaryResidence?.estimatedValue &&
               (!formData.debts || formData.debts.length === 0) && (
-                <p className="text-gray-500">No assets or debts recorded</p>
+                <p className="text-muted-foreground">No assets or debts recorded</p>
               )}
           </div>
         </Collapsible>

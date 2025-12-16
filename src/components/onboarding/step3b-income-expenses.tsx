@@ -62,11 +62,11 @@ export function Step3bIncomeExpenses({
               })}
             />
             {errors.incomeExpenses?.monthlyEssential && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-red-500 dark:text-red-400">
                 {errors.incomeExpenses.monthlyEssential.message}
               </p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Include rent/mortgage, utilities, groceries, insurance, minimum
               debt payments
             </p>
@@ -85,11 +85,11 @@ export function Step3bIncomeExpenses({
               })}
             />
             {errors.incomeExpenses?.monthlyDiscretionary && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-red-500 dark:text-red-400">
                 {errors.incomeExpenses.monthlyDiscretionary.message}
               </p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Include dining out, entertainment, subscriptions, travel,
               hobbies
             </p>
