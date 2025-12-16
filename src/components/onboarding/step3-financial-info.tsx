@@ -51,7 +51,7 @@ export function Step3FinancialInfo({ onNext, onBack, initialData }: Step3Props) 
               What is your current annual income?
             </Label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+              <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
               <Input
                 id="annualIncome"
                 type="number"
@@ -78,7 +78,7 @@ export function Step3FinancialInfo({ onNext, onBack, initialData }: Step3Props) 
                 placeholder="15"
                 {...register('savingsRate', { valueAsNumber: true })}
               />
-              <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+              <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
             </div>
             {errors.savingsRate && (
               <p className="text-sm text-red-500">
@@ -86,7 +86,7 @@ export function Step3FinancialInfo({ onNext, onBack, initialData }: Step3Props) 
               </p>
             )}
             {annualIncome > 0 && savingsRate > 0 && (
-              <p className="text-sm text-blue-600">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
                 You&apos;re saving approximately ${monthlySavings.toFixed(0)} per
                 month
               </p>

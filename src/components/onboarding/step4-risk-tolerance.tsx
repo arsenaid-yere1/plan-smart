@@ -63,7 +63,7 @@ export function Step4RiskTolerance({
                   {RISK_TOLERANCE_OPTIONS.map((option) => (
                     <div
                       key={option.value}
-                      className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 hover:bg-gray-50"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 hover:bg-muted"
                     >
                       <RadioGroupItem
                         value={option.value}
@@ -77,7 +77,7 @@ export function Step4RiskTolerance({
                         >
                           {option.label}
                         </Label>
-                        <p className="mt-1 text-sm text-gray-600">
+                        <p className="mt-1 text-sm text-muted-foreground">
                           {option.description}
                         </p>
                       </div>

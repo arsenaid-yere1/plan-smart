@@ -53,7 +53,7 @@ export function Step1PersonalInfo({ onNext, initialData }: Step1Props) {
             {errors.birthYear && (
               <p className="text-sm text-red-500">{errors.birthYear.message}</p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               We use your birth year to calculate your current age and
               retirement timeline
             </p>
