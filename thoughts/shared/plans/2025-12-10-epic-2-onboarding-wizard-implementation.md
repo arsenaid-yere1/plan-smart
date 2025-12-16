@@ -1155,9 +1155,9 @@ export { Step4bAssetsDebts } from './step4b-assets-debts';
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Step 2B: Can add/remove investment accounts, form validates correctly
@@ -1574,9 +1574,9 @@ export { Step5Review } from './step5-review';
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Review screen displays all collected data in collapsible sections
@@ -2006,10 +2006,10 @@ export { SmartIntake } from './smart-intake';
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] OpenAI SDK installs successfully: `npm install openai`
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] OpenAI SDK installs successfully: `npm install openai`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] API endpoint accepts text and returns parsed data (requires valid OpenAI key)
@@ -2380,10 +2380,10 @@ export { SmartIntake } from './smart-intake';
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
-- [ ] Existing tests still pass: `npm test -- --run`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
+- [x] Existing tests still pass: `npm test -- --run`
 - [ ] E2E tests pass (if applicable): `npm run test:e2e`
 
 #### Manual Verification:

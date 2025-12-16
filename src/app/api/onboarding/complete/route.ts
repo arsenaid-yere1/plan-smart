@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth/server';
 import { db } from '@/db/client';
 import { financialSnapshot, plans, userProfile } from '@/db/schema';
-import { completeOnboardingSchema } from '@/lib/validation/onboarding';
+import { completeOnboardingSchemaV2 } from '@/lib/validation/onboarding';
 import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Validate onboarding data
     const body = await request.json();
-    const parseResult = completeOnboardingSchema.safeParse(body);
+    const parseResult = completeOnboardingSchemaV2.safeParse(body);
 
     if (!parseResult.success) {
       return NextResponse.json(
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const data = parseResult.data;
 
-    // Create financial snapshot
+    // Create financial snapshot with new JSONB fields
     await db.insert(financialSnapshot).values({
       userId: user.id,
       birthYear: data.birthYear,
@@ -35,9 +35,25 @@ export async function POST(request: NextRequest) {
       annualIncome: data.annualIncome.toString(),
       savingsRate: data.savingsRate.toString(),
       riskTolerance: data.riskTolerance,
+      // Epic 2: New JSONB fields
+      investmentAccounts: data.investmentAccounts || [],
+      primaryResidence: data.primaryResidence || null,
+      debts: data.debts || [],
+      incomeExpenses: data.incomeExpenses || null,
     });
 
-    // Create default retirement plan
+    // Calculate total savings for plan config
+    const totalSavings = (data.investmentAccounts || []).reduce(
+      (sum, account) => sum + account.balance,
+      0
+    );
+
+    const totalMonthlyContributions = (data.investmentAccounts || []).reduce(
+      (sum, account) => sum + (account.monthlyContribution || 0),
+      0
+    );
+
+    // Create default retirement plan with enhanced config
     await db.insert(plans).values({
       userId: user.id,
       name: 'Personal Plan v1',
@@ -48,7 +64,14 @@ export async function POST(request: NextRequest) {
         annualIncome: data.annualIncome,
         savingsRate: data.savingsRate,
         riskTolerance: data.riskTolerance,
+        // Epic 2: Enhanced config
+        totalSavings,
+        totalMonthlyContributions,
+        investmentAccountCount: data.investmentAccounts?.length || 0,
+        hasHomeEquity: !!data.primaryResidence?.estimatedValue,
+        totalDebt: (data.debts || []).reduce((sum, d) => sum + d.balance, 0),
         createdViaOnboarding: true,
+        onboardingVersion: 2,
       },
     });
 

@@ -80,7 +80,7 @@ export const primaryResidenceSchema = z.object({
 
 export const step4AssetsDebtsSchema = z.object({
   primaryResidence: primaryResidenceSchema.optional(),
-  debts: z.array(debtSchema).default([]),
+  debts: z.array(debtSchema),
 });
 
 // Epic 2: Complete Schema V2

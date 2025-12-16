@@ -2,3 +2,8 @@ export { Step1PersonalInfo } from './step1-personal-info';
 export { Step2RetirementInfo } from './step2-retirement-info';
 export { Step3FinancialInfo } from './step3-financial-info';
 export { Step4RiskTolerance } from './step4-risk-tolerance';
+export { Step2bSavingsContributions } from './step2b-savings-contributions';
+export { Step3bIncomeExpenses } from './step3b-income-expenses';
+export { Step4bAssetsDebts } from './step4b-assets-debts';
+export { Step5Review } from './step5-review';
+export { SmartIntake } from './smart-intake';

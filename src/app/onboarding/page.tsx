@@ -7,33 +7,92 @@ import {
   Step2RetirementInfo,
   Step3FinancialInfo,
   Step4RiskTolerance,
+  Step2bSavingsContributions,
+  Step3bIncomeExpenses,
+  Step4bAssetsDebts,
+  Step5Review,
+  SmartIntake,
 } from '@/components/onboarding';
-import type { CompleteOnboardingData } from '@/types/onboarding';
+import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
+
+type WizardStep =
+  | 'smart-intake'
+  | 'basics'
+  | 'retirement'
+  | 'income-savings'
+  | 'savings-accounts'
+  | 'expenses'
+  | 'assets-debts'
+  | 'risk'
+  | 'review';
+
+const STEP_ORDER: WizardStep[] = [
+  'smart-intake',
+  'basics',
+  'retirement',
+  'income-savings',
+  'savings-accounts',
+  'expenses',
+  'assets-debts',
+  'risk',
+  'review',
+];
+
+const STEP_LABELS: Record<WizardStep, string> = {
+  'smart-intake': 'Quick Start',
+  basics: 'Basics',
+  retirement: 'Retirement Goals',
+  'income-savings': 'Income & Savings',
+  'savings-accounts': 'Investment Accounts',
+  expenses: 'Monthly Expenses',
+  'assets-debts': 'Assets & Debts',
+  risk: 'Risk Tolerance',
+  review: 'Review',
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState<WizardStep>('smart-intake');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<CompleteOnboardingData>>({});
+  const [formData, setFormData] = useState<Partial<CompleteOnboardingDataV2>>(
+    {}
+  );
 
-  const handleStep1 = (data: Partial<CompleteOnboardingData>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(2);
+  const currentStepIndex = STEP_ORDER.indexOf(currentStep);
+  const totalSteps = STEP_ORDER.length;
+  const progressPercent = Math.round(
+    ((currentStepIndex + 1) / totalSteps) * 100
+  );
+
+  const goNext = () => {
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex < totalSteps) {
+      setCurrentStep(STEP_ORDER[nextIndex]);
+    }
+  };
+  const goBack = () => {
+    const prevIndex = currentStepIndex - 1;
+    if (prevIndex >= 0) {
+      setCurrentStep(STEP_ORDER[prevIndex]);
+    }
   };
 
-  const handleStep2 = (data: Partial<CompleteOnboardingData>) => {
+  const updateFormData = (data: Partial<CompleteOnboardingDataV2>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(3);
   };
 
-  const handleStep3 = (data: Partial<CompleteOnboardingData>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(4);
+  const handleStepComplete = (data: Partial<CompleteOnboardingDataV2>) => {
+    updateFormData(data);
+    goNext();
   };
 
-  const handleStep4 = async (data: Partial<CompleteOnboardingData>) => {
-    const completeData = { ...formData, ...data };
+  const handleSmartIntakeApply = (data: Partial<CompleteOnboardingDataV2>) => {
+    updateFormData(data);
+    goNext();
+  };
+
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
 
@@ -41,7 +100,7 @@ export default function OnboardingPage() {
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(completeData),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -49,7 +108,6 @@ export default function OnboardingPage() {
         throw new Error(errorData.message || 'Failed to complete onboarding');
       }
 
-      // Redirect to plans page
       router.push('/plans');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -63,15 +121,17 @@ export default function OnboardingPage() {
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">Step {currentStep} of 4</span>
+            <span className="text-sm font-medium text-foreground">
+              {STEP_LABELS[currentStep]}
+            </span>
             <span className="text-sm text-muted-foreground">
-              {currentStep * 25}% complete
+              Step {currentStepIndex + 1} of {totalSteps}
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted">
             <div
               className="h-2 rounded-full bg-primary transition-all duration-300"
-              style={{ width: `${currentStep * 25}%` }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
@@ -84,28 +144,72 @@ export default function OnboardingPage() {
         )}
 
         {/* Steps */}
-        {currentStep === 1 && (
-          <Step1PersonalInfo onNext={handleStep1} initialData={formData} />
+        {currentStep === 'smart-intake' && (
+          <SmartIntake onApply={handleSmartIntakeApply} onSkip={goNext} />
         )}
-        {currentStep === 2 && (
+
+        {currentStep === 'basics' && (
+          <Step1PersonalInfo
+            onNext={handleStepComplete}
+            initialData={formData}
+          />
+        )}
+
+        {currentStep === 'retirement' && (
           <Step2RetirementInfo
-            onNext={handleStep2}
-            onBack={() => setCurrentStep(1)}
+            onNext={handleStepComplete}
+            onBack={goBack}
             initialData={formData}
           />
         )}
-        {currentStep === 3 && (
+
+        {currentStep === 'income-savings' && (
           <Step3FinancialInfo
-            onNext={handleStep3}
-            onBack={() => setCurrentStep(2)}
+            onNext={handleStepComplete}
+            onBack={goBack}
             initialData={formData}
           />
         )}
-        {currentStep === 4 && (
-          <Step4RiskTolerance
-            onNext={handleStep4}
-            onBack={() => setCurrentStep(3)}
+
+        {currentStep === 'savings-accounts' && (
+          <Step2bSavingsContributions
+            onNext={handleStepComplete}
+            onBack={goBack}
             initialData={formData}
+          />
+        )}
+
+        {currentStep === 'expenses' && (
+          <Step3bIncomeExpenses
+            onNext={handleStepComplete}
+            onBack={goBack}
+            initialData={formData}
+          />
+        )}
+
+        {currentStep === 'assets-debts' && (
+          <Step4bAssetsDebts
+            onNext={handleStepComplete}
+            onBack={goBack}
+            initialData={formData}
+          />
+        )}
+
+        {currentStep === 'risk' && (
+          <Step4RiskTolerance
+            onNext={handleStepComplete}
+            onBack={goBack}
+            initialData={formData}
+            isSubmitting={false}
+          />
+        )}
+
+        {currentStep === 'review' && (
+          <Step5Review
+            onSubmit={handleSubmit}
+            onBack={goBack}
+            formData={formData}
+            onUpdateData={updateFormData}
             isSubmitting={isSubmitting}
           />
         )}
