@@ -156,9 +156,9 @@ export function SmartIntake({ onApply, onSkip }: SmartIntakeProps) {
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600';
-    if (confidence >= 0.5) return 'text-yellow-600';
-    return 'text-red-600';
+    if (confidence >= 0.8) return 'text-green-600 dark:text-green-400';
+    if (confidence >= 0.5) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   return (
@@ -194,16 +194,16 @@ export function SmartIntake({ onApply, onSkip }: SmartIntakeProps) {
         )}
 
         {parsedData && (
-          <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium">Detected Information:</h4>
+          <div className="space-y-3 p-4 bg-muted rounded-lg">
+            <h4 className="font-medium text-foreground">Detected Information:</h4>
             <ul className="space-y-2">
               {parsedData.fields.map((field) => (
                 <li
                   key={field.key}
                   className="flex items-center justify-between text-sm"
                 >
-                  <span className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
+                  <span className="flex items-center gap-2 text-foreground">
+                    <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
                     <span className="font-medium">{field.label}:</span>
                     <span>{field.value}</span>
                   </span>
