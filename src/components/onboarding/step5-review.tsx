@@ -332,7 +332,6 @@ export function Step5Review({
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
-            isSubmitting={false}
           />
         </DialogContent>
       </Dialog>

@@ -200,7 +200,6 @@ export default function OnboardingPage() {
             onNext={handleStepComplete}
             onBack={goBack}
             initialData={formData}
-            isSubmitting={false}
           />
         )}
 

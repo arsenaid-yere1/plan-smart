@@ -20,14 +20,12 @@ interface Step4Props {
   onNext: (data: OnboardingStep4Data) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep4Data>;
-  isSubmitting?: boolean;
 }
 
 export function Step4RiskTolerance({
   onNext,
   onBack,
   initialData,
-  isSubmitting,
 }: Step4Props) {
   const {
     handleSubmit,
@@ -101,12 +99,11 @@ export function Step4RiskTolerance({
               variant="outline"
               onClick={onBack}
               className="flex-1"
-              disabled={isSubmitting}
             >
               Back
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating your plan...' : 'Complete Setup'}
+            <Button type="submit" className="flex-1">
+              Continue
             </Button>
           </div>
         </form>
