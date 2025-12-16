@@ -13,8 +13,8 @@ const navItems = [
 export function Navigation() {
   const pathname = usePathname();
 
-  // Don't show navigation on auth pages or onboarding
-  const hideNavPaths = ['/auth', '/onboarding'];
+  // Don't show navigation on auth pages
+  const hideNavPaths = ['/auth'];
   const shouldHideNav = hideNavPaths.some((path) => pathname?.startsWith(path));
 
   if (shouldHideNav || pathname === '/') {
