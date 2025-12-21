@@ -57,16 +57,16 @@ The Epic 2 onboarding wizard has been **fully implemented** with all planned fea
 
 | Component | onNext | onBack | initialData | isSubmitting |
 |-----------|--------|--------|-------------|--------------|
-| Step1PersonalInfo | ✅ | N/A (first step) | ✅ | ❌ Missing |
-| Step2RetirementInfo | ✅ | ✅ | ✅ | ❌ Missing |
-| Step3FinancialInfo | ✅ | ✅ | ✅ | ❌ Missing |
-| Step4RiskTolerance | ✅ | ✅ | ✅ | ✅ |
-| Step2bSavingsContributions | ✅ | ✅ | ✅ | - |
-| Step3bIncomeExpenses | ✅ | ✅ | ✅ | - |
-| Step4bAssetsDebts | ✅ | ✅ | ✅ | - |
+| Step1PersonalInfo | ✅ | N/A (first step) | ✅ | N/A (not final step) |
+| Step2RetirementInfo | ✅ | ✅ | ✅ | N/A (not final step) |
+| Step3FinancialInfo | ✅ | ✅ | ✅ | N/A (not final step) |
+| Step4RiskTolerance | ✅ | ✅ | ✅ | N/A (not final step) |
+| Step2bSavingsContributions | ✅ | ✅ | ✅ | N/A (not final step) |
+| Step3bIncomeExpenses | ✅ | ✅ | ✅ | N/A (not final step) |
+| Step4bAssetsDebts | ✅ | ✅ | ✅ | N/A (not final step) |
 | Step5Review | ✅ (onSubmit) | ✅ | ✅ (formData) | ✅ |
 
-**Finding**: Steps 1-3 are missing `isSubmitting` prop - only Step4RiskTolerance and Step5Review have it.
+**Note**: `isSubmitting` is only needed on Step5Review (the final step) where form submission occurs.
 
 ### 3. Validation Schemas (Zod)
 
@@ -230,14 +230,34 @@ STEP_ORDER = [
 
 ## Open Questions / Minor Issues
 
-1. **Life Expectancy Field**: Originally planned for Step 1 but not implemented
-2. **isSubmitting prop**: Missing from Steps 1-3 (only Step 4 and Review have it)
-3. **Risk step hardcoded**: `isSubmitting={false}` hardcoded in page.tsx line 203 instead of using state
+1. **Life Expectancy Field**: Originally planned for Step 1 but not implemented (deferred)
+2. ~~**isSubmitting prop**: Missing from Steps 1-3~~ ✅ RESOLVED - Removed from Step4RiskTolerance as it's not the final step; only Step5Review needs it
+3. ~~**Risk step hardcoded**: `isSubmitting={false}` hardcoded in page.tsx~~ ✅ RESOLVED - Removed unnecessary prop
 4. **No localStorage persistence**: Wizard state lost on page refresh (acceptable per original scope)
 5. **Accordion component**: Not created, but Collapsible available as alternative
+6. ~~**Dark mode contrast issues**~~ ✅ RESOLVED - Fixed text-gray-* classes across all onboarding steps
+7. ~~**Navigation hidden during onboarding**~~ ✅ RESOLVED - Full navigation now shows during onboarding
 
 ## Validation Result
 
 **Overall Status: ✅ COMPLETE**
 
 The Epic 2 onboarding wizard is fully implemented with all major features from the research plan. The implementation actually exceeded the original 5-step plan with a more granular 9-step flow. All database schemas, validation, types, API endpoints, and UI components are in place and functional.
+
+### Session Updates (2025-12-16)
+
+**Issues Resolved:**
+- ✅ Removed unused `isSubmitting` prop from Step4RiskTolerance (no longer final step)
+- ✅ Changed Step4 button text from "Complete Setup" to "Continue"
+- ✅ Removed hardcoded `isSubmitting={false}` from page.tsx and step5-review.tsx
+- ✅ Fixed dark mode contrast in all onboarding steps (text-gray-* → text-muted-foreground)
+- ✅ Enabled full navigation header during onboarding flow
+
+**Files Modified:**
+- `src/components/onboarding/step4-risk-tolerance.tsx`
+- `src/components/onboarding/step1-personal-info.tsx`
+- `src/components/onboarding/step3-financial-info.tsx`
+- `src/components/onboarding/smart-intake.tsx`
+- `src/components/onboarding/step5-review.tsx`
+- `src/components/layout/navigation.tsx`
+- `src/app/onboarding/page.tsx`
