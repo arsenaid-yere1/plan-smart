@@ -61,6 +61,9 @@ export function ProjectionChart({
         ...(record.age === retirementAge && {
           accumulationBalance: record.balance,
         }),
+        // Split balance for positive/negative line coloring
+        positiveBalance: record.balance >= 0 ? record.balance : null,
+        negativeBalance: record.balance < 0 ? record.balance : null,
       };
     });
   }, [records, xAxisType, retirementAge]);
@@ -81,12 +84,19 @@ export function ProjectionChart({
     <div className="w-full">
       {/* X-Axis Toggle */}
       <div className="mb-4 flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">View by:</span>
-        <div className="inline-flex rounded-lg border border-border p-1">
+        <span id="x-axis-label" className="text-sm text-muted-foreground">
+          View by:
+        </span>
+        <div
+          className="inline-flex rounded-lg border border-border p-1"
+          role="group"
+          aria-labelledby="x-axis-label"
+        >
           <button
             type="button"
             onClick={() => setXAxisType('age')}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+            aria-pressed={xAxisType === 'age'}
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
               xAxisType === 'age'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -97,7 +107,8 @@ export function ProjectionChart({
           <button
             type="button"
             onClick={() => setXAxisType('year')}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+            aria-pressed={xAxisType === 'year'}
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
               xAxisType === 'year'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -140,16 +151,34 @@ export function ProjectionChart({
                   xValue: number;
                   isRetirement: boolean;
                 };
+                const isNegative = data.balance < 0;
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-md">
                     <p className="text-sm font-medium text-foreground">
                       {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p
+                      className={`text-sm font-medium ${isNegative ? 'text-destructive' : 'text-foreground'}`}
+                    >
                       Balance: {formatTooltipCurrency(data.balance)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {data.isRetirement ? 'Retirement' : 'Accumulation'}
+                    {isNegative && (
+                      <p className="text-xs font-medium text-destructive">
+                        ⚠ Funds depleted
+                      </p>
+                    )}
+                    {data.inflows > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Inflows: {formatTooltipCurrency(data.inflows)}
+                      </p>
+                    )}
+                    {data.outflows > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Outflows: {formatTooltipCurrency(data.outflows)}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase'}
                     </p>
                   </div>
                 );
@@ -193,16 +222,32 @@ export function ProjectionChart({
               fillOpacity={0.1}
               connectNulls={false}
             />
-            {/* Main balance line */}
+            {/* Positive balance line */}
             <Line
               type="monotone"
-              dataKey="balance"
+              dataKey="positiveBalance"
               stroke="hsl(var(--primary))"
               strokeWidth={2}
               dot={false}
+              connectNulls={false}
               activeDot={{
                 r: 6,
                 fill: 'hsl(var(--primary))',
+                stroke: 'hsl(var(--background))',
+                strokeWidth: 2,
+              }}
+            />
+            {/* Negative balance line (red) */}
+            <Line
+              type="monotone"
+              dataKey="negativeBalance"
+              stroke="hsl(var(--destructive))"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              activeDot={{
+                r: 6,
+                fill: 'hsl(var(--destructive))',
                 stroke: 'hsl(var(--background))',
                 strokeWidth: 2,
               }}
@@ -225,6 +270,12 @@ export function ProjectionChart({
           <div className="h-0.5 w-4 bg-primary" />
           <span>Total Balance</span>
         </div>
+        {hasNegativeBalance && (
+          <div className="flex items-center gap-2">
+            <div className="h-0.5 w-4 bg-destructive" />
+            <span>Depleted</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
           <span>Retirement Start</span>

@@ -702,10 +702,10 @@ Update tooltip to show additional context:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
-- [ ] All existing tests pass: `npm test -- --run`
+- [x] Type checking passes: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
+- [x] All existing tests pass: `npm test -- --run`
 
 #### Manual Verification:
 - [ ] Negative balances (if any) shown in red
