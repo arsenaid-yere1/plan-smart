@@ -638,9 +638,9 @@ Update the legend to include phase colors.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] Type checking passes: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Accumulation phase has light primary color background

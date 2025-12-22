@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -10,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Area,
+  ComposedChart,
 } from 'recharts';
 import type { ProjectionRecord } from '@/lib/projections/types';
 
@@ -47,11 +48,21 @@ export function ProjectionChart({
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
 
   const chartData = useMemo(() => {
-    return records.map((record) => ({
-      ...record,
-      xValue: xAxisType === 'age' ? record.age : record.year,
-      isRetirement: record.age >= retirementAge,
-    }));
+    return records.map((record) => {
+      const isRetirement = record.age >= retirementAge;
+      return {
+        ...record,
+        xValue: xAxisType === 'age' ? record.age : record.year,
+        isRetirement,
+        // Split balance by phase for area fills
+        accumulationBalance: record.age < retirementAge ? record.balance : null,
+        retirementBalance: isRetirement ? record.balance : null,
+        // Include boundary point in accumulation for smooth transition
+        ...(record.age === retirementAge && {
+          accumulationBalance: record.balance,
+        }),
+      };
+    });
   }, [records, xAxisType, retirementAge]);
 
   const retirementXValue = useMemo(() => {
@@ -100,7 +111,7 @@ export function ProjectionChart({
       {/* Chart Container */}
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <ComposedChart
             data={chartData}
             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
           >
@@ -164,6 +175,24 @@ export function ProjectionChart({
                 fontSize: 12,
               }}
             />
+            {/* Accumulation phase area (light primary fill) */}
+            <Area
+              type="monotone"
+              dataKey="accumulationBalance"
+              stroke="none"
+              fill="hsl(var(--primary))"
+              fillOpacity={0.1}
+              connectNulls={false}
+            />
+            {/* Retirement phase area (light success fill) */}
+            <Area
+              type="monotone"
+              dataKey="retirementBalance"
+              stroke="none"
+              fill="hsl(var(--success))"
+              fillOpacity={0.1}
+              connectNulls={false}
+            />
             {/* Main balance line */}
             <Line
               type="monotone"
@@ -178,12 +207,20 @@ export function ProjectionChart({
                 strokeWidth: 2,
               }}
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-4 rounded-sm bg-primary/20" />
+          <span>Accumulation</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-4 rounded-sm bg-success/20" />
+          <span>Retirement</span>
+        </div>
         <div className="flex items-center gap-2">
           <div className="h-0.5 w-4 bg-primary" />
           <span>Total Balance</span>
