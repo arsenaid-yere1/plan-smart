@@ -48,24 +48,59 @@ export function ProjectionChart({
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
 
   const chartData = useMemo(() => {
-    return records.map((record) => {
+    const data: Array<
+      ProjectionRecord & {
+        xValue: number;
+        isRetirement: boolean;
+        accumulationBalance: number | null;
+        retirementBalance: number | null;
+        positiveBalance: number | null;
+        negativeBalance: number | null;
+      }
+    > = [];
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
       const isRetirement = record.age >= retirementAge;
-      return {
+      const prevRecord = i > 0 ? records[i - 1] : null;
+
+      // Check if we're crossing from positive to negative
+      if (prevRecord && prevRecord.balance > 0 && record.balance < 0) {
+        // Insert an interpolated zero-crossing point
+        const ratio = prevRecord.balance / (prevRecord.balance - record.balance);
+        const zeroAge = prevRecord.age + ratio * (record.age - prevRecord.age);
+        const zeroYear = prevRecord.year + ratio * (record.year - prevRecord.year);
+
+        data.push({
+          ...record,
+          age: Math.round(zeroAge * 10) / 10,
+          year: Math.round(zeroYear),
+          balance: 0,
+          xValue: xAxisType === 'age' ? Math.round(zeroAge * 10) / 10 : Math.round(zeroYear),
+          isRetirement: zeroAge >= retirementAge,
+          accumulationBalance: zeroAge < retirementAge ? 0 : null,
+          retirementBalance: zeroAge >= retirementAge ? 0 : null,
+          positiveBalance: 0,
+          negativeBalance: 0,
+        });
+      }
+
+      data.push({
         ...record,
         xValue: xAxisType === 'age' ? record.age : record.year,
         isRetirement,
-        // Split balance by phase for area fills
         accumulationBalance: record.age < retirementAge ? record.balance : null,
         retirementBalance: isRetirement ? record.balance : null,
         // Include boundary point in accumulation for smooth transition
         ...(record.age === retirementAge && {
           accumulationBalance: record.balance,
         }),
-        // Split balance for positive/negative line coloring
         positiveBalance: record.balance >= 0 ? record.balance : null,
-        negativeBalance: record.balance < 0 ? record.balance : null,
-      };
-    });
+        negativeBalance: record.balance <= 0 ? record.balance : null,
+      });
+    }
+
+    return data;
   }, [records, xAxisType, retirementAge]);
 
   const retirementXValue = useMemo(() => {
