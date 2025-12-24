@@ -791,13 +791,13 @@ describe('ProjectionChart', () => {
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All tests pass: `npm test -- --run src/components/projections`
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
+- [x] All tests pass: `npm test -- --run src/components/projections`
+- [x] Type checking passes: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
 
 #### Manual Verification:
-- [ ] Tests cover key functionality
-- [ ] No flaky tests
+- [x] Tests cover key functionality
+- [x] No flaky tests
 
 ---
 
@@ -945,10 +945,10 @@ Add alongside the Age/Year toggle:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
-- [ ] Existing tests pass: `npm test -- --run src/components/projections`
+- [x] Type checking passes: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
+- [x] Existing tests pass: `npm test -- --run src/components/projections`
 
 #### Manual Verification:
 - [ ] "Future $" / "Today's $" toggle appears next to Age/Year toggle
@@ -1162,10 +1162,10 @@ import { ProjectionChart, ProjectionTable } from '@/components/projections';
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
-- [ ] All tests pass: `npm test -- --run`
+- [x] Type checking passes: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
+- [x] All tests pass: `npm test -- --run`
 
 #### Manual Verification:
 - [ ] "View Year-by-Year Details" trigger appears below chart

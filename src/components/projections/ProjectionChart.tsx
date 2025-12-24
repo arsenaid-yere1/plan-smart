@@ -20,6 +20,7 @@ interface ProjectionChartProps {
   records: ProjectionRecord[];
   retirementAge: number;
   currentAge: number;
+  inflationRate?: number;
 }
 
 function formatCurrency(value: number): string {
@@ -44,27 +45,38 @@ export function ProjectionChart({
   records,
   retirementAge,
   currentAge,
+  inflationRate = 0.025,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
+  const [adjustForInflation, setAdjustForInflation] = useState(false);
 
   const chartData = useMemo(() => {
-    const data: Array<
-      ProjectionRecord & {
-        xValue: number;
-        isRetirement: boolean;
-        accumulationBalance: number | null;
-        retirementBalance: number | null;
-        positiveBalance: number | null;
-        negativeBalance: number | null;
-      }
-    > = [];
+    type ChartDataPoint = ProjectionRecord & {
+      xValue: number;
+      isRetirement: boolean;
+      accumulationBalance: number | null;
+      retirementBalance: number | null;
+      positiveBalance: number | null;
+      negativeBalance: number | null;
+      displayBalance: number;
+      nominalBalance: number;
+      realBalance: number;
+    };
+
+    const data: ChartDataPoint[] = [];
 
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const isRetirement = record.age >= retirementAge;
       const prevRecord = i > 0 ? records[i - 1] : null;
 
-      // Check if we're crossing from positive to negative
+      // Calculate inflation adjustment factor
+      const yearsFromNow = record.age - currentAge;
+      const inflationFactor = Math.pow(1 + inflationRate, yearsFromNow);
+      const realBalance = record.balance / inflationFactor;
+      const displayBalance = adjustForInflation ? realBalance : record.balance;
+
+      // Check if we're crossing from positive to negative (using display values)
       if (prevRecord && prevRecord.balance > 0 && record.balance < 0) {
         // Insert an interpolated zero-crossing point
         const ratio = prevRecord.balance / (prevRecord.balance - record.balance);
@@ -82,6 +94,9 @@ export function ProjectionChart({
           retirementBalance: zeroAge >= retirementAge ? 0 : null,
           positiveBalance: 0,
           negativeBalance: 0,
+          displayBalance: 0,
+          nominalBalance: 0,
+          realBalance: 0,
         });
       }
 
@@ -89,19 +104,22 @@ export function ProjectionChart({
         ...record,
         xValue: xAxisType === 'age' ? record.age : record.year,
         isRetirement,
-        accumulationBalance: record.age < retirementAge ? record.balance : null,
-        retirementBalance: isRetirement ? record.balance : null,
+        accumulationBalance: record.age < retirementAge ? displayBalance : null,
+        retirementBalance: isRetirement ? displayBalance : null,
         // Include boundary point in accumulation for smooth transition
         ...(record.age === retirementAge && {
-          accumulationBalance: record.balance,
+          accumulationBalance: displayBalance,
         }),
-        positiveBalance: record.balance >= 0 ? record.balance : null,
-        negativeBalance: record.balance <= 0 ? record.balance : null,
+        positiveBalance: displayBalance >= 0 ? displayBalance : null,
+        negativeBalance: displayBalance <= 0 ? displayBalance : null,
+        displayBalance,
+        nominalBalance: record.balance,
+        realBalance,
       });
     }
 
     return data;
-  }, [records, xAxisType, retirementAge]);
+  }, [records, xAxisType, retirementAge, currentAge, inflationRate, adjustForInflation]);
 
   const retirementXValue = useMemo(() => {
     if (xAxisType === 'age') {
@@ -117,40 +135,80 @@ export function ProjectionChart({
 
   return (
     <div className="w-full">
-      {/* X-Axis Toggle */}
-      <div className="mb-4 flex items-center gap-2">
-        <span id="x-axis-label" className="text-sm text-muted-foreground">
-          View by:
-        </span>
-        <div
-          className="inline-flex rounded-lg border border-border p-1"
-          role="group"
-          aria-labelledby="x-axis-label"
-        >
-          <button
-            type="button"
-            onClick={() => setXAxisType('age')}
-            aria-pressed={xAxisType === 'age'}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-              xAxisType === 'age'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+      {/* Toggle Controls */}
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        {/* X-Axis Toggle */}
+        <div className="flex items-center gap-2">
+          <span id="x-axis-label" className="text-sm text-muted-foreground">
+            View by:
+          </span>
+          <div
+            className="inline-flex rounded-lg border border-border p-1"
+            role="group"
+            aria-labelledby="x-axis-label"
           >
-            Age
-          </button>
-          <button
-            type="button"
-            onClick={() => setXAxisType('year')}
-            aria-pressed={xAxisType === 'year'}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-              xAxisType === 'year'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            <button
+              type="button"
+              onClick={() => setXAxisType('age')}
+              aria-pressed={xAxisType === 'age'}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                xAxisType === 'age'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Age
+            </button>
+            <button
+              type="button"
+              onClick={() => setXAxisType('year')}
+              aria-pressed={xAxisType === 'year'}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                xAxisType === 'year'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Year
+            </button>
+          </div>
+        </div>
+
+        {/* Inflation Adjustment Toggle */}
+        <div className="flex items-center gap-2">
+          <span id="inflation-label" className="text-sm text-muted-foreground">
+            Values in:
+          </span>
+          <div
+            className="inline-flex rounded-lg border border-border p-1"
+            role="group"
+            aria-labelledby="inflation-label"
           >
-            Year
-          </button>
+            <button
+              type="button"
+              onClick={() => setAdjustForInflation(false)}
+              aria-pressed={!adjustForInflation}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                !adjustForInflation
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Future $
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdjustForInflation(true)}
+              aria-pressed={adjustForInflation}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                adjustForInflation
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Today&apos;s $
+            </button>
+          </div>
         </div>
       </div>
 
@@ -185,8 +243,11 @@ export function ProjectionChart({
                 const data = payload[0].payload as ProjectionRecord & {
                   xValue: number;
                   isRetirement: boolean;
+                  displayBalance: number;
+                  nominalBalance: number;
+                  realBalance: number;
                 };
-                const isNegative = data.balance < 0;
+                const isNegative = data.displayBalance < 0;
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-md">
                     <p className="text-sm font-medium text-foreground">
@@ -195,7 +256,13 @@ export function ProjectionChart({
                     <p
                       className={`text-sm font-medium ${isNegative ? 'text-destructive' : 'text-foreground'}`}
                     >
-                      Balance: {formatTooltipCurrency(data.balance)}
+                      {adjustForInflation ? "Today's $: " : 'Future $: '}
+                      {formatTooltipCurrency(data.displayBalance)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {adjustForInflation
+                        ? `(${formatTooltipCurrency(data.nominalBalance)} in future dollars)`
+                        : `(${formatTooltipCurrency(data.realBalance)} in today's dollars)`}
                     </p>
                     {isNegative && (
                       <p className="text-xs font-medium text-destructive">

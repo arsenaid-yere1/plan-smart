@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { ProjectionChart } from '@/components/projections';
+import { ProjectionChart, ProjectionTable } from '@/components/projections';
 import { runProjection } from '@/lib/projections';
 import type { ProjectionInput } from '@/lib/projections/types';
 import {
@@ -216,6 +216,11 @@ export default async function PlansPage() {
               records={projection.records}
               retirementAge={retirementAge}
               currentAge={currentAge}
+              inflationRate={DEFAULT_INFLATION_RATE}
+            />
+            <ProjectionTable
+              records={projection.records}
+              retirementAge={retirementAge}
             />
           </CardContent>
         </Card>
