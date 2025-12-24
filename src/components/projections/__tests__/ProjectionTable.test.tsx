@@ -38,25 +38,6 @@ const mockRecords: ProjectionRecord[] = [
   },
 ];
 
-const mockRecordsWithNegative: ProjectionRecord[] = [
-  {
-    age: 30,
-    year: 2025,
-    balance: 50000,
-    inflows: 10000,
-    outflows: 0,
-    balanceByType: { taxDeferred: 25000, taxFree: 15000, taxable: 10000 },
-  },
-  {
-    age: 70,
-    year: 2065,
-    balance: -50000,
-    inflows: 20000,
-    outflows: 100000,
-    balanceByType: { taxDeferred: 0, taxFree: 0, taxable: 0 },
-  },
-];
-
 describe('ProjectionTable', () => {
   beforeEach(() => {
     // Mock URL.createObjectURL and URL.revokeObjectURL for CSV export
