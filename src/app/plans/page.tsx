@@ -230,12 +230,8 @@ export default async function PlansPage() {
   // Get retirement status
   const statusResult = getRetirementStatus(projection!.summary, currentAge);
 
-  // Get monthly spending at retirement from the projection data
-  // This matches the engine's outflow at retirement age exactly
-  const retirementYearRecord = projection!.records.find(r => r.age === retirementAge);
-  const monthlySpendingAtRetirement = retirementYearRecord
-    ? Math.round(retirementYearRecord.outflows / 12)
-    : Math.round((annualExpenses + estimateHealthcareCosts(retirementAge)) / 12);
+  // Current monthly spending (matches profile page - no healthcare, no inflation)
+  const currentMonthlySpending = Math.round(annualExpenses / 12);
 
   // Format currency helper
   const formatCurrency = (value: number) => {
@@ -312,14 +308,14 @@ export default async function PlansPage() {
             </CardContent>
           </Card>
 
-          {/* Monthly Spending Supported */}
+          {/* Monthly Spending */}
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Monthly Spending</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-foreground">
-                {formatCurrency(monthlySpendingAtRetirement)}
+                {formatCurrency(currentMonthlySpending)}
                 <span className="text-sm font-normal text-muted-foreground">/mo</span>
               </p>
             </CardContent>

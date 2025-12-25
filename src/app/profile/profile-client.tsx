@@ -258,19 +258,32 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
         defaultOpen
         onEdit={() => setEditSection('expenses')}
       >
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Essential:</span>
-            <span className="ml-2 font-medium">
-              {formatCurrency(profileData.incomeExpenses?.monthlyEssential)}
-            </span>
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-muted-foreground">Essential:</span>
+              <span className="ml-2 font-medium">
+                {formatCurrency(profileData.incomeExpenses?.monthlyEssential)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Discretionary:</span>
+              <span className="ml-2 font-medium">
+                {formatCurrency(profileData.incomeExpenses?.monthlyDiscretionary)}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="text-muted-foreground">Discretionary:</span>
-            <span className="ml-2 font-medium">
-              {formatCurrency(profileData.incomeExpenses?.monthlyDiscretionary)}
-            </span>
-          </div>
+          {(profileData.incomeExpenses?.monthlyEssential || profileData.incomeExpenses?.monthlyDiscretionary) && (
+            <div className="flex justify-between pt-2 font-medium border-t">
+              <span>Total Monthly Spending</span>
+              <span>
+                {formatCurrency(
+                  (profileData.incomeExpenses?.monthlyEssential ?? 0) +
+                  (profileData.incomeExpenses?.monthlyDiscretionary ?? 0)
+                )}
+              </span>
+            </div>
+          )}
         </div>
       </Collapsible>
 
