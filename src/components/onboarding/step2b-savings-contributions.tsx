@@ -24,12 +24,16 @@ interface Step2bProps {
   onNext: (data: OnboardingStep2SavingsData) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep2SavingsData>;
+  submitLabel?: string;
+  cancelLabel?: string;
 }
 
 export function Step2bSavingsContributions({
   onNext,
   onBack,
   initialData,
+  submitLabel = 'Continue',
+  cancelLabel = 'Back',
 }: Step2bProps) {
   const {
     register,
@@ -190,10 +194,10 @@ export function Step2bSavingsContributions({
               onClick={onBack}
               className="flex-1"
             >
-              Back
+              {cancelLabel}
             </Button>
             <Button type="submit" className="flex-1">
-              Continue
+              {submitLabel}
             </Button>
           </div>
         </form>

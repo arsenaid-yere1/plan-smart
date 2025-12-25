@@ -19,9 +19,11 @@ interface Step3Props {
   onNext: (data: OnboardingStep3Data) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep3Data>;
+  submitLabel?: string;
+  cancelLabel?: string;
 }
 
-export function Step3FinancialInfo({ onNext, onBack, initialData }: Step3Props) {
+export function Step3FinancialInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back' }: Step3Props) {
   const {
     register,
     handleSubmit,
@@ -100,10 +102,10 @@ export function Step3FinancialInfo({ onNext, onBack, initialData }: Step3Props) 
               onClick={onBack}
               className="flex-1"
             >
-              Back
+              {cancelLabel}
             </Button>
             <Button type="submit" className="flex-1">
-              Continue
+              {submitLabel}
             </Button>
           </div>
         </form>

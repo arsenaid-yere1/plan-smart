@@ -21,9 +21,11 @@ interface Step2Props {
   onNext: (data: OnboardingStep2Data) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep2Data>;
+  submitLabel?: string;
+  cancelLabel?: string;
 }
 
-export function Step2RetirementInfo({ onNext, onBack, initialData }: Step2Props) {
+export function Step2RetirementInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back' }: Step2Props) {
   const {
     register,
     handleSubmit,
@@ -106,10 +108,10 @@ export function Step2RetirementInfo({ onNext, onBack, initialData }: Step2Props)
               onClick={onBack}
               className="flex-1"
             >
-              Back
+              {cancelLabel}
             </Button>
             <Button type="submit" className="flex-1">
-              Continue
+              {submitLabel}
             </Button>
           </div>
         </form>

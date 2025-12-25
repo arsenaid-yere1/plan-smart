@@ -20,12 +20,16 @@ interface Step4Props {
   onNext: (data: OnboardingStep4Data) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep4Data>;
+  submitLabel?: string;
+  cancelLabel?: string;
 }
 
 export function Step4RiskTolerance({
   onNext,
   onBack,
   initialData,
+  submitLabel = 'Continue',
+  cancelLabel = 'Back',
 }: Step4Props) {
   const {
     handleSubmit,
@@ -100,10 +104,10 @@ export function Step4RiskTolerance({
               onClick={onBack}
               className="flex-1"
             >
-              Back
+              {cancelLabel}
             </Button>
             <Button type="submit" className="flex-1">
-              Continue
+              {submitLabel}
             </Button>
           </div>
         </form>

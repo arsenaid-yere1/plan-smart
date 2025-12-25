@@ -18,9 +18,10 @@ import type { OnboardingStep1Data } from '@/types/onboarding';
 interface Step1Props {
   onNext: (data: OnboardingStep1Data) => void;
   initialData?: Partial<OnboardingStep1Data>;
+  submitLabel?: string;
 }
 
-export function Step1PersonalInfo({ onNext, initialData }: Step1Props) {
+export function Step1PersonalInfo({ onNext, initialData, submitLabel = 'Continue' }: Step1Props) {
   const {
     register,
     handleSubmit,
@@ -60,7 +61,7 @@ export function Step1PersonalInfo({ onNext, initialData }: Step1Props) {
           </div>
 
           <Button type="submit" className="w-full">
-            Continue
+            {submitLabel}
           </Button>
         </form>
       </CardContent>

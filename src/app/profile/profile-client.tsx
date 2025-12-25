@@ -337,6 +337,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           <Step1PersonalInfo
             onNext={(data) => handleEditSave(data)}
             initialData={formData}
+            submitLabel="Save"
           />
         </DialogContent>
       </Dialog>
@@ -350,6 +351,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>
@@ -363,6 +366,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>
@@ -376,6 +381,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>
@@ -389,6 +396,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>
@@ -402,6 +411,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>
@@ -415,6 +426,8 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
           />
         </DialogContent>
       </Dialog>

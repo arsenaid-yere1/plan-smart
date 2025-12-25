@@ -24,12 +24,16 @@ interface Step4bProps {
   onNext: (data: OnboardingStep4AssetsDebtsData) => void;
   onBack: () => void;
   initialData?: Partial<OnboardingStep4AssetsDebtsData>;
+  submitLabel?: string;
+  cancelLabel?: string;
 }
 
 export function Step4bAssetsDebts({
   onNext,
   onBack,
   initialData,
+  submitLabel = 'Continue',
+  cancelLabel = 'Back',
 }: Step4bProps) {
   const {
     register,
@@ -215,10 +219,10 @@ export function Step4bAssetsDebts({
               onClick={onBack}
               className="flex-1"
             >
-              Back
+              {cancelLabel}
             </Button>
             <Button type="submit" className="flex-1">
-              Continue
+              {submitLabel}
             </Button>
           </div>
         </form>
