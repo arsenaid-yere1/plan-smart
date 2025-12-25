@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Navigation, SkipToContent } from '@/components/layout';
 import { ThemeProvider } from '@/components/theme';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 const inter = Inter({
@@ -32,6 +33,7 @@ export default function RootLayout({
           <SkipToContent />
           <Navigation />
           <main id="main-content">{children}</main>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

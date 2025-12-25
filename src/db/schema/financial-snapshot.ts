@@ -46,6 +46,7 @@ export const financialSnapshot = pgTable('financial_snapshot', {
   // Financial data from onboarding (existing)
   birthYear: integer('birth_year').notNull(),
   targetRetirementAge: integer('target_retirement_age').notNull(),
+  maxAge: integer('max_age').default(90),
   filingStatus: text('filing_status').notNull(),
   annualIncome: numeric('annual_income', { precision: 12, scale: 2 }).notNull(),
   savingsRate: numeric('savings_rate', { precision: 5, scale: 2 }).notNull(),
