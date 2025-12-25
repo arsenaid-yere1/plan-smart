@@ -204,14 +204,48 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                 </div>
                 <div className="text-right">
                   <div>{formatCurrency(account.balance)}</div>
-                  {account.monthlyContribution && account.monthlyContribution > 0 && (
+                  {account.monthlyContribution !== undefined && account.monthlyContribution > 0 && (
                     <div className="text-muted-foreground text-xs">
                       +{formatCurrency(account.monthlyContribution)}/mo
+                      {profileData.annualIncome > 0 && (
+                        <span className="ml-1">
+                          ({((account.monthlyContribution * 12 / profileData.annualIncome) * 100).toFixed(1)}% of income)
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             ))}
+            {/* Total contributions summary */}
+            {(() => {
+              const totalMonthlyContribution = profileData.investmentAccounts.reduce(
+                (sum, acc) => sum + (acc.monthlyContribution ?? 0),
+                0
+              );
+              const totalBalance = profileData.investmentAccounts.reduce(
+                (sum, acc) => sum + acc.balance,
+                0
+              );
+              return (
+                <div className="flex justify-between pt-2 font-medium border-t">
+                  <span>Total</span>
+                  <div className="text-right">
+                    <div>{formatCurrency(totalBalance)}</div>
+                    {totalMonthlyContribution > 0 && (
+                      <div className="text-muted-foreground text-xs font-normal">
+                        +{formatCurrency(totalMonthlyContribution)}/mo
+                        {profileData.annualIncome > 0 && (
+                          <span className="ml-1">
+                            ({((totalMonthlyContribution * 12 / profileData.annualIncome) * 100).toFixed(1)}% of income)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No investment accounts added.</p>
