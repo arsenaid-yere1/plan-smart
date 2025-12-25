@@ -334,11 +334,11 @@ return (
 - [x] Linting passes: `npm run lint`
 
 #### Manual Verification
-- [ ] Status badge displays at top with correct color and icon
-- [ ] All 4 snapshot cards visible on desktop without scrolling
-- [ ] Cards show correct values
-- [ ] Chart renders below cards
-- [ ] Table collapses properly
+- [x] Status badge displays at top with correct color and icon
+- [x] All 4 snapshot cards visible on desktop without scrolling
+- [x] Cards show correct values
+- [x] Chart renders below cards
+- [x] Table collapses properly
 
 ---
 
@@ -422,9 +422,9 @@ const shortfallXValue = useMemo(() => {
 - [x] Chart tests pass: `npm test -- --run src/components/projections/__tests__/ProjectionChart.test.ts`
 
 #### Manual Verification
-- [ ] Shortfall line appears on chart when funds deplete
-- [ ] Shortfall line does NOT appear when funds are sustainable
-- [ ] Legend shows "Funds Depleted" entry when applicable
+- [x] Shortfall line appears on chart when funds deplete
+- [x] Shortfall line does NOT appear when funds are sustainable
+- [x] Legend shows "Funds Depleted" entry when applicable
 
 ---
 
@@ -484,9 +484,9 @@ if (projectionError) {
 - [x] Build succeeds: `npm run build`
 
 #### Manual Verification
-- [ ] When projection fails, error UI displays with "Edit Inputs" button
-- [ ] Clicking "Edit Inputs" navigates to `/onboarding`
-- [ ] No blank or partially rendered states
+- [x] When projection fails, error UI displays with "Edit Inputs" button
+- [x] Clicking "Edit Inputs" navigates to `/onboarding`
+- [x] No blank or partially rendered states
 
 ---
 
@@ -623,8 +623,8 @@ export const metadata: Metadata = {
 - [x] TypeScript compiles: `npm run typecheck`
 
 #### Manual Verification
-- [ ] Browser tab shows "Your Retirement Projection - Plan Smart"
-- [ ] View source shows correct meta description
+- [x] Browser tab shows "Your Retirement Projection - Plan Smart"
+- [x] View source shows correct meta description
 
 ---
 

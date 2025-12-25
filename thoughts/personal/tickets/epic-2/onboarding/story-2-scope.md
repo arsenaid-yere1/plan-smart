@@ -1,4 +1,4 @@
-# Story 2.0 — Display Financial Results After Onboarding (Core Aha Moment)
+# Story 2.2 — Display Financial Results After Onboarding (Core Aha Moment)
 
 As a user, after completing onboarding, I want to immediately see my financial projection and key retirement metrics so I understand where I stand.
 

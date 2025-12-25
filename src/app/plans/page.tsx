@@ -230,22 +230,12 @@ export default async function PlansPage() {
   // Get retirement status
   const statusResult = getRetirementStatus(projection!.summary, currentAge);
 
-  // Calculate total monthly spending at retirement (matching engine outflows)
-  // This includes both general expenses and healthcare, each with their own inflation rate
-  const yearsToRetirement = Math.max(0, retirementAge - currentAge);
-
-  // General expenses inflation-adjusted
-  const generalInflationFactor = Math.pow(1 + DEFAULT_INFLATION_RATE, yearsToRetirement);
-  const annualExpensesAtRetirement = annualExpenses * generalInflationFactor;
-
-  // Healthcare costs inflation-adjusted (uses higher healthcare inflation rate)
-  const healthcareCosts = estimateHealthcareCosts(retirementAge);
-  const healthcareInflationFactor = Math.pow(1 + DEFAULT_HEALTHCARE_INFLATION_RATE, yearsToRetirement);
-  const healthcareAtRetirement = healthcareCosts * healthcareInflationFactor;
-
-  // Total monthly spending = (general + healthcare) / 12
-  const totalAnnualSpendingAtRetirement = annualExpensesAtRetirement + healthcareAtRetirement;
-  const monthlySpendingAtRetirement = Math.round(totalAnnualSpendingAtRetirement / 12);
+  // Get monthly spending at retirement from the projection data
+  // This matches the engine's outflow at retirement age exactly
+  const retirementYearRecord = projection!.records.find(r => r.age === retirementAge);
+  const monthlySpendingAtRetirement = retirementYearRecord
+    ? Math.round(retirementYearRecord.outflows / 12)
+    : Math.round((annualExpenses + estimateHealthcareCosts(retirementAge)) / 12);
 
   // Format currency helper
   const formatCurrency = (value: number) => {
