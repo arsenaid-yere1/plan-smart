@@ -21,6 +21,7 @@ interface ProjectionChartProps {
   retirementAge: number;
   currentAge: number;
   inflationRate?: number;
+  shortfallAge?: number;
 }
 
 function formatCurrency(value: number): string {
@@ -46,6 +47,7 @@ export function ProjectionChart({
   retirementAge,
   currentAge,
   inflationRate = 0.025,
+  shortfallAge,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(false);
@@ -129,6 +131,16 @@ export function ProjectionChart({
     const currentYear = new Date().getFullYear();
     return currentYear + (retirementAge - currentAge);
   }, [xAxisType, retirementAge, currentAge]);
+
+  const shortfallXValue = useMemo(() => {
+    if (!shortfallAge) return null;
+    if (xAxisType === 'age') {
+      return shortfallAge;
+    }
+    // Calculate shortfall year from current age
+    const currentYear = new Date().getFullYear();
+    return currentYear + (shortfallAge - currentAge);
+  }, [xAxisType, shortfallAge, currentAge]);
 
   const minBalance = Math.min(...records.map((r) => r.balance));
   const hasNegativeBalance = minBalance < 0;
@@ -306,6 +318,20 @@ export function ProjectionChart({
                 fontSize: 12,
               }}
             />
+            {/* Shortfall marker */}
+            {shortfallXValue !== null && (
+              <ReferenceLine
+                x={shortfallXValue}
+                stroke="hsl(var(--destructive))"
+                strokeDasharray="5 5"
+                label={{
+                  value: 'Shortfall',
+                  position: 'top',
+                  fill: 'hsl(var(--destructive))',
+                  fontSize: 12,
+                }}
+              />
+            )}
             {/* Accumulation phase area (light primary fill) */}
             <Area
               type="monotone"
@@ -382,6 +408,12 @@ export function ProjectionChart({
           <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
           <span>Retirement Start</span>
         </div>
+        {shortfallAge && (
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-0.5 border-l-2 border-dashed border-destructive" />
+            <span>Funds Depleted</span>
+          </div>
+        )}
       </div>
     </div>
   );
