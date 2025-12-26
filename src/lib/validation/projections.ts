@@ -47,6 +47,14 @@ export const projectionRequestSchema = z.object({
     .max(0.10, 'Contribution growth rate cannot exceed 10%')
     .optional(),
 
+  // Retirement age override (30-80)
+  retirementAge: z
+    .number()
+    .int()
+    .min(30, 'Retirement age must be at least 30')
+    .max(80, 'Retirement age cannot exceed 80')
+    .optional(),
+
   // Social Security claiming age (62-70)
   socialSecurityAge: z
     .number()

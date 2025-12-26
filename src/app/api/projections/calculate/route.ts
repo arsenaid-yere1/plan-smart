@@ -87,14 +87,17 @@ async function calculateProjection(userId: string, overrides: Record<string, unk
   const debts = (snapshot.debts || []) as DebtJson[];
   const annualDebtPayments = estimateAnnualDebtPayments(debts);
 
+  // Determine retirement age (allow override)
+  const retirementAge = (overrides.retirementAge as number) ?? snapshot.targetRetirementAge;
+
   // Estimate healthcare costs based on retirement age (use retirement age for initial estimate)
   const annualHealthcareCosts = (overrides.annualHealthcareCosts as number) ??
-    estimateHealthcareCosts(snapshot.targetRetirementAge);
+    estimateHealthcareCosts(retirementAge);
 
   // Build projection input with defaults and overrides
   const projectionInput: ProjectionInput = {
     currentAge,
-    retirementAge: snapshot.targetRetirementAge,
+    retirementAge,
     maxAge: (overrides.maxAge as number) ?? DEFAULT_MAX_AGE,
     balancesByType,
     annualContribution,
