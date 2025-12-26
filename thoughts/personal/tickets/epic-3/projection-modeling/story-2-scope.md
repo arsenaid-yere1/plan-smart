@@ -1,4 +1,4 @@
-# Scope Document — Story 2: Visualize Assets Over Time
+# Scope Document — Story 3.2: Visualize Assets Over Time
 
 ## Epic Goal
 Calculate and visualize a user’s retirement trajectory (accumulation + drawdown) using transparent, explainable, and deterministic assumptions that can be recomputed quickly for AI-driven “what-if” analysis.

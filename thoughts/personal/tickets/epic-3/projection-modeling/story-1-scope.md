@@ -13,7 +13,7 @@ Calculate and visualize a user’s retirement trajectory (accumulation + drawdow
 
 ---
 
-# Story 1 — Run Core Retirement Projection
+# Story 3.1 — Run Core Retirement Projection
 
 ## User Story
 As a user, I want the system to project my asset balance over time so I can see whether my money lasts through retirement.
