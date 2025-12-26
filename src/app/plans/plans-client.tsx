@@ -8,7 +8,7 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown } from 'lucide-react';
 import { ProjectionChart, ProjectionTable, AssumptionsPanel, type Assumptions } from '@/components/projections';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
@@ -31,6 +31,7 @@ export function PlansClient({
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mobileAssumptionsOpen, setMobileAssumptionsOpen] = useState(false);
 
   // Debounced recalculation
   useEffect(() => {
@@ -151,6 +152,43 @@ export function PlansClient({
         </Alert>
       )}
 
+      {/* Mobile Assumptions Panel - Collapsible */}
+      <div className="lg:hidden">
+        <div
+          className="flex items-center justify-between p-4 border rounded-lg cursor-pointer"
+          onClick={() => setMobileAssumptionsOpen(!mobileAssumptionsOpen)}
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Adjust Assumptions</span>
+            {(assumptions.expectedReturn !== defaultAssumptions.expectedReturn ||
+              assumptions.inflationRate !== defaultAssumptions.inflationRate ||
+              assumptions.retirementAge !== defaultAssumptions.retirementAge) && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                Modified
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={cn(
+              'h-5 w-5 transition-transform',
+              mobileAssumptionsOpen && 'rotate-180'
+            )}
+          />
+        </div>
+        {mobileAssumptionsOpen && (
+          <div className="mt-2">
+            <AssumptionsPanel
+              assumptions={assumptions}
+              defaultAssumptions={defaultAssumptions}
+              currentAge={currentAge}
+              onChange={setAssumptions}
+              onReset={handleReset}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         {/* Left Column: Chart & Metrics */}
@@ -229,8 +267,8 @@ export function PlansClient({
           />
         </div>
 
-        {/* Right Column: Assumptions Panel */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
+        {/* Right Column: Assumptions Panel (Desktop only) */}
+        <div className="hidden lg:block lg:sticky lg:top-6 lg:self-start">
           <AssumptionsPanel
             assumptions={assumptions}
             defaultAssumptions={defaultAssumptions}
