@@ -15,10 +15,8 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
-import { ProjectionChart, ProjectionTable } from '@/components/projections';
-import { runProjection, getRetirementStatus, type RetirementStatus } from '@/lib/projections';
-import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
+import { runProjection } from '@/lib/projections';
 import type { ProjectionInput } from '@/lib/projections/types';
 import {
   DEFAULT_INFLATION_RATE,
@@ -43,6 +41,7 @@ import type {
   DebtJson,
   IncomeExpensesJson,
 } from '@/db/schema/financial-snapshot';
+import { PlansClient } from './plans-client';
 
 export const metadata: Metadata = {
   title: 'Your Retirement Projection - Plan Smart',
@@ -227,154 +226,20 @@ export default async function PlansPage() {
     );
   }
 
-  // Get retirement status
-  const statusResult = getRetirementStatus(projection!.summary, currentAge);
-
-  // Current monthly spending (matches profile page - no healthcare, no inflation)
-  const currentMonthlySpending = Math.round(annualExpenses / 12);
-
-  // Format currency helper
-  const formatCurrency = (value: number) => {
-    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `$${Math.round(value / 1_000)}K`;
-    return `$${Math.round(value)}`;
-  };
-
-  const formatFullCurrency = (value: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(value);
-
-  // Status icon component
-  const StatusIcon = ({ status }: { status: RetirementStatus }) => {
-    switch (status) {
-      case 'on-track':
-        return <CheckCircle2 className="h-6 w-6" />;
-      case 'needs-adjustment':
-        return <AlertTriangle className="h-6 w-6" />;
-      case 'at-risk':
-        return <XCircle className="h-6 w-6" />;
-    }
+  // Build default assumptions from profile data
+  const defaultAssumptions = {
+    expectedReturn,
+    inflationRate: DEFAULT_INFLATION_RATE,
+    retirementAge,
   };
 
   return (
     <PageContainer>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Your Retirement Projection
-          </h1>
-          <p className="text-muted-foreground">
-            Based on your financial information, here&apos;s where you stand.
-          </p>
-        </div>
-
-        {/* Screen Reader Summary */}
-        <div className="sr-only" role="status" aria-live="polite">
-          Your retirement projection shows {statusResult.label}.
-          Estimated assets at retirement: {formatFullCurrency(projection!.summary.projectedRetirementBalance)}.
-          {projection!.summary.yearsUntilDepletion
-            ? `Funds may run out at age ${currentAge + projection!.summary.yearsUntilDepletion}.`
-            : 'Funds are projected to last through age 90.'}
-        </div>
-
-        {/* Status Badge - Most Important Info First */}
-        <div
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full px-4 py-2 text-lg font-semibold',
-            statusResult.status === 'on-track' && 'bg-success/10 text-success',
-            statusResult.status === 'needs-adjustment' && 'bg-warning/10 text-warning',
-            statusResult.status === 'at-risk' && 'bg-destructive/10 text-destructive'
-          )}
-        >
-          <StatusIcon status={statusResult.status} />
-          {statusResult.label}
-        </div>
-
-        {/* Snapshot Cards - 4 Column Grid */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          {/* Assets at Retirement */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>At Retirement (Age {retirementAge})</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {formatCurrency(projection!.summary.projectedRetirementBalance)}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Spending */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Monthly Spending</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {formatCurrency(currentMonthlySpending)}
-                <span className="text-sm font-normal text-muted-foreground">/mo</span>
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Retirement Age */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Retirement Age</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {retirementAge}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Shortfall Year */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Funds Last Until</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {projection!.summary.yearsUntilDepletion === null ? (
-                <p className="text-2xl font-bold text-success">Age 90+</p>
-              ) : (
-                <p className="text-2xl font-bold text-destructive">
-                  Age {currentAge + projection!.summary.yearsUntilDepletion}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Chart - No Card Wrapper, Reduced Height */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">Assets Over Time</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Your projected balance from age {currentAge} to {DEFAULT_MAX_AGE}
-          </p>
-          <ProjectionChart
-            records={projection!.records}
-            retirementAge={retirementAge}
-            currentAge={currentAge}
-            inflationRate={DEFAULT_INFLATION_RATE}
-            shortfallAge={
-              projection!.summary.yearsUntilDepletion !== null
-                ? currentAge + projection!.summary.yearsUntilDepletion
-                : undefined
-            }
-          />
-        </div>
-
-        {/* Collapsible Table */}
-        <ProjectionTable
-          records={projection!.records}
-          retirementAge={retirementAge}
-        />
-      </div>
+      <PlansClient
+        initialProjection={projection!}
+        currentAge={currentAge}
+        defaultAssumptions={defaultAssumptions}
+      />
     </PageContainer>
   );
 }
