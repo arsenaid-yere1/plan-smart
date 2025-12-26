@@ -233,12 +233,16 @@ export default async function PlansPage() {
     retirementAge,
   };
 
+  // Calculate monthly spending for display
+  const monthlySpending = Math.round(annualExpenses / 12);
+
   return (
     <PageContainer>
       <PlansClient
         initialProjection={projection!}
         currentAge={currentAge}
         defaultAssumptions={defaultAssumptions}
+        monthlySpending={monthlySpending}
       />
     </PageContainer>
   );

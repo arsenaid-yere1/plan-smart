@@ -18,12 +18,14 @@ interface PlansClientProps {
   initialProjection: ProjectionResult;
   currentAge: number;
   defaultAssumptions: Assumptions;
+  monthlySpending: number;
 }
 
 export function PlansClient({
   initialProjection,
   currentAge,
   defaultAssumptions,
+  monthlySpending,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(defaultAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
@@ -194,11 +196,12 @@ export function PlansClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Expected Return</CardDescription>
+                <CardDescription>Monthly Spending</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-foreground">
-                  {(assumptions.expectedReturn * 100).toFixed(1)}%
+                  {formatCurrency(monthlySpending)}
+                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
                 </p>
               </CardContent>
             </Card>
