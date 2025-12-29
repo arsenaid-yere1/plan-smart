@@ -33,7 +33,7 @@ export function ProjectionTable({ records, retirementAge }: ProjectionTableProps
   }, [records, retirementAge]);
 
   const handleExportCSV = () => {
-    const headers = ['Age', 'Year', 'Balance', 'Inflows', 'Outflows', 'Net Change', 'Phase'];
+    const headers = ['Age', 'Year', 'Balance', 'Income', 'Expenses', 'Net Change', 'Phase'];
     const rows = tableData.map((row) => [
       row.age,
       row.year,
@@ -97,8 +97,8 @@ export function ProjectionTable({ records, retirementAge }: ProjectionTableProps
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Age</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Year</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">Balance</th>
-                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Inflows</th>
-                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Outflows</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Income</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Expenses</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">Net Change</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Phase</th>
                   </tr>

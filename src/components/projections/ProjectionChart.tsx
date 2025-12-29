@@ -283,12 +283,12 @@ export function ProjectionChart({
                     )}
                     {data.inflows > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        Inflows: {formatTooltipCurrency(data.inflows)}
+                        Income: {formatTooltipCurrency(data.inflows)}
                       </p>
                     )}
                     {data.outflows > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        Outflows: {formatTooltipCurrency(data.outflows)}
+                        Expenses: {formatTooltipCurrency(data.outflows)}
                       </p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
