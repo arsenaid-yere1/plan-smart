@@ -18,10 +18,55 @@ import {
   estimateAnnualDebtPayments,
   estimateHealthcareCosts,
 } from '@/lib/projections/assumptions';
-import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput } from '@/lib/projections/types';
+import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream } from '@/lib/projections/types';
 import type { RiskTolerance } from '@/types/database';
-import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson } from '@/db/schema/financial-snapshot';
+import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson } from '@/db/schema/financial-snapshot';
 import { createTimer } from '@/lib/monitoring/performance';
+
+/**
+ * Build income streams from snapshot with backward compatibility
+ * If incomeStreams exists, use it. Otherwise, generate SS stream from legacy fields.
+ */
+function buildIncomeStreams(
+  snapshot: {
+    incomeStreams?: IncomeStreamJson[] | null;
+    annualIncome: string;
+  },
+  overrides?: {
+    incomeStreams?: IncomeStream[];
+    socialSecurityAge?: number;
+    socialSecurityMonthly?: number;
+  }
+): IncomeStream[] {
+  // If overrides provide income streams, use those
+  if (overrides?.incomeStreams && overrides.incomeStreams.length > 0) {
+    return overrides.incomeStreams;
+  }
+
+  // If snapshot has income streams, use those
+  if (snapshot.incomeStreams && snapshot.incomeStreams.length > 0) {
+    return snapshot.incomeStreams;
+  }
+
+  // Backward compatibility: generate Social Security stream from legacy approach
+  const ssAge = overrides?.socialSecurityAge ?? DEFAULT_SS_AGE;
+  const ssMonthly = overrides?.socialSecurityMonthly ??
+    estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
+
+  if (ssMonthly <= 0) {
+    return [];
+  }
+
+  return [{
+    id: 'ss-auto',
+    name: 'Social Security',
+    type: 'social_security' as const,
+    annualAmount: ssMonthly * 12,
+    startAge: ssAge,
+    endAge: undefined,
+    inflationAdjusted: true,
+  }];
+}
 
 /**
  * Helper to run projection and return response
@@ -94,6 +139,13 @@ async function calculateProjection(userId: string, overrides: Record<string, unk
   const annualHealthcareCosts = (overrides.annualHealthcareCosts as number) ??
     estimateHealthcareCosts(retirementAge);
 
+  // Build income streams with backward compatibility
+  const incomeStreams = buildIncomeStreams(snapshot, overrides as {
+    incomeStreams?: IncomeStream[];
+    socialSecurityAge?: number;
+    socialSecurityMonthly?: number;
+  });
+
   // Build projection input with defaults and overrides
   const projectionInput: ProjectionInput = {
     currentAge,
@@ -108,9 +160,7 @@ async function calculateProjection(userId: string, overrides: Record<string, unk
     annualExpenses,
     annualHealthcareCosts,
     healthcareInflationRate: (overrides.healthcareInflationRate as number) ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
-    socialSecurityAge: (overrides.socialSecurityAge as number) ?? DEFAULT_SS_AGE,
-    socialSecurityMonthly: (overrides.socialSecurityMonthly as number) ??
-      estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome)),
+    incomeStreams, // New: replaces socialSecurityAge/socialSecurityMonthly
     annualDebtPayments,
   };
 
@@ -133,8 +183,7 @@ async function calculateProjection(userId: string, overrides: Record<string, unk
       expectedReturn: projectionInput.expectedReturn,
       inflationRate: projectionInput.inflationRate,
       contributionGrowthRate: projectionInput.contributionGrowthRate,
-      socialSecurityAge: projectionInput.socialSecurityAge,
-      socialSecurityMonthly: projectionInput.socialSecurityMonthly,
+      incomeStreams: projectionInput.incomeStreams, // New field
       // Derived values for transparency
       annualExpenses,
       annualDebtPayments,

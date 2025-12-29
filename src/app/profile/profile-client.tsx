@@ -10,6 +10,7 @@ import { Step4RiskTolerance } from '@/components/onboarding/step4-risk-tolerance
 import { Step2bSavingsContributions } from '@/components/onboarding/step2b-savings-contributions';
 import { Step3bIncomeExpenses } from '@/components/onboarding/step3b-income-expenses';
 import { Step4bAssetsDebts } from '@/components/onboarding/step4b-assets-debts';
+import { StepIncomeStreams } from '@/components/onboarding/step-income-streams';
 import { useToast } from '@/hooks/use-toast';
 import type { FilingStatus, RiskTolerance } from '@/types/database';
 import type {
@@ -17,6 +18,7 @@ import type {
   PrimaryResidenceJson,
   DebtJson,
   IncomeExpensesJson,
+  IncomeStreamJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
 
@@ -32,6 +34,7 @@ export interface ProfileData {
   primaryResidence: PrimaryResidenceJson | null;
   debts: DebtJson[];
   incomeExpenses: IncomeExpensesJson | null;
+  incomeStreams: IncomeStreamJson[];
 }
 
 type EditSection =
@@ -42,6 +45,7 @@ type EditSection =
   | 'savings'
   | 'expenses'
   | 'assets'
+  | 'income-streams'
   | null;
 
 interface ProfileClientProps {
@@ -112,6 +116,20 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       type: debt.type as CompleteOnboardingDataV2['debts'][0]['type'],
     })),
     incomeExpenses: profileData.incomeExpenses ?? undefined,
+    incomeStreams: profileData.incomeStreams ?? [],
+  };
+
+  // Helper to format income stream type for display
+  const formatIncomeStreamType = (type: string) => {
+    const typeMap: Record<string, string> = {
+      social_security: 'Social Security',
+      pension: 'Pension',
+      rental: 'Rental Income',
+      annuity: 'Annuity',
+      part_time: 'Part-Time Work',
+      other: 'Other',
+    };
+    return typeMap[type] || type;
   };
 
   return (
@@ -328,6 +346,60 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
         </div>
       </Collapsible>
 
+      {/* Retirement Income Streams Section */}
+      <Collapsible
+        title="Retirement Income Streams"
+        defaultOpen
+        onEdit={() => setEditSection('income-streams')}
+      >
+        {profileData.incomeStreams && profileData.incomeStreams.length > 0 ? (
+          <div className="space-y-3">
+            {profileData.incomeStreams.map((stream) => (
+              <div key={stream.id} className="flex justify-between text-sm border-b pb-2 last:border-0">
+                <div>
+                  <span className="font-medium">{stream.name}</span>
+                  <span className="text-muted-foreground ml-2">
+                    ({formatIncomeStreamType(stream.type)})
+                  </span>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Ages {stream.startAge}{stream.endAge ? ` - ${stream.endAge}` : '+'}
+                    {stream.inflationAdjusted && ' • Inflation-adjusted'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div>{formatCurrency(stream.annualAmount)}/yr</div>
+                  <div className="text-muted-foreground text-xs">
+                    {formatCurrency(Math.round(stream.annualAmount / 12))}/mo
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Total annual income summary */}
+            {(() => {
+              const totalAnnualIncome = profileData.incomeStreams.reduce(
+                (sum, stream) => sum + stream.annualAmount,
+                0
+              );
+              return (
+                <div className="flex justify-between pt-2 font-medium border-t">
+                  <span>Total Annual</span>
+                  <div className="text-right">
+                    <div>{formatCurrency(totalAnnualIncome)}/yr</div>
+                    <div className="text-muted-foreground text-xs font-normal">
+                      {formatCurrency(Math.round(totalAnnualIncome / 12))}/mo
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No retirement income streams configured. Add Social Security, pensions, or other income sources.
+          </p>
+        )}
+      </Collapsible>
+
       {/* Edit Dialogs */}
       <Dialog open={editSection === 'basics'} onOpenChange={handleEditClose}>
         <DialogContent className="max-w-lg">
@@ -423,6 +495,21 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             <DialogTitle>Edit Assets & Debts</DialogTitle>
           </DialogHeader>
           <Step4bAssetsDebts
+            onNext={(data) => handleEditSave(data)}
+            onBack={handleEditClose}
+            initialData={formData}
+            submitLabel="Save"
+            cancelLabel="Cancel"
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editSection === 'income-streams'} onOpenChange={handleEditClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Retirement Income Streams</DialogTitle>
+          </DialogHeader>
+          <StepIncomeStreams
             onNext={(data) => handleEditSave(data)}
             onBack={handleEditClose}
             initialData={formData}

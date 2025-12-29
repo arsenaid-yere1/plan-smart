@@ -5,5 +5,6 @@ export { Step4RiskTolerance } from './step4-risk-tolerance';
 export { Step2bSavingsContributions } from './step2b-savings-contributions';
 export { Step3bIncomeExpenses } from './step3b-income-expenses';
 export { Step4bAssetsDebts } from './step4b-assets-debts';
+export { StepIncomeStreams } from './step-income-streams';
 export { Step5Review } from './step5-review';
 export { SmartIntake } from './smart-intake';

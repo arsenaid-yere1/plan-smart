@@ -37,6 +37,16 @@ export type IncomeExpensesJson = {
   monthlyDiscretionary?: number;
 };
 
+export type IncomeStreamJson = {
+  id: string;
+  name: string;
+  type: 'social_security' | 'pension' | 'rental' | 'annuity' | 'part_time' | 'other';
+  annualAmount: number;
+  startAge: number;
+  endAge?: number;
+  inflationAdjusted: boolean;
+};
+
 export const financialSnapshot = pgTable('financial_snapshot', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -56,6 +66,9 @@ export const financialSnapshot = pgTable('financial_snapshot', {
   primaryResidence: jsonb('primary_residence').$type<PrimaryResidenceJson>(),
   debts: jsonb('debts').$type<DebtJson[]>(),
   incomeExpenses: jsonb('income_expenses').$type<IncomeExpensesJson>(),
+
+  // Epic 3: Income streams for retirement
+  incomeStreams: jsonb('income_streams').$type<IncomeStreamJson[]>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

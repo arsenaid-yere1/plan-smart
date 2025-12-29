@@ -10,6 +10,7 @@ import {
   Step2bSavingsContributions,
   Step3bIncomeExpenses,
   Step4bAssetsDebts,
+  StepIncomeStreams,
   Step5Review,
   SmartIntake,
 } from '@/components/onboarding';
@@ -22,6 +23,7 @@ type WizardStep =
   | 'income-savings'
   | 'savings-accounts'
   | 'expenses'
+  | 'income-streams'
   | 'assets-debts'
   | 'risk'
   | 'review';
@@ -33,6 +35,7 @@ const STEP_ORDER: WizardStep[] = [
   'income-savings',
   'savings-accounts',
   'expenses',
+  'income-streams',
   'assets-debts',
   'risk',
   'review',
@@ -45,6 +48,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   'income-savings': 'Income & Savings',
   'savings-accounts': 'Investment Accounts',
   expenses: 'Monthly Expenses',
+  'income-streams': 'Retirement Income',
   'assets-debts': 'Assets & Debts',
   risk: 'Risk Tolerance',
   review: 'Review',
@@ -181,6 +185,14 @@ export default function OnboardingPage() {
 
         {currentStep === 'expenses' && (
           <Step3bIncomeExpenses
+            onNext={handleStepComplete}
+            onBack={goBack}
+            initialData={formData}
+          />
+        )}
+
+        {currentStep === 'income-streams' && (
+          <StepIncomeStreams
             onNext={handleStepComplete}
             onBack={goBack}
             initialData={formData}

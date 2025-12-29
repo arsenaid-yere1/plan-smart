@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
       primaryResidence: data.primaryResidence || null,
       debts: data.debts || [],
       incomeExpenses: data.incomeExpenses || null,
+      // Epic 3: Income streams
+      incomeStreams: data.incomeStreams || [],
     });
 
     // Calculate total savings for plan config

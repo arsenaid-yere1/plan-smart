@@ -7,6 +7,7 @@ import {
   step2SavingsSchema,
   step3IncomeExpensesSchema,
   step4AssetsDebtsSchema,
+  stepIncomeStreamsSchema,
 } from './onboarding';
 
 // Partial schema for profile updates - all fields optional
@@ -17,6 +18,7 @@ export const profileUpdateSchema = step1Schema
   .merge(step2SavingsSchema)
   .merge(step3IncomeExpensesSchema)
   .merge(step4AssetsDebtsSchema)
+  .merge(stepIncomeStreamsSchema)
   .partial();
 
 export type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;

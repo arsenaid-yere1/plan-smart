@@ -22,6 +22,13 @@
       "when": 1765472750526,
       "tag": "0002_many_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767044256974,
+      "tag": "0003_flashy_crystal",
+      "breakpoints": true
     }
   ]
 }

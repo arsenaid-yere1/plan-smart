@@ -1,6 +1,19 @@
 import { z } from 'zod';
 
 /**
+ * Income stream validation schema
+ */
+export const incomeStreamSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'Income stream name is required'),
+  type: z.enum(['social_security', 'pension', 'rental', 'annuity', 'part_time', 'other']),
+  annualAmount: z.number().min(0, 'Amount cannot be negative'),
+  startAge: z.number().min(0).max(120),
+  endAge: z.number().min(0).max(120).optional(),
+  inflationAdjusted: z.boolean(),
+});
+
+/**
  * Contribution allocation schema - percentages must sum to 100
  */
 export const contributionAllocationSchema = z
@@ -55,7 +68,7 @@ export const projectionRequestSchema = z.object({
     .max(80, 'Retirement age cannot exceed 80')
     .optional(),
 
-  // Social Security claiming age (62-70)
+  // Legacy Social Security claiming age (62-70) - still supported for backward compatibility
   socialSecurityAge: z
     .number()
     .int()
@@ -63,12 +76,15 @@ export const projectionRequestSchema = z.object({
     .max(70, 'Social Security age cannot exceed 70')
     .optional(),
 
-  // Monthly Social Security benefit
+  // Legacy Monthly Social Security benefit - still supported for backward compatibility
   socialSecurityMonthly: z
     .number()
     .min(0, 'Social Security benefit cannot be negative')
     .max(10000, 'Social Security benefit cannot exceed $10,000/month')
     .optional(),
+
+  // New income streams field
+  incomeStreams: z.array(incomeStreamSchema).optional(),
 
   // Healthcare cost overrides
   annualHealthcareCosts: z

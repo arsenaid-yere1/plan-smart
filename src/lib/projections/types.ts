@@ -6,6 +6,30 @@ import type { AccountType } from '@/types/onboarding';
 export type TaxCategory = 'taxDeferred' | 'taxFree' | 'taxable';
 
 /**
+ * Type of income stream
+ */
+export type IncomeStreamType =
+  | 'social_security'
+  | 'pension'
+  | 'rental'
+  | 'annuity'
+  | 'part_time'
+  | 'other';
+
+/**
+ * Individual income stream for retirement projection
+ */
+export interface IncomeStream {
+  id: string;
+  name: string;
+  type: IncomeStreamType;
+  annualAmount: number;      // In today's dollars
+  startAge: number;          // Age when income begins
+  endAge?: number;           // Age when income ends (undefined = lifetime)
+  inflationAdjusted: boolean; // Whether to apply COLA
+}
+
+/**
  * Mapping of account types to tax categories
  */
 export const ACCOUNT_TAX_CATEGORY: Record<AccountType, TaxCategory> = {
@@ -58,9 +82,8 @@ export interface ProjectionInput {
   annualHealthcareCosts: number;
   healthcareInflationRate: number;
 
-  // Social Security parameters
-  socialSecurityAge: number;
-  socialSecurityMonthly: number;
+  // Income streams (replaces socialSecurityAge/socialSecurityMonthly)
+  incomeStreams: IncomeStream[];
 
   // Annual debt payments (reduces effective contributions)
   annualDebtPayments: number;
@@ -82,9 +105,12 @@ export interface ProjectionRequest {
   // Annual contribution growth rate (default 0%)
   contributionGrowthRate?: number;
 
-  // Social Security parameters
+  // Legacy Social Security parameters (still supported for backward compatibility)
   socialSecurityAge?: number;
   socialSecurityMonthly?: number;
+
+  // Income streams override
+  incomeStreams?: IncomeStream[];
 
   // Healthcare cost overrides
   annualHealthcareCosts?: number;

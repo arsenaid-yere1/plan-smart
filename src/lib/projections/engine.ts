@@ -4,6 +4,7 @@ import type {
   ProjectionResult,
   BalanceByType,
   WithdrawalResult,
+  IncomeStream,
 } from './types';
 
 /**
@@ -89,6 +90,24 @@ function totalBalance(balances: BalanceByType): number {
 }
 
 /**
+ * Calculate total income from all active streams for a given age
+ */
+function calculateTotalIncome(
+  streams: IncomeStream[],
+  age: number,
+  inflationMultiplier: number
+): number {
+  return streams.reduce((total, stream) => {
+    // Check if stream is active this year
+    if (age >= stream.startAge && (stream.endAge === undefined || age <= stream.endAge)) {
+      const streamInflation = stream.inflationAdjusted ? inflationMultiplier : 1;
+      return total + stream.annualAmount * streamInflation;
+    }
+    return total;
+  }, 0);
+}
+
+/**
  * Run the complete retirement projection
  *
  * Uses end-of-year model:
@@ -155,14 +174,11 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       // Total expenses = general + healthcare
       const expensesNeeded = generalExpenses + healthcareExpenses;
 
-      // Calculate Social Security income (inflation-adjusted, starts at SS age)
-      let ssIncome = 0;
-      if (age >= input.socialSecurityAge && input.socialSecurityMonthly > 0) {
-        ssIncome = (input.socialSecurityMonthly * 12) * inflationMultiplier;
-      }
+      // Calculate total income from all active streams
+      const totalIncome = calculateTotalIncome(input.incomeStreams, age, inflationMultiplier);
 
       // Net withdrawal needed from portfolio
-      const withdrawalNeeded = Math.max(0, expensesNeeded - ssIncome);
+      const withdrawalNeeded = Math.max(0, expensesNeeded - totalIncome);
 
       // Execute tax-aware withdrawal
       const withdrawalResult = withdrawFromAccounts(withdrawalNeeded, balances);
@@ -179,7 +195,7 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         withdrawalResult.withdrawals.taxFree +
         withdrawalResult.withdrawals.taxable;
 
-      inflows = ssIncome;
+      inflows = totalIncome;
       outflows = expensesNeeded;
       totalWithdrawals += actualWithdrawal;
 

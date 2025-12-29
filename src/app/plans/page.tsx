@@ -40,7 +40,9 @@ import type {
   InvestmentAccountJson,
   DebtJson,
   IncomeExpensesJson,
+  IncomeStreamJson,
 } from '@/db/schema/financial-snapshot';
+import type { IncomeStream } from '@/lib/projections/types';
 import { PlansClient } from './plans-client';
 
 export const metadata: Metadata = {
@@ -171,6 +173,30 @@ export default async function PlansPage() {
   const debts = (snapshot.debts || []) as DebtJson[];
   const annualDebtPayments = estimateAnnualDebtPayments(debts);
 
+  // Build income streams with backward compatibility
+  let incomeStreams: IncomeStream[];
+  const storedStreams = snapshot.incomeStreams as IncomeStreamJson[] | null;
+
+  if (storedStreams && storedStreams.length > 0) {
+    incomeStreams = storedStreams;
+  } else {
+    // Backward compatibility: generate Social Security stream
+    const ssMonthly = estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
+    if (ssMonthly > 0) {
+      incomeStreams = [{
+        id: 'ss-auto',
+        name: 'Social Security',
+        type: 'social_security' as const,
+        annualAmount: ssMonthly * 12,
+        startAge: DEFAULT_SS_AGE,
+        endAge: undefined,
+        inflationAdjusted: true,
+      }];
+    } else {
+      incomeStreams = [];
+    }
+  }
+
   // Build projection input
   const riskTolerance = snapshot.riskTolerance as RiskTolerance;
   const expectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
@@ -188,10 +214,7 @@ export default async function PlansPage() {
     annualExpenses,
     annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
     healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
-    socialSecurityAge: DEFAULT_SS_AGE,
-    socialSecurityMonthly: estimateSocialSecurityMonthly(
-      parseFloat(snapshot.annualIncome)
-    ),
+    incomeStreams,
     annualDebtPayments,
   };
 

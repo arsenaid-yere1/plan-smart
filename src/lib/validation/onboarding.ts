@@ -83,11 +83,29 @@ export const step4AssetsDebtsSchema = z.object({
   debts: z.array(debtSchema),
 });
 
-// Epic 2: Complete Schema V2
+// Epic 3: Income Streams Schema
+export const incomeStreamSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'Name is required'),
+  type: z.enum(['social_security', 'pension', 'rental', 'annuity', 'part_time', 'other']),
+  annualAmount: z.number().min(0, 'Amount cannot be negative'),
+  startAge: z.number().min(50, 'Start age must be at least 50').max(90, 'Start age must be 90 or less'),
+  endAge: z.number().min(50).max(120).optional(),
+  inflationAdjusted: z.boolean(),
+});
+
+export const stepIncomeStreamsSchema = z.object({
+  incomeStreams: z.array(incomeStreamSchema),
+});
+
+export type OnboardingStepIncomeStreamsData = z.infer<typeof stepIncomeStreamsSchema>;
+
+// Epic 2: Complete Schema V2 (with optional income streams from Epic 3)
 export const completeOnboardingSchemaV2 = step1Schema
   .merge(step2Schema)
   .merge(step3Schema)
   .merge(step4Schema)
   .merge(step2SavingsSchema)
   .merge(step3IncomeExpensesSchema)
-  .merge(step4AssetsDebtsSchema);
+  .merge(step4AssetsDebtsSchema)
+  .merge(stepIncomeStreamsSchema.partial());

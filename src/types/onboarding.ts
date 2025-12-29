@@ -100,6 +100,34 @@ export interface IncomeExpenses {
   monthlyDiscretionary?: number;
 }
 
+// Epic 3: Income Streams
+export type IncomeStreamType =
+  | 'social_security'
+  | 'pension'
+  | 'rental'
+  | 'annuity'
+  | 'part_time'
+  | 'other';
+
+export interface IncomeStream {
+  id: string;
+  name: string;
+  type: IncomeStreamType;
+  annualAmount: number;
+  startAge: number;
+  endAge?: number;
+  inflationAdjusted: boolean;
+}
+
+export const INCOME_STREAM_TYPE_OPTIONS = [
+  { value: 'social_security', label: 'Social Security' },
+  { value: 'pension', label: 'Pension' },
+  { value: 'rental', label: 'Rental Income' },
+  { value: 'annuity', label: 'Annuity' },
+  { value: 'part_time', label: 'Part-Time Work' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 // Epic 2: New Step Data Interfaces
 export interface OnboardingStep2SavingsData {
   investmentAccounts: InvestmentAccount[];
@@ -114,6 +142,11 @@ export interface OnboardingStep4AssetsDebtsData {
   debts: Debt[];
 }
 
+// Epic 3: Income Streams Step Data
+export interface OnboardingStepIncomeStreamsData {
+  incomeStreams: IncomeStream[];
+}
+
 // Epic 2: Extended Complete Data (replaces existing CompleteOnboardingData)
 export interface CompleteOnboardingDataV2
   extends OnboardingStep1Data,
@@ -122,4 +155,5 @@ export interface CompleteOnboardingDataV2
     OnboardingStep4Data,
     OnboardingStep2SavingsData,
     OnboardingStep3IncomeExpensesData,
-    OnboardingStep4AssetsDebtsData {}
+    OnboardingStep4AssetsDebtsData,
+    Partial<OnboardingStepIncomeStreamsData> {}

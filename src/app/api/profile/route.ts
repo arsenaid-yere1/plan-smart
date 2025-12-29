@@ -64,6 +64,9 @@ export async function PATCH(request: NextRequest) {
     if (data.incomeExpenses !== undefined) {
       updateData.incomeExpenses = data.incomeExpenses;
     }
+    if (data.incomeStreams !== undefined) {
+      updateData.incomeStreams = data.incomeStreams;
+    }
 
     // Update database
     const result = await db

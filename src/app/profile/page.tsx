@@ -33,6 +33,7 @@ export default async function ProfilePage() {
     primaryResidence: snapshot.primaryResidence ?? null,
     debts: snapshot.debts ?? [],
     incomeExpenses: snapshot.incomeExpenses ?? null,
+    incomeStreams: snapshot.incomeStreams ?? [],
   };
 
   return (
