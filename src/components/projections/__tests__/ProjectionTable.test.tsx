@@ -56,7 +56,7 @@ describe('ProjectionTable', () => {
 
     // Table headers should not be visible when collapsed
     expect(screen.queryByText('Balance')).not.toBeInTheDocument();
-    expect(screen.queryByText('Inflows')).not.toBeInTheDocument();
+    expect(screen.queryByText('Income')).not.toBeInTheDocument();
   });
 
   it('expands table when trigger is clicked', () => {
@@ -67,8 +67,8 @@ describe('ProjectionTable', () => {
 
     // Table headers should now be visible
     expect(screen.getByText('Balance')).toBeInTheDocument();
-    expect(screen.getByText('Inflows')).toBeInTheDocument();
-    expect(screen.getByText('Outflows')).toBeInTheDocument();
+    expect(screen.getByText('Income')).toBeInTheDocument();
+    expect(screen.getByText('Expenses')).toBeInTheDocument();
     expect(screen.getByText('Net Change')).toBeInTheDocument();
     expect(screen.getByText('Phase')).toBeInTheDocument();
   });
