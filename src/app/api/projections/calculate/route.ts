@@ -18,7 +18,8 @@ import {
   estimateAnnualDebtPayments,
   estimateHealthcareCosts,
 } from '@/lib/projections/assumptions';
-import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream } from '@/lib/projections/types';
+import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions } from '@/lib/projections/types';
+import { createSecureQuery } from '@/db/secure-query';
 import type { RiskTolerance } from '@/types/database';
 import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson } from '@/db/schema/financial-snapshot';
 import { createTimer } from '@/lib/monitoring/performance';
@@ -71,7 +72,11 @@ function buildIncomeStreams(
 /**
  * Helper to run projection and return response
  */
-async function calculateProjection(userId: string, overrides: Record<string, unknown> = {}) {
+async function calculateProjection(
+  userId: string,
+  overrides: Record<string, unknown> = {},
+  planId?: string
+) {
   // Fetch financial snapshot
   const [snapshot] = await db
     .select()
@@ -173,6 +178,28 @@ async function calculateProjection(userId: string, overrides: Record<string, unk
     console.log(`Projection calculated in ${calculationTimeMs}ms`);
   }
 
+  // Save projection if planId provided
+  if (planId) {
+    const secureQuery = createSecureQuery(userId);
+
+    const assumptions: ProjectionAssumptions = {
+      expectedReturn: projectionInput.expectedReturn,
+      inflationRate: projectionInput.inflationRate,
+      healthcareInflationRate: projectionInput.healthcareInflationRate,
+      contributionGrowthRate: projectionInput.contributionGrowthRate,
+      retirementAge: projectionInput.retirementAge,
+      maxAge: projectionInput.maxAge,
+    };
+
+    await secureQuery.saveProjectionResult(planId, {
+      inputs: projectionInput,
+      assumptions,
+      records: result.records,
+      summary: result.summary,
+      calculationTimeMs,
+    });
+  }
+
   return {
     projection: result,
     // Enhanced input echo for debugging
@@ -235,7 +262,8 @@ export async function POST(request: NextRequest) {
 
     // Validate request body (optional overrides)
     const body = await request.json();
-    const parseResult = projectionRequestSchema.safeParse(body);
+    const { planId, ...overridesBody } = body;
+    const parseResult = projectionRequestSchema.safeParse(overridesBody);
 
     if (!parseResult.success) {
       return NextResponse.json(
@@ -244,7 +272,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await calculateProjection(user.id, parseResult.data);
+    const result = await calculateProjection(user.id, parseResult.data, planId);
 
     if ('error' in result) {
       return NextResponse.json({ message: result.error }, { status: result.status });

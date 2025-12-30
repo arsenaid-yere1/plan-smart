@@ -29,6 +29,13 @@
       "when": 1767044256974,
       "tag": "0003_flashy_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767055322973,
+      "tag": "0004_spicy_jazinda",
+      "breakpoints": true
     }
   ]
 }

@@ -166,3 +166,15 @@ export interface WithdrawalResult {
   withdrawals: BalanceByType;
   shortfall: number;
 }
+
+/**
+ * Stored assumptions for a projection (human-readable snapshot)
+ */
+export interface ProjectionAssumptions {
+  expectedReturn: number;
+  inflationRate: number;
+  healthcareInflationRate: number;
+  contributionGrowthRate: number;
+  retirementAge: number;
+  maxAge: number;
+}

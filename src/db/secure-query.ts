@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from './client';
-import { userProfile, financialSnapshot, plans } from './schema';
+import { userProfile, financialSnapshot, plans, projectionResults } from './schema';
 
 /**
  * Type-safe query builder that automatically filters by user_id.
@@ -68,6 +68,60 @@ export class SecureQueryBuilder {
       .from(plans)
       .where(and(eq(plans.id, planId), eq(plans.userId, this.userId))); // Double-check user_id
     return plan;
+  }
+
+  // Projection Results queries
+  async getProjectionForPlan(planId: string) {
+    const [result] = await db
+      .select()
+      .from(projectionResults)
+      .where(and(
+        eq(projectionResults.planId, planId),
+        eq(projectionResults.userId, this.userId)
+      ));
+    return result ?? null;
+  }
+
+  async saveProjectionResult(
+    planId: string,
+    data: {
+      inputs: typeof projectionResults.$inferInsert['inputs'];
+      assumptions: typeof projectionResults.$inferInsert['assumptions'];
+      records: typeof projectionResults.$inferInsert['records'];
+      summary: typeof projectionResults.$inferInsert['summary'];
+      calculationTimeMs?: number;
+    }
+  ) {
+    const [result] = await db
+      .insert(projectionResults)
+      .values({
+        planId,
+        userId: this.userId,
+        ...data,
+      })
+      .onConflictDoUpdate({
+        target: projectionResults.planId,
+        set: {
+          inputs: data.inputs,
+          assumptions: data.assumptions,
+          records: data.records,
+          summary: data.summary,
+          calculationTimeMs: data.calculationTimeMs,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return result;
+  }
+
+  async deleteProjectionForPlan(planId: string) {
+    await db
+      .delete(projectionResults)
+      .where(and(
+        eq(projectionResults.planId, planId),
+        eq(projectionResults.userId, this.userId)
+      ));
   }
 }
 
