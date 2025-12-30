@@ -8,10 +8,11 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
 import { ProjectionChart, ProjectionTable, AssumptionsPanel, type Assumptions } from '@/components/projections';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
+import type { ProjectionWarning } from '@/lib/projections/warnings';
 import { cn } from '@/lib/utils';
 
 interface PlansClientProps {
@@ -31,6 +32,8 @@ export function PlansClient({
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [inputWarnings, setInputWarnings] = useState<ProjectionWarning[]>([]);
   const [mobileAssumptionsOpen, setMobileAssumptionsOpen] = useState(false);
 
   // Debounced recalculation
@@ -43,6 +46,8 @@ export function PlansClient({
 
     if (!hasChanges) {
       setProjection(initialProjection);
+      setValidationError(null);
+      setInputWarnings([]);
       return;
     }
 
@@ -50,6 +55,7 @@ export function PlansClient({
     const timer = setTimeout(async () => {
       setIsLoading(true);
       setError(null);
+      setValidationError(null);
 
       try {
         const response = await fetch('/api/projections/calculate', {
@@ -64,11 +70,25 @@ export function PlansClient({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to calculate projection');
+          const errorData = await response.json();
+          if (response.status === 400) {
+            // Validation error - show specific message
+            setValidationError(errorData.message);
+            return;
+          }
+          throw new Error(errorData.message || 'Failed to calculate projection');
         }
 
         const data = await response.json();
         setProjection(data.projection);
+        setValidationError(null);
+
+        // Extract warnings from response
+        if (data.meta?.inputWarnings) {
+          setInputWarnings(data.meta.inputWarnings);
+        } else {
+          setInputWarnings([]);
+        }
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
           setError(err.message);
@@ -144,12 +164,38 @@ export function PlansClient({
         )}
       </div>
 
-      {/* Error Alert */}
-      {error && (
+      {/* Validation Error Alert */}
+      {validationError && (
         <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Cannot Generate Projection</AlertTitle>
+          <AlertDescription>{validationError}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* General Error Alert */}
+      {error && !validationError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Calculation Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Input Warnings */}
+      {inputWarnings.length > 0 && !validationError && (
+        <div className="space-y-2">
+          {inputWarnings.map((warning, index) => (
+            <Alert key={index}>
+              {warning.severity === 'warning' ? (
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              ) : (
+                <Info className="h-4 w-4 text-blue-600" />
+              )}
+              <AlertDescription>{warning.message}</AlertDescription>
+            </Alert>
+          ))}
+        </div>
       )}
 
       {/* Mobile Assumptions Panel - Collapsible */}

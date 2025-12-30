@@ -19,10 +19,37 @@ import {
   estimateHealthcareCosts,
 } from '@/lib/projections/assumptions';
 import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions } from '@/lib/projections/types';
+import { generateProjectionWarnings, type ProjectionWarning } from '@/lib/projections/warnings';
 import { createSecureQuery } from '@/db/secure-query';
 import type { RiskTolerance } from '@/types/database';
 import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson } from '@/db/schema/financial-snapshot';
 import { createTimer } from '@/lib/monitoring/performance';
+
+/**
+ * Validate age relationships for projection input
+ * Returns error message if invalid, null if valid
+ */
+function validateAgeRelationships(
+  currentAge: number,
+  retirementAge: number,
+  maxAge: number
+): { valid: false; message: string } | { valid: true } {
+  if (currentAge >= retirementAge) {
+    return {
+      valid: false,
+      message: `Retirement age (${retirementAge}) must be greater than your current age (${currentAge}). Please adjust your retirement age or update your birth year in your profile.`,
+    };
+  }
+
+  if (retirementAge >= maxAge) {
+    return {
+      valid: false,
+      message: `Life expectancy (${maxAge}) must be greater than your retirement age (${retirementAge}). Please increase life expectancy or reduce retirement age.`,
+    };
+  }
+
+  return { valid: true };
+}
 
 /**
  * Build income streams from snapshot with backward compatibility
@@ -169,6 +196,24 @@ async function calculateProjection(
     annualDebtPayments,
   };
 
+  // Validate age relationships
+  const ageValidation = validateAgeRelationships(
+    currentAge,
+    projectionInput.retirementAge,
+    projectionInput.maxAge
+  );
+
+  if (!ageValidation.valid) {
+    return {
+      error: ageValidation.message,
+      status: 400,
+    };
+  }
+
+  // Generate warnings for unusual inputs
+  const inputWarnings: ProjectionWarning[] = generateProjectionWarnings(projectionInput);
+  warnings.push(...inputWarnings.map(w => w.message));
+
   // Run projection with performance timing
   const timer = createTimer();
   const result = runProjection(projectionInput);
@@ -220,6 +265,7 @@ async function calculateProjection(
     meta: {
       calculationTimeMs,
       warnings: warnings.length > 0 ? warnings : undefined,
+      inputWarnings: inputWarnings.length > 0 ? inputWarnings : undefined,
     },
   };
 }
