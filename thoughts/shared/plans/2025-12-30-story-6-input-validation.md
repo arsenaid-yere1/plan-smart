@@ -266,8 +266,8 @@ Change the return structure (around line 220-223):
 - [x] API returns warnings for zero savings + zero contributions
 
 #### Manual Verification:
-- [ ] Set inflation to 10% in AssumptionsPanel and verify warning appears in response
-- [ ] Verify projection still runs successfully with warnings
+- [x] Set inflation to 10% in AssumptionsPanel and verify warning appears in response
+- [x] Verify projection still runs successfully with warnings
 
 ---
 
@@ -354,10 +354,10 @@ if (data.meta?.inputWarnings) {
 - [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
-- [ ] Navigate to Plans page with invalid age configuration and verify error Alert appears
-- [ ] Verify projection chart is not displayed when validation error exists
-- [ ] Set unusual values (10% inflation) and verify warning Alert appears above chart
-- [ ] Verify warnings don't block the projection chart from displaying
+- [x] Navigate to Plans page with invalid age configuration and verify error Alert appears
+- [x] Verify projection chart is not displayed when validation error exists
+- [x] Set unusual values (10% inflation) and verify warning Alert appears above chart
+- [x] Verify warnings don't block the projection chart from displaying
 
 ---
 
