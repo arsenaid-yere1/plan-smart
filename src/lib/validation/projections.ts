@@ -38,11 +38,11 @@ export const projectionRequestSchema = z.object({
     .max(0.30, 'Expected return cannot exceed 30%')
     .optional(),
 
-  // Inflation rate override (0-15%)
+  // Inflation rate override (0-10%)
   inflationRate: z
     .number()
     .min(0, 'Inflation rate cannot be negative')
-    .max(0.15, 'Inflation rate cannot exceed 15%')
+    .max(0.10, 'Inflation rate cannot exceed 10%')
     .optional(),
 
   // Max age override (current age + 1 to 120)
