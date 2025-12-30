@@ -141,8 +141,8 @@ if ('error' in result) {
 - [x] API returns 400 when retirementAge >= maxAge
 
 #### Manual Verification:
-- [ ] Navigate to Plans page with a user whose current age > retirement age and verify error is shown
-- [ ] Verify the error message includes the actual ages for clarity
+- [x] Navigate to Plans page with a user whose current age > retirement age and verify error is shown
+- [x] Verify the error message includes the actual ages for clarity
 
 ---
 

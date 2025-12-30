@@ -70,7 +70,7 @@ export function AssumptionsPanel({
           <Slider
             value={[assumptions.expectedReturn]}
             min={0.01}
-            max={0.10}
+            max={0.30}
             step={0.005}
             disabled={disabled}
             formatValue={formatPercent}
@@ -96,7 +96,7 @@ export function AssumptionsPanel({
           <Slider
             value={[assumptions.inflationRate]}
             min={0.01}
-            max={0.08}
+            max={0.15}
             step={0.005}
             disabled={disabled}
             formatValue={formatPercent}

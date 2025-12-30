@@ -31,11 +31,11 @@ export const contributionAllocationSchema = z
  * Projection request schema - all fields optional (defaults from financial snapshot)
  */
 export const projectionRequestSchema = z.object({
-  // Return rate override (0-20%)
+  // Return rate override (0-30%)
   expectedReturn: z
     .number()
     .min(0, 'Expected return cannot be negative')
-    .max(0.20, 'Expected return cannot exceed 20%')
+    .max(0.30, 'Expected return cannot exceed 30%')
     .optional(),
 
   // Inflation rate override (0-15%)
