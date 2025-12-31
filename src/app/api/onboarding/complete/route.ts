@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       // Epic 2: New JSONB fields
       investmentAccounts: data.investmentAccounts || [],
       primaryResidence: data.primaryResidence || null,
+      realEstateProperties: data.realEstateProperties || [],
       debts: data.debts || [],
       incomeExpenses: data.incomeExpenses || null,
       // Epic 3: Income streams

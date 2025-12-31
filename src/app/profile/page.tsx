@@ -31,6 +31,7 @@ export default async function ProfilePage() {
     riskTolerance: snapshot.riskTolerance as RiskTolerance,
     investmentAccounts: snapshot.investmentAccounts ?? [],
     primaryResidence: snapshot.primaryResidence ?? null,
+    realEstateProperties: snapshot.realEstateProperties ?? [],
     debts: snapshot.debts ?? [],
     incomeExpenses: snapshot.incomeExpenses ?? null,
     incomeStreams: snapshot.incomeStreams ?? [],

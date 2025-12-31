@@ -1,0 +1,1 @@
+ALTER TABLE "financial_snapshot" ADD COLUMN "real_estate_properties" jsonb;

@@ -19,6 +19,7 @@ import type {
   DebtJson,
   IncomeExpensesJson,
   IncomeStreamJson,
+  RealEstatePropertyJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
 
@@ -31,7 +32,8 @@ export interface ProfileData {
   savingsRate: number;
   riskTolerance: RiskTolerance;
   investmentAccounts: InvestmentAccountJson[];
-  primaryResidence: PrimaryResidenceJson | null;
+  primaryResidence: PrimaryResidenceJson | null; // Keep for backward compatibility
+  realEstateProperties: RealEstatePropertyJson[];
   debts: DebtJson[];
   incomeExpenses: IncomeExpensesJson | null;
   incomeStreams: IncomeStreamJson[];
@@ -111,6 +113,10 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       type: acc.type as CompleteOnboardingDataV2['investmentAccounts'][0]['type'],
     })),
     primaryResidence: profileData.primaryResidence ?? undefined,
+    realEstateProperties: (profileData.realEstateProperties ?? []).map((prop) => ({
+      ...prop,
+      type: prop.type as 'primary' | 'rental' | 'vacation' | 'land',
+    })),
     debts: profileData.debts.map((debt) => ({
       ...debt,
       type: debt.type as CompleteOnboardingDataV2['debts'][0]['type'],
@@ -312,7 +318,61 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
         onEdit={() => setEditSection('assets')}
       >
         <div className="space-y-4 text-sm">
-          {profileData.primaryResidence?.estimatedValue && (
+          {/* Real Estate Properties */}
+          {profileData.realEstateProperties && profileData.realEstateProperties.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Real Estate Properties</h4>
+              {profileData.realEstateProperties.map((property) => {
+                const equity = property.estimatedValue - (property.mortgageBalance ?? 0);
+                return (
+                  <div key={property.id} className="pl-4 border-b pb-2 last:border-0 mb-2">
+                    <div className="flex justify-between">
+                      <div>
+                        <span className="font-medium">{property.name}</span>
+                        <span className="text-muted-foreground ml-2 capitalize">
+                          ({property.type === 'primary' ? 'Primary Residence' : property.type})
+                        </span>
+                      </div>
+                      <span>{formatCurrency(property.estimatedValue)}</span>
+                    </div>
+                    {property.mortgageBalance && property.mortgageBalance > 0 && (
+                      <div className="flex justify-between text-muted-foreground text-xs mt-1">
+                        <span>Mortgage: {formatCurrency(property.mortgageBalance)}</span>
+                        <span>Equity: {formatCurrency(equity)}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Property totals */}
+              {(() => {
+                const totalValue = profileData.realEstateProperties.reduce(
+                  (sum, prop) => sum + prop.estimatedValue,
+                  0
+                );
+                const totalMortgage = profileData.realEstateProperties.reduce(
+                  (sum, prop) => sum + (prop.mortgageBalance ?? 0),
+                  0
+                );
+                const totalEquity = totalValue - totalMortgage;
+                return (
+                  <div className="flex justify-between pt-2 font-medium border-t pl-4">
+                    <span>Total Real Estate</span>
+                    <div className="text-right">
+                      <div>{formatCurrency(totalValue)}</div>
+                      {totalMortgage > 0 && (
+                        <div className="text-muted-foreground text-xs font-normal">
+                          Equity: {formatCurrency(totalEquity)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          {/* Legacy: Primary Residence (backward compatibility) */}
+          {profileData.primaryResidence?.estimatedValue && (!profileData.realEstateProperties || profileData.realEstateProperties.length === 0) && (
             <div>
               <h4 className="font-medium mb-2">Primary Residence</h4>
               <div className="grid grid-cols-2 gap-2 pl-4">
@@ -331,7 +391,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           )}
           {profileData.debts && profileData.debts.length > 0 && (
             <div>
-              <h4 className="font-medium mb-2">Debts</h4>
+              <h4 className="font-medium mb-2">Other Debts</h4>
               {profileData.debts.map((debt) => (
                 <div key={debt.id} className="flex justify-between pl-4 border-b pb-2 last:border-0">
                   <span>{debt.label || debt.type}</span>
@@ -340,7 +400,9 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
               ))}
             </div>
           )}
-          {!profileData.primaryResidence?.estimatedValue && (!profileData.debts || profileData.debts.length === 0) && (
+          {(!profileData.realEstateProperties || profileData.realEstateProperties.length === 0) &&
+           !profileData.primaryResidence?.estimatedValue &&
+           (!profileData.debts || profileData.debts.length === 0) && (
             <p className="text-muted-foreground">No assets or debts added.</p>
           )}
         </div>

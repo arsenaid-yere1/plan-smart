@@ -47,6 +47,16 @@ export type IncomeStreamJson = {
   inflationAdjusted: boolean;
 };
 
+export type RealEstatePropertyJson = {
+  id: string;
+  name: string;
+  type: 'primary' | 'rental' | 'vacation' | 'land';
+  estimatedValue: number;
+  mortgageBalance?: number;
+  mortgageInterestRate?: number;
+  // NOTE: Rental income is managed via Income Streams section, not here
+};
+
 export const financialSnapshot = pgTable('financial_snapshot', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -69,6 +79,9 @@ export const financialSnapshot = pgTable('financial_snapshot', {
 
   // Epic 3: Income streams for retirement
   incomeStreams: jsonb('income_streams').$type<IncomeStreamJson[]>(),
+
+  // Real estate properties (multiple properties support)
+  realEstateProperties: jsonb('real_estate_properties').$type<RealEstatePropertyJson[]>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

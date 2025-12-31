@@ -58,6 +58,9 @@ export async function PATCH(request: NextRequest) {
     if (data.primaryResidence !== undefined) {
       updateData.primaryResidence = data.primaryResidence;
     }
+    if (data.realEstateProperties !== undefined) {
+      updateData.realEstateProperties = data.realEstateProperties;
+    }
     if (data.debts !== undefined) {
       updateData.debts = data.debts;
     }

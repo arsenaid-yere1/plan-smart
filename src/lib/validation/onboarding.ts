@@ -78,8 +78,20 @@ export const primaryResidenceSchema = z.object({
   interestRate: z.number().min(0).max(30).optional(),
 });
 
+// Real Estate Property Schema
+export const realEstatePropertySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'Property name is required'),
+  type: z.enum(['primary', 'rental', 'vacation', 'land']),
+  estimatedValue: z.number().min(0, 'Value cannot be negative').max(100000000),
+  mortgageBalance: z.number().min(0).max(100000000).optional(),
+  mortgageInterestRate: z.number().min(0).max(30).optional(),
+  // NOTE: Rental income is managed via Income Streams section, not here
+});
+
 export const step4AssetsDebtsSchema = z.object({
-  primaryResidence: primaryResidenceSchema.optional(),
+  primaryResidence: primaryResidenceSchema.optional(), // Keep for migration
+  realEstateProperties: z.array(realEstatePropertySchema).optional(),
   debts: z.array(debtSchema),
 });
 

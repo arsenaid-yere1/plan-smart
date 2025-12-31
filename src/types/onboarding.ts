@@ -94,6 +94,33 @@ export interface PrimaryResidence {
   interestRate?: number;
 }
 
+// Real Estate Property Types
+export type RealEstatePropertyType = 'primary' | 'rental' | 'vacation' | 'land';
+
+export interface RealEstateProperty {
+  id: string;
+  name: string;
+  type: RealEstatePropertyType;
+
+  // Asset value
+  estimatedValue: number;
+
+  // Mortgage details (optional - property may be paid off)
+  // Note: Mortgage payments are assumed to be included in monthly expenses
+  mortgageBalance?: number;
+  mortgageInterestRate?: number;
+
+  // NOTE: Rental income is NOT stored here - users manage rental income
+  // via the existing Income Streams section to avoid duplication
+}
+
+export const PROPERTY_TYPE_OPTIONS = [
+  { value: 'primary', label: 'Primary Residence' },
+  { value: 'rental', label: 'Rental Property' },
+  { value: 'vacation', label: 'Vacation Home' },
+  { value: 'land', label: 'Land' },
+] as const;
+
 // Epic 2: Income & Expenses
 export interface IncomeExpenses {
   monthlyEssential?: number;
@@ -138,7 +165,8 @@ export interface OnboardingStep3IncomeExpensesData {
 }
 
 export interface OnboardingStep4AssetsDebtsData {
-  primaryResidence?: PrimaryResidence;
+  primaryResidence?: PrimaryResidence; // Keep for backward compatibility during migration
+  realEstateProperties?: RealEstateProperty[]; // New array for multiple properties
   debts: Debt[];
 }
 
