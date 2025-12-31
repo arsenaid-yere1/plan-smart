@@ -20,6 +20,7 @@ interface PlansClientProps {
   currentAge: number;
   defaultAssumptions: Assumptions;
   monthlySpending: number;
+  planId: string;
 }
 
 export function PlansClient({
@@ -27,6 +28,7 @@ export function PlansClient({
   currentAge,
   defaultAssumptions,
   monthlySpending,
+  planId,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(defaultAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
@@ -62,6 +64,7 @@ export function PlansClient({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            planId,
             expectedReturn: assumptions.expectedReturn,
             inflationRate: assumptions.inflationRate,
             retirementAge: assumptions.retirementAge,
@@ -102,7 +105,7 @@ export function PlansClient({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [assumptions, defaultAssumptions, initialProjection]);
+  }, [assumptions, defaultAssumptions, initialProjection, planId]);
 
   const handleReset = useCallback(() => {
     setAssumptions(defaultAssumptions);

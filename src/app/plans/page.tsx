@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 import { db } from '@/db/client';
 import { userProfile, financialSnapshot } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { createSecureQuery } from '@/db/secure-query';
 import { PageContainer } from '@/components/layout';
 import {
   Card,
@@ -218,6 +219,19 @@ export default async function PlansPage() {
     annualDebtPayments,
   };
 
+  // Get or create a default plan for saving projections
+  const secureQuery = createSecureQuery(user.id);
+  const userPlans = await secureQuery.getUserPlans();
+  let plan = userPlans[0];
+
+  if (!plan) {
+    plan = await secureQuery.createPlan({
+      name: 'My Retirement Plan',
+      description: 'Default retirement projection plan',
+      config: {},
+    });
+  }
+
   // Run projection with error handling
   let projection: ReturnType<typeof runProjection>;
   let projectionError = false;
@@ -266,6 +280,7 @@ export default async function PlansPage() {
         currentAge={currentAge}
         defaultAssumptions={defaultAssumptions}
         monthlySpending={monthlySpending}
+        planId={plan.id}
       />
     </PageContainer>
   );
