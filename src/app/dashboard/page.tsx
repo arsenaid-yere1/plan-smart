@@ -117,113 +117,19 @@ export default async function DashboardPage() {
     );
   }
 
-  // Calculate projection for AI summary
+  // Get current age for display
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - snapshot.birthYear;
-  const retirementAge = snapshot.targetRetirementAge;
 
-  // Calculate balances by tax category
-  const balancesByType: BalanceByType = {
-    taxDeferred: 0,
-    taxFree: 0,
-    taxable: 0,
-  };
-
-  const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
-
-  for (const account of accounts) {
-    const category =
-      ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
-      'taxable';
-    balancesByType[category] += account.balance;
-  }
-
-  // Calculate annual contribution
-  const annualContribution = accounts.reduce(
-    (sum, account) => sum + (account.monthlyContribution || 0) * 12,
-    0
-  );
-
-  // Calculate annual expenses
-  const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
-  let annualExpenses: number;
-
-  if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
-    const monthly =
-      (incomeExpenses.monthlyEssential || 0) +
-      (incomeExpenses.monthlyDiscretionary || 0);
-    annualExpenses = monthly * 12;
-  } else {
-    annualExpenses = deriveAnnualExpenses(
-      parseFloat(snapshot.annualIncome),
-      parseFloat(snapshot.savingsRate)
-    );
-  }
-
-  // Estimate debt payments
-  const debts = (snapshot.debts || []) as DebtJson[];
-  const annualDebtPayments = estimateAnnualDebtPayments(debts);
-
-  // Build income streams
-  let incomeStreams: IncomeStream[];
-  const storedStreams = snapshot.incomeStreams as IncomeStreamJson[] | null;
-
-  if (storedStreams && storedStreams.length > 0) {
-    incomeStreams = storedStreams;
-  } else {
-    const ssMonthly = estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
-    if (ssMonthly > 0) {
-      incomeStreams = [{
-        id: 'ss-auto',
-        name: 'Social Security',
-        type: 'social_security' as const,
-        annualAmount: ssMonthly * 12,
-        startAge: DEFAULT_SS_AGE,
-        endAge: undefined,
-        inflationAdjusted: true,
-      }];
-    } else {
-      incomeStreams = [];
-    }
-  }
-
-  // Build projection input
-  const riskTolerance = snapshot.riskTolerance as RiskTolerance;
-  const expectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
-
-  const projectionInput: ProjectionInput = {
-    currentAge,
-    retirementAge,
-    maxAge: DEFAULT_MAX_AGE,
-    balancesByType,
-    annualContribution,
-    contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
-    expectedReturn,
-    inflationRate: DEFAULT_INFLATION_RATE,
-    contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
-    annualExpenses,
-    annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
-    healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
-    incomeStreams,
-    annualDebtPayments,
-  };
-
-  // Run projection
+  // Initialize projection data
+  const secureQuery = createSecureQuery(user.id);
   let projectionResultId: string | null = null;
   let status: 'on-track' | 'needs-adjustment' | 'at-risk' = 'on-track';
   let projectedBalance = 0;
   let yearsUntilDepletion: number | null = null;
+  let retirementAge = snapshot.targetRetirementAge;
 
   try {
-    const projection = runProjection(projectionInput);
-    const statusResult = getRetirementStatus(projection.summary, currentAge);
-    status = statusResult.status;
-    projectedBalance = projection.summary.projectedRetirementBalance;
-    yearsUntilDepletion = projection.summary.yearsUntilDepletion;
-
-    // Save projection for AI summary
-    const secureQuery = createSecureQuery(user.id);
-
     // Get or create a default plan
     const userPlans = await secureQuery.getUserPlans();
     let plan = userPlans[0];
@@ -236,26 +142,143 @@ export default async function DashboardPage() {
       });
     }
 
-    // Build assumptions for storage
-    const assumptions: ProjectionAssumptions = {
-      expectedReturn: projectionInput.expectedReturn,
-      inflationRate: projectionInput.inflationRate,
-      healthcareInflationRate: projectionInput.healthcareInflationRate,
-      contributionGrowthRate: projectionInput.contributionGrowthRate,
-      retirementAge: projectionInput.retirementAge,
-      maxAge: projectionInput.maxAge,
-    };
+    // Check for existing saved projection
+    const savedProjection = await secureQuery.getProjectionForPlan(plan.id);
 
-    const savedProjection = await secureQuery.saveProjectionResult(plan.id, {
-      inputs: projectionInput,
-      assumptions,
-      records: projection.records,
-      summary: projection.summary,
-    });
+    if (savedProjection) {
+      // Use saved projection data
+      projectionResultId = savedProjection.id;
+      const summary = savedProjection.summary as {
+        projectedRetirementBalance: number;
+        yearsUntilDepletion: number | null;
+      };
+      const assumptions = savedProjection.assumptions as { retirementAge: number };
 
-    projectionResultId = savedProjection.id;
+      projectedBalance = summary.projectedRetirementBalance;
+      yearsUntilDepletion = summary.yearsUntilDepletion;
+      retirementAge = assumptions.retirementAge;
+
+      const statusResult = getRetirementStatus(
+        savedProjection.summary as Parameters<typeof getRetirementStatus>[0],
+        currentAge
+      );
+      status = statusResult.status;
+    } else {
+      // No saved projection - create one with defaults
+      const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
+
+      // Calculate balances by tax category
+      const balancesByType: BalanceByType = {
+        taxDeferred: 0,
+        taxFree: 0,
+        taxable: 0,
+      };
+
+      for (const account of accounts) {
+        const category =
+          ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
+          'taxable';
+        balancesByType[category] += account.balance;
+      }
+
+      // Calculate annual contribution
+      const annualContribution = accounts.reduce(
+        (sum, account) => sum + (account.monthlyContribution || 0) * 12,
+        0
+      );
+
+      // Calculate annual expenses
+      const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
+      let annualExpenses: number;
+
+      if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
+        const monthly =
+          (incomeExpenses.monthlyEssential || 0) +
+          (incomeExpenses.monthlyDiscretionary || 0);
+        annualExpenses = monthly * 12;
+      } else {
+        annualExpenses = deriveAnnualExpenses(
+          parseFloat(snapshot.annualIncome),
+          parseFloat(snapshot.savingsRate)
+        );
+      }
+
+      // Estimate debt payments
+      const debts = (snapshot.debts || []) as DebtJson[];
+      const annualDebtPayments = estimateAnnualDebtPayments(debts);
+
+      // Build income streams
+      let incomeStreams: IncomeStream[];
+      const storedStreams = snapshot.incomeStreams as IncomeStreamJson[] | null;
+
+      if (storedStreams && storedStreams.length > 0) {
+        incomeStreams = storedStreams;
+      } else {
+        const ssMonthly = estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
+        if (ssMonthly > 0) {
+          incomeStreams = [{
+            id: 'ss-auto',
+            name: 'Social Security',
+            type: 'social_security' as const,
+            annualAmount: ssMonthly * 12,
+            startAge: DEFAULT_SS_AGE,
+            endAge: undefined,
+            inflationAdjusted: true,
+          }];
+        } else {
+          incomeStreams = [];
+        }
+      }
+
+      // Build projection input with defaults
+      const riskTolerance = snapshot.riskTolerance as RiskTolerance;
+      const expectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
+
+      const projectionInput: ProjectionInput = {
+        currentAge,
+        retirementAge,
+        maxAge: DEFAULT_MAX_AGE,
+        balancesByType,
+        annualContribution,
+        contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
+        expectedReturn,
+        inflationRate: DEFAULT_INFLATION_RATE,
+        contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
+        annualExpenses,
+        annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
+        healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
+        incomeStreams,
+        annualDebtPayments,
+      };
+
+      // Run and save projection
+      const projection = runProjection(projectionInput);
+      const statusResult = getRetirementStatus(projection.summary, currentAge);
+      status = statusResult.status;
+      projectedBalance = projection.summary.projectedRetirementBalance;
+      yearsUntilDepletion = projection.summary.yearsUntilDepletion;
+
+      // Build assumptions for storage
+      const assumptions: ProjectionAssumptions = {
+        expectedReturn: projectionInput.expectedReturn,
+        inflationRate: projectionInput.inflationRate,
+        healthcareInflationRate: projectionInput.healthcareInflationRate,
+        contributionGrowthRate: projectionInput.contributionGrowthRate,
+        retirementAge: projectionInput.retirementAge,
+        maxAge: projectionInput.maxAge,
+      };
+
+      const newProjection = await secureQuery.saveProjectionResult(plan.id, {
+        inputs: projectionInput,
+        assumptions,
+        records: projection.records,
+        summary: projection.summary,
+      });
+
+      projectionResultId = newProjection.id;
+    }
   } catch (error) {
-    console.error('Failed to run projection:', error);
+    console.error('Failed to load/run projection:', error);
   }
 
   const StatusIcon = status === 'on-track'
