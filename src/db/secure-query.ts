@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from './client';
-import { userProfile, financialSnapshot, plans, projectionResults } from './schema';
+import { userProfile, financialSnapshot, plans, projectionResults, aiSummaries } from './schema';
+import type { AISummarySections } from './schema/ai-summaries';
 
 /**
  * Type-safe query builder that automatically filters by user_id.
@@ -122,6 +123,69 @@ export class SecureQueryBuilder {
         eq(projectionResults.planId, planId),
         eq(projectionResults.userId, this.userId)
       ));
+  }
+
+  // Projection Result by ID (for AI summary)
+  async getProjectionById(projectionId: string) {
+    const [projection] = await db
+      .select()
+      .from(projectionResults)
+      .where(
+        and(
+          eq(projectionResults.id, projectionId),
+          eq(projectionResults.userId, this.userId)
+        )
+      )
+      .limit(1);
+    return projection ?? null;
+  }
+
+  // AI Summary queries
+  async getAISummaryForProjection(projectionResultId: string, inputHash: string) {
+    const [summary] = await db
+      .select()
+      .from(aiSummaries)
+      .where(
+        and(
+          eq(aiSummaries.projectionResultId, projectionResultId),
+          eq(aiSummaries.inputHash, inputHash),
+          eq(aiSummaries.userId, this.userId)
+        )
+      )
+      .limit(1);
+    return summary ?? null;
+  }
+
+  async saveAISummary(data: {
+    projectionResultId: string;
+    inputHash: string;
+    sections: AISummarySections;
+    model: string;
+    tokensUsed?: number;
+    generationTimeMs?: number;
+  }) {
+    const [result] = await db
+      .insert(aiSummaries)
+      .values({
+        projectionResultId: data.projectionResultId,
+        userId: this.userId,
+        inputHash: data.inputHash,
+        sections: data.sections,
+        model: data.model,
+        tokensUsed: data.tokensUsed,
+        generationTimeMs: data.generationTimeMs,
+      })
+      .onConflictDoUpdate({
+        target: [aiSummaries.projectionResultId, aiSummaries.inputHash],
+        set: {
+          sections: data.sections,
+          model: data.model,
+          tokensUsed: data.tokensUsed,
+          generationTimeMs: data.generationTimeMs,
+        },
+      })
+      .returning();
+    return result;
   }
 }
 

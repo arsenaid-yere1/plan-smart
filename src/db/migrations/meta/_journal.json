@@ -36,6 +36,13 @@
       "when": 1767055322973,
       "tag": "0004_spicy_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767205597769,
+      "tag": "0005_breezy_hex",
+      "breakpoints": true
     }
   ]
 }
