@@ -111,4 +111,106 @@ describe('POST /api/projections/calculate', () => {
 
     expect(response.status).toBe(400);
   });
+
+  it('should accept valid incomeStreams override in POST request', async () => {
+    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+
+    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        incomeStreams: [
+          {
+            id: 'ss-override',
+            name: 'Social Security',
+            type: 'social_security',
+            annualAmount: 30000,
+            startAge: 67,
+            inflationAdjusted: true,
+          },
+          {
+            id: 'pension-override',
+            name: 'Pension',
+            type: 'pension',
+            annualAmount: 20000,
+            startAge: 65,
+            endAge: 80,
+            inflationAdjusted: false,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+
+    // Should not fail validation (though will 404 due to no snapshot)
+    expect(response.status).toBe(404);
+  });
+
+  it('should reject invalid incomeStreams with missing required fields', async () => {
+    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+
+    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        incomeStreams: [
+          {
+            id: 'ss',
+            // Missing name, type, annualAmount, startAge, inflationAdjusted
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should reject incomeStreams with invalid type', async () => {
+    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+
+    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        incomeStreams: [
+          {
+            id: 'invalid',
+            name: 'Invalid Stream',
+            type: 'invalid_type', // Not a valid type
+            annualAmount: 10000,
+            startAge: 65,
+            inflationAdjusted: true,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should reject incomeStreams with negative annualAmount', async () => {
+    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+
+    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        incomeStreams: [
+          {
+            id: 'ss',
+            name: 'Social Security',
+            type: 'social_security',
+            annualAmount: -5000, // Negative amount
+            startAge: 67,
+            inflationAdjusted: true,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+  });
 });
