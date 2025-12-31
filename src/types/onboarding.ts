@@ -68,8 +68,8 @@ export const ACCOUNT_TYPE_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ] as const;
 
-// Epic 2: Debt Types
-export type DebtType = 'Mortgage' | 'StudentLoan' | 'CreditCard' | 'AutoLoan' | 'Other';
+// Epic 2: Debt Types (Mortgage removed - now tracked with properties)
+export type DebtType = 'StudentLoan' | 'CreditCard' | 'AutoLoan' | 'Other';
 
 export interface Debt {
   id: string;
@@ -80,7 +80,6 @@ export interface Debt {
 }
 
 export const DEBT_TYPE_OPTIONS = [
-  { value: 'Mortgage', label: 'Mortgage' },
   { value: 'StudentLoan', label: 'Student Loan' },
   { value: 'CreditCard', label: 'Credit Card' },
   { value: 'AutoLoan', label: 'Auto Loan' },

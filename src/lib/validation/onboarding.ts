@@ -62,11 +62,11 @@ export const step3IncomeExpensesSchema = z.object({
   incomeExpenses: incomeExpensesSchema.optional(),
 });
 
-// Epic 2: Debt Schema
+// Epic 2: Debt Schema (Mortgage removed - now tracked with properties)
 export const debtSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1, 'Debt name is required'),
-  type: z.enum(['Mortgage', 'StudentLoan', 'CreditCard', 'AutoLoan', 'Other']),
+  type: z.enum(['StudentLoan', 'CreditCard', 'AutoLoan', 'Other']),
   balance: z.number().min(0, 'Balance cannot be negative'),
   interestRate: z.number().min(0).max(100).optional(),
 });
