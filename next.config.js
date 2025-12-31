@@ -17,6 +17,12 @@ const nextConfig = {
       };
     }
 
+    // jsPDF has html2canvas as an optional dependency we don't use
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      html2canvas: false,
+    };
+
     // Provide process.versions polyfill for Edge Runtime
     if (nextRuntime === 'edge') {
       config.plugins.push(

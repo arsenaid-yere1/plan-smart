@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
-import { ProjectionChart, ProjectionTable, AssumptionsPanel, type Assumptions } from '@/components/projections';
+import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, type Assumptions } from '@/components/projections';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
 import type { ProjectionWarning } from '@/lib/projections/warnings';
@@ -239,6 +239,20 @@ export function PlansClient({
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         {/* Left Column: Chart & Metrics */}
         <div className="space-y-6">
+          {/* Export Panel */}
+          <div className="flex justify-end">
+            <ExportPanel
+              data={{
+                records: projection.records,
+                summary: projection.summary,
+                assumptions,
+                defaultAssumptions,
+                currentAge,
+                monthlySpending,
+              }}
+            />
+          </div>
+
           {/* Snapshot Cards */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <Card>

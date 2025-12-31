@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProjectionRecord } from '@/lib/projections/types';
 
@@ -32,60 +31,22 @@ export function ProjectionTable({ records, retirementAge }: ProjectionTableProps
     }));
   }, [records, retirementAge]);
 
-  const handleExportCSV = () => {
-    const headers = ['Age', 'Year', 'Balance', 'Income', 'Expenses', 'Net Change', 'Phase'];
-    const rows = tableData.map((row) => [
-      row.age,
-      row.year,
-      row.balance.toFixed(2),
-      row.inflows.toFixed(2),
-      row.outflows.toFixed(2),
-      row.netChange.toFixed(2),
-      row.isRetirement ? 'Retirement' : 'Accumulation',
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(',')),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'retirement-projection.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          aria-expanded={open}
-        >
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 transition-transform duration-200',
-              open && 'rotate-180'
-            )}
-          />
-          View Year-by-Year Details
-        </button>
-        {open && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        aria-expanded={open}
+      >
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
+        View Year-by-Year Details
+      </button>
 
       {open && (
         <div className="mt-4">
