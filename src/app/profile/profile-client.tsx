@@ -22,6 +22,8 @@ import type {
   RealEstatePropertyJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
+import { calculateNetWorth } from '@/lib/utils/net-worth';
+import { NetWorthSummary } from '@/components/dashboard/NetWorthSummary';
 
 // Profile data structure matching what we fetch from the database
 export interface ProfileData {
@@ -138,8 +140,18 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
     return typeMap[type] || type;
   };
 
+  // Calculate net worth breakdown
+  const netWorthBreakdown = calculateNetWorth(
+    profileData.investmentAccounts,
+    profileData.realEstateProperties,
+    profileData.debts
+  );
+
   return (
     <div className="space-y-4">
+      {/* Net Worth Summary */}
+      <NetWorthSummary breakdown={netWorthBreakdown} variant="detailed" />
+
       {/* Basics Section */}
       <Collapsible
         title="Basics"

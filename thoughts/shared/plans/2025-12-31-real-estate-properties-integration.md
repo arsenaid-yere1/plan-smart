@@ -301,10 +301,10 @@ export interface PropertySummary {
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles: `npm run typecheck`
-- [ ] Unit tests pass: `npm test -- --run`
-- [ ] Build succeeds: `npm run build`
-- [ ] Linting passes: `npm run lint`
+- [x] TypeScript compiles: `npm run typecheck`
+- [x] Unit tests pass: `npm test -- --run` (2 pre-existing failures unrelated to this change)
+- [x] Build succeeds: `npm run build`
+- [x] Linting passes: `npm run lint`
 
 #### Manual Verification:
 - [ ] `calculatePropertySummary()` correctly totals property values and mortgages
@@ -549,10 +549,10 @@ Similar to profile page, add a summary showing total assets, liabilities, and ne
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles: `npm run typecheck`
-- [ ] Unit tests pass: `npm test -- --run`
-- [ ] Build succeeds: `npm run build`
-- [ ] Linting passes: `npm run lint`
+- [x] TypeScript compiles: `npm run typecheck`
+- [x] Unit tests pass: `npm test -- --run` (2 pre-existing failures unrelated to this change)
+- [x] Build succeeds: `npm run build`
+- [x] Linting passes: `npm run lint`
 
 #### Manual Verification:
 - [ ] Dashboard shows compact net worth summary with total assets and liabilities

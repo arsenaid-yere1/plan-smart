@@ -178,3 +178,12 @@ export interface ProjectionAssumptions {
   retirementAge: number;
   maxAge: number;
 }
+
+/**
+ * Property summary for net worth display (display purposes only)
+ */
+export interface PropertySummary {
+  totalValue: number;
+  totalMortgage: number;
+  totalEquity: number;
+}

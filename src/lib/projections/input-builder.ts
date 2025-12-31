@@ -1,5 +1,6 @@
-import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory } from './types';
+import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary } from './types';
 import { ACCOUNT_TAX_CATEGORY } from './types';
+import type { RealEstatePropertyJson } from '@/db/schema/financial-snapshot';
 import type { financialSnapshot } from '@/db/schema/financial-snapshot';
 import {
   DEFAULT_MAX_AGE,
@@ -96,5 +97,29 @@ export function buildProjectionInputFromSnapshot(
     healthcareInflationRate: overrides.healthcareInflationRate ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,
     annualDebtPayments,
+  };
+}
+
+/**
+ * Calculate property summary for net worth display.
+ * This is for display purposes only - does NOT modify projection calculations.
+ */
+export function calculatePropertySummary(
+  properties: RealEstatePropertyJson[] | null | undefined
+): PropertySummary {
+  const props = properties ?? [];
+
+  let totalValue = 0;
+  let totalMortgage = 0;
+
+  for (const property of props) {
+    totalValue += property.estimatedValue ?? 0;
+    totalMortgage += property.mortgageBalance ?? 0;
+  }
+
+  return {
+    totalValue,
+    totalMortgage,
+    totalEquity: totalValue - totalMortgage,
   };
 }

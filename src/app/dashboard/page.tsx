@@ -32,9 +32,12 @@ import type {
   DebtJson,
   IncomeExpensesJson,
   IncomeStreamJson,
+  RealEstatePropertyJson,
 } from '@/db/schema/financial-snapshot';
 import { DashboardClient } from './dashboard-client';
 import { cn } from '@/lib/utils';
+import { calculateNetWorth } from '@/lib/utils/net-worth';
+import { NetWorthSummary } from '@/components/dashboard/NetWorthSummary';
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -299,6 +302,13 @@ export default async function DashboardPage() {
     return `$${Math.round(value)}`;
   };
 
+  // Calculate net worth
+  const netWorthBreakdown = calculateNetWorth(
+    snapshot.investmentAccounts as InvestmentAccountJson[] | null,
+    snapshot.realEstateProperties as RealEstatePropertyJson[] | null,
+    snapshot.debts as DebtJson[] | null
+  );
+
   return (
     <PageContainer>
       <div className="space-y-6">
@@ -326,6 +336,9 @@ export default async function DashboardPage() {
             {statusLabel}
           </div>
         </div>
+
+        {/* Net Worth Summary */}
+        <NetWorthSummary breakdown={netWorthBreakdown} variant="compact" />
 
         {/* AI Summary */}
         <DashboardClient
