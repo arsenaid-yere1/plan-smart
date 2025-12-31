@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
-import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, AISummary, type Assumptions } from '@/components/projections';
+import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, type Assumptions } from '@/components/projections';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
 import type { ProjectionWarning } from '@/lib/projections/warnings';
@@ -20,7 +20,6 @@ interface PlansClientProps {
   currentAge: number;
   defaultAssumptions: Assumptions;
   monthlySpending: number;
-  projectionResultId: string | null;
 }
 
 export function PlansClient({
@@ -28,7 +27,6 @@ export function PlansClient({
   currentAge,
   defaultAssumptions,
   monthlySpending,
-  projectionResultId,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(defaultAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
@@ -198,16 +196,6 @@ export function PlansClient({
             </Alert>
           ))}
         </div>
-      )}
-
-      {/* AI Summary Section */}
-      {!validationError && (
-        <AISummary
-          projectionResultId={projectionResultId}
-          status={statusResult.status}
-          projectedRetirementBalance={projection.summary.projectedRetirementBalance}
-          yearsUntilDepletion={projection.summary.yearsUntilDepletion}
-        />
       )}
 
       {/* Mobile Assumptions Panel - Collapsible */}

@@ -5,8 +5,6 @@ import { createServerClient } from '@supabase/ssr';
 import { db } from '@/db/client';
 import { userProfile, financialSnapshot } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { createSecureQuery } from '@/db/secure-query';
-import type { ProjectionAssumptions } from '@/lib/projections/types';
 import { PageContainer } from '@/components/layout';
 import {
   Card,
@@ -261,48 +259,6 @@ export default async function PlansPage() {
   // Calculate monthly spending for display
   const monthlySpending = Math.round(annualExpenses / 12);
 
-  // Get or create default plan and save projection for AI summary
-  let projectionResultId: string | null = null;
-  try {
-    const secureQuery = createSecureQuery(user.id);
-
-    // Get or create a default plan
-    const userPlans = await secureQuery.getUserPlans();
-    let plan = userPlans[0];
-
-    if (!plan) {
-      // Create a default plan
-      plan = await secureQuery.createPlan({
-        name: 'My Retirement Plan',
-        description: 'Default retirement projection plan',
-        config: {},
-      });
-    }
-
-    // Build assumptions object for storage
-    const assumptions: ProjectionAssumptions = {
-      expectedReturn: projectionInput.expectedReturn,
-      inflationRate: projectionInput.inflationRate,
-      healthcareInflationRate: projectionInput.healthcareInflationRate,
-      contributionGrowthRate: projectionInput.contributionGrowthRate,
-      retirementAge: projectionInput.retirementAge,
-      maxAge: projectionInput.maxAge,
-    };
-
-    // Save projection result
-    const savedProjection = await secureQuery.saveProjectionResult(plan.id, {
-      inputs: projectionInput,
-      assumptions,
-      records: projection!.records,
-      summary: projection!.summary,
-    });
-
-    projectionResultId = savedProjection.id;
-  } catch (error) {
-    // Log but don't fail - AI summary is optional
-    console.error('Failed to save projection for AI summary:', error);
-  }
-
   return (
     <PageContainer>
       <PlansClient
@@ -310,7 +266,6 @@ export default async function PlansPage() {
         currentAge={currentAge}
         defaultAssumptions={defaultAssumptions}
         monthlySpending={monthlySpending}
-        projectionResultId={projectionResultId}
       />
     </PageContainer>
   );
