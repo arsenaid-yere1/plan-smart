@@ -6,6 +6,8 @@ import { createSecureQuery } from '@/db/secure-query';
 import { hashProjectionInputs } from '@/lib/ai/hash-inputs';
 import { PLAN_SUMMARY_SYSTEM_PROMPT, type PlanSummaryResponse } from '@/lib/ai/prompts/plan-summary';
 import { checkAIRegenerationLimit, incrementAIRegenerationCount } from '@/lib/ai/rate-limit';
+import { getLifestyleLabel } from '@/lib/ai/lifestyle-label';
+import { validateSummaryResponse } from '@/lib/ai/validate-response';
 import type { ProjectionInput, ProjectionAssumptions, ProjectionSummary } from '@/lib/projections/types';
 
 const requestSchema = z.object({
@@ -91,50 +93,69 @@ export async function POST(request: NextRequest) {
     }
 
     // Build context for AI
-    const userContext = buildUserContext(
+    const { context: userContext, tone, lifestyleLabel } = buildUserContext(
       projection.inputs as ProjectionInput,
       projection.assumptions as ProjectionAssumptions,
       projection.summary as ProjectionSummary
     );
 
-    // Generate narrative via OpenAI
-    const startTime = Date.now();
+    // Generate narrative via OpenAI with retry logic for banned phrases
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const MAX_RETRIES = 2;
+    let sections: PlanSummaryResponse | null = null;
+    let attempts = 0;
+    let generationTimeMs = 0;
+    let tokensUsed: number | undefined;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: PLAN_SUMMARY_SYSTEM_PROMPT },
-        { role: 'user', content: userContext },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0,
-      max_tokens: 1024,
-    });
+    while (attempts <= MAX_RETRIES && !sections) {
+      attempts++;
 
-    const generationTimeMs = Date.now() - startTime;
-    const content = completion.choices[0]?.message?.content;
+      const startTime = performance.now();
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: PLAN_SUMMARY_SYSTEM_PROMPT(tone, lifestyleLabel) },
+          { role: 'user', content: userContext },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0,
+        max_tokens: 1024,
+      });
+      generationTimeMs = Math.round(performance.now() - startTime);
+      tokensUsed = completion.usage?.total_tokens;
 
-    if (!content) {
-      return NextResponse.json(
-        { message: 'AI generation failed - no response' },
-        { status: 500 }
-      );
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        console.error('AI response empty on attempt', attempts);
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(content) as PlanSummaryResponse;
+
+        // Validate structure
+        if (!parsed.whereYouStand || !parsed.assumptions || !parsed.lifestyle || !parsed.disclaimer) {
+          console.error('AI response missing required sections on attempt', attempts, content);
+          continue;
+        }
+
+        // Validate against banned phrases
+        const validation = validateSummaryResponse(parsed);
+        if (!validation.valid) {
+          console.warn('AI response contained banned phrases on attempt', attempts, validation.violations);
+          continue;
+        }
+
+        sections = parsed;
+      } catch (e) {
+        console.error('AI response parsing error on attempt', attempts, e, content);
+        continue;
+      }
     }
 
-    // Parse and validate AI response
-    let sections: PlanSummaryResponse;
-    try {
-      sections = JSON.parse(content);
-      // Basic validation
-      if (!sections.whereYouStand || !sections.assumptions ||
-          !sections.lifestyle || !sections.disclaimer) {
-        throw new Error('Missing required sections');
-      }
-    } catch (e) {
-      console.error('AI response parsing error:', e, content);
+    if (!sections) {
       return NextResponse.json(
-        { message: 'AI generation failed - invalid response format' },
+        { message: 'AI generation failed after multiple attempts' },
         { status: 500 }
       );
     }
@@ -145,7 +166,7 @@ export async function POST(request: NextRequest) {
       inputHash,
       sections,
       model: 'gpt-4o-mini',
-      tokensUsed: completion.usage?.total_tokens,
+      tokensUsed,
       generationTimeMs,
     });
 
@@ -177,7 +198,7 @@ function buildUserContext(
   inputs: ProjectionInput,
   assumptions: ProjectionAssumptions,
   summary: ProjectionSummary
-): string {
+): { context: string; tone: 'optimistic' | 'neutral' | 'cautious'; lifestyleLabel: 'simple' | 'moderate' | 'flexible' } {
   // Calculate retirement status
   const status = summary.yearsUntilDepletion === null
     ? 'on-track'
@@ -185,8 +206,22 @@ function buildUserContext(
       ? 'needs-adjustment'
       : 'at-risk';
 
-  return JSON.stringify({
+  // Map status to tone
+  const toneMap: Record<string, 'optimistic' | 'neutral' | 'cautious'> = {
+    'on-track': 'optimistic',
+    'needs-adjustment': 'neutral',
+    'at-risk': 'cautious',
+  };
+  const tone = toneMap[status];
+
+  // Calculate lifestyle label from monthly spending
+  const monthlySpending = Math.round(inputs.annualExpenses / 12);
+  const lifestyleLabel = getLifestyleLabel(monthlySpending);
+
+  const context = JSON.stringify({
     status,
+    tone,
+    lifestyleLabel,
     currentAge: inputs.currentAge,
     retirementAge: assumptions.retirementAge,
     maxAge: assumptions.maxAge,
@@ -198,7 +233,9 @@ function buildUserContext(
     projectedBalanceAtRetirement: Math.round(summary.projectedRetirementBalance),
     endingBalance: Math.round(summary.endingBalance),
     yearsUntilDepletion: summary.yearsUntilDepletion,
-    monthlySpending: Math.round(inputs.annualExpenses / 12),
+    monthlySpending,
     hasIncomeStreams: inputs.incomeStreams.length > 0,
   });
+
+  return { context, tone, lifestyleLabel };
 }
