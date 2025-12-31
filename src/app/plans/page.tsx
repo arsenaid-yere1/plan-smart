@@ -130,31 +130,24 @@ export default async function PlansPage() {
   // Calculate current age from birth year
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - snapshot.birthYear;
-  const retirementAge = snapshot.targetRetirementAge;
 
-  // Calculate balances by tax category
-  const balancesByType: BalanceByType = {
-    taxDeferred: 0,
-    taxFree: 0,
-    taxable: 0,
-  };
+  // Get or create a default plan
+  const secureQuery = createSecureQuery(user.id);
+  const userPlans = await secureQuery.getUserPlans();
+  let plan = userPlans[0];
 
-  const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
-
-  for (const account of accounts) {
-    const category =
-      ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
-      'taxable';
-    balancesByType[category] += account.balance;
+  if (!plan) {
+    plan = await secureQuery.createPlan({
+      name: 'My Retirement Plan',
+      description: 'Default retirement projection plan',
+      config: {},
+    });
   }
 
-  // Calculate annual contribution from monthly contributions
-  const annualContribution = accounts.reduce(
-    (sum, account) => sum + (account.monthlyContribution || 0) * 12,
-    0
-  );
+  // Check for existing saved projection
+  const savedProjection = await secureQuery.getProjectionForPlan(plan.id);
 
-  // Calculate annual expenses
+  // Calculate annual expenses for monthly spending display
   const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
   let annualExpenses: number;
 
@@ -169,6 +162,73 @@ export default async function PlansPage() {
       parseFloat(snapshot.savingsRate)
     );
   }
+  const monthlySpending = Math.round(annualExpenses / 12);
+
+  // Default assumptions from profile data
+  const riskTolerance = snapshot.riskTolerance as RiskTolerance;
+  const profileExpectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
+  const profileRetirementAge = snapshot.targetRetirementAge;
+
+  const defaultAssumptions = {
+    expectedReturn: profileExpectedReturn,
+    inflationRate: DEFAULT_INFLATION_RATE,
+    retirementAge: profileRetirementAge,
+  };
+
+  // If we have a saved projection, use it
+  if (savedProjection) {
+    const savedAssumptions = savedProjection.assumptions as {
+      expectedReturn: number;
+      inflationRate: number;
+      retirementAge: number;
+    };
+
+    // Use saved assumptions as the current state
+    const currentAssumptions = {
+      expectedReturn: savedAssumptions.expectedReturn,
+      inflationRate: savedAssumptions.inflationRate,
+      retirementAge: savedAssumptions.retirementAge,
+    };
+
+    return (
+      <PageContainer>
+        <PlansClient
+          initialProjection={{
+            records: savedProjection.records as ReturnType<typeof runProjection>['records'],
+            summary: savedProjection.summary as ReturnType<typeof runProjection>['summary'],
+          }}
+          currentAge={currentAge}
+          defaultAssumptions={defaultAssumptions}
+          currentAssumptions={currentAssumptions}
+          monthlySpending={monthlySpending}
+          planId={plan.id}
+        />
+      </PageContainer>
+    );
+  }
+
+  // No saved projection - create one with defaults
+  const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
+
+  // Calculate balances by tax category
+  const balancesByType: BalanceByType = {
+    taxDeferred: 0,
+    taxFree: 0,
+    taxable: 0,
+  };
+
+  for (const account of accounts) {
+    const category =
+      ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
+      'taxable';
+    balancesByType[category] += account.balance;
+  }
+
+  // Calculate annual contribution from monthly contributions
+  const annualContribution = accounts.reduce(
+    (sum, account) => sum + (account.monthlyContribution || 0) * 12,
+    0
+  );
 
   // Estimate debt payments
   const debts = (snapshot.debts || []) as DebtJson[];
@@ -199,38 +259,22 @@ export default async function PlansPage() {
   }
 
   // Build projection input
-  const riskTolerance = snapshot.riskTolerance as RiskTolerance;
-  const expectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
-
   const projectionInput: ProjectionInput = {
     currentAge,
-    retirementAge,
+    retirementAge: profileRetirementAge,
     maxAge: DEFAULT_MAX_AGE,
     balancesByType,
     annualContribution,
     contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
-    expectedReturn,
+    expectedReturn: profileExpectedReturn,
     inflationRate: DEFAULT_INFLATION_RATE,
     contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
     annualExpenses,
-    annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
+    annualHealthcareCosts: estimateHealthcareCosts(profileRetirementAge),
     healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,
     annualDebtPayments,
   };
-
-  // Get or create a default plan for saving projections
-  const secureQuery = createSecureQuery(user.id);
-  const userPlans = await secureQuery.getUserPlans();
-  let plan = userPlans[0];
-
-  if (!plan) {
-    plan = await secureQuery.createPlan({
-      name: 'My Retirement Plan',
-      description: 'Default retirement projection plan',
-      config: {},
-    });
-  }
 
   // Run projection with error handling
   let projection: ReturnType<typeof runProjection>;
@@ -263,22 +307,13 @@ export default async function PlansPage() {
     );
   }
 
-  // Build default assumptions from profile data
-  const defaultAssumptions = {
-    expectedReturn,
-    inflationRate: DEFAULT_INFLATION_RATE,
-    retirementAge,
-  };
-
-  // Calculate monthly spending for display
-  const monthlySpending = Math.round(annualExpenses / 12);
-
   return (
     <PageContainer>
       <PlansClient
         initialProjection={projection!}
         currentAge={currentAge}
         defaultAssumptions={defaultAssumptions}
+        currentAssumptions={defaultAssumptions}
         monthlySpending={monthlySpending}
         planId={plan.id}
       />

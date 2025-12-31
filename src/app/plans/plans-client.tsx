@@ -19,6 +19,7 @@ interface PlansClientProps {
   initialProjection: ProjectionResult;
   currentAge: number;
   defaultAssumptions: Assumptions;
+  currentAssumptions: Assumptions;
   monthlySpending: number;
   planId: string;
 }
@@ -27,10 +28,11 @@ export function PlansClient({
   initialProjection,
   currentAge,
   defaultAssumptions,
+  currentAssumptions,
   monthlySpending,
   planId,
 }: PlansClientProps) {
-  const [assumptions, setAssumptions] = useState<Assumptions>(defaultAssumptions);
+  const [assumptions, setAssumptions] = useState<Assumptions>(currentAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +42,11 @@ export function PlansClient({
 
   // Debounced recalculation
   useEffect(() => {
-    // Skip if assumptions match defaults (initial state)
+    // Skip if assumptions match the current saved state
     const hasChanges =
-      assumptions.expectedReturn !== defaultAssumptions.expectedReturn ||
-      assumptions.inflationRate !== defaultAssumptions.inflationRate ||
-      assumptions.retirementAge !== defaultAssumptions.retirementAge;
+      assumptions.expectedReturn !== currentAssumptions.expectedReturn ||
+      assumptions.inflationRate !== currentAssumptions.inflationRate ||
+      assumptions.retirementAge !== currentAssumptions.retirementAge;
 
     if (!hasChanges) {
       setProjection(initialProjection);
@@ -105,7 +107,7 @@ export function PlansClient({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [assumptions, defaultAssumptions, initialProjection, planId]);
+  }, [assumptions, currentAssumptions, initialProjection, planId]);
 
   const handleReset = useCallback(() => {
     setAssumptions(defaultAssumptions);
