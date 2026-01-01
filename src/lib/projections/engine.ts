@@ -159,10 +159,6 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
 
     } else {
       // DRAWDOWN PHASE
-      // Capture retirement balance at start of retirement (before first withdrawal)
-      if (age === input.retirementAge) {
-        projectedRetirementBalance = totalBalance(balances);
-      }
       // Calculate inflation-adjusted general expenses
       const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
       const generalExpenses = input.annualExpenses * inflationMultiplier;
@@ -223,6 +219,11 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       },
       withdrawalsByType,
     });
+
+    // Capture retirement balance to match chart data point at retirement age
+    if (age === input.retirementAge && !isAlreadyRetired) {
+      projectedRetirementBalance = Math.max(0, totalBalance(balances));
+    }
   }
 
   return {
