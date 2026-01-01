@@ -50,7 +50,7 @@ export function ProjectionChart({
   shortfallAge,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
-  const [adjustForInflation, setAdjustForInflation] = useState(false);
+  const [adjustForInflation, setAdjustForInflation] = useState(true);
 
   const chartData = useMemo(() => {
     type ChartDataPoint = ProjectionRecord & {

@@ -157,12 +157,12 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       // Then apply returns (end of year model)
       balances = applyReturns(balances, input.expectedReturn);
 
-      // Track retirement balance at transition
-      if (age === input.retirementAge - 1) {
-        projectedRetirementBalance = totalBalance(balances);
-      }
     } else {
       // DRAWDOWN PHASE
+      // Capture retirement balance at start of retirement (before first withdrawal)
+      if (age === input.retirementAge) {
+        projectedRetirementBalance = totalBalance(balances);
+      }
       // Calculate inflation-adjusted general expenses
       const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
       const generalExpenses = input.annualExpenses * inflationMultiplier;
