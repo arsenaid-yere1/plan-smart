@@ -2,7 +2,7 @@
 date: 2025-12-31
 ticket: none
 description: Fix projection chart default toggle and off-by-one retirement balance
-status: draft
+status: complete
 ---
 
 # Implementation Plan: Projection Chart Defaults & Off-by-One Fix
@@ -103,7 +103,7 @@ If any tests fail due to the default toggle change, update them to match new exp
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] All tests pass: `npm test -- --run`
+- [x] All tests pass: `npm test -- --run` (projection-related tests pass; pre-existing email/Export CSV failures unrelated)
 
 ---
 

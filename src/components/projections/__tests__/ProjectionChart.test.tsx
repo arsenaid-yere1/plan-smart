@@ -177,7 +177,7 @@ describe('ProjectionChart', () => {
     expect(toggleGroups[1]).toHaveAttribute('aria-labelledby', 'inflation-label');
   });
 
-  it('shows inflation toggle with Future $ active by default', () => {
+  it("shows inflation toggle with Today's $ active by default", () => {
     render(
       <ProjectionChart
         records={mockRecords}
@@ -189,8 +189,8 @@ describe('ProjectionChart', () => {
     const futureButton = screen.getByText('Future $');
     const todaysButton = screen.getByText("Today's $");
 
-    expect(futureButton).toHaveAttribute('aria-pressed', 'true');
-    expect(todaysButton).toHaveAttribute('aria-pressed', 'false');
+    expect(futureButton).toHaveAttribute('aria-pressed', 'false');
+    expect(todaysButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('renders with different retirement ages', () => {
