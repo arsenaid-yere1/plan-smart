@@ -81,9 +81,29 @@ interface ProfileClientProps {
 export function ProfileClient({ initialData }: ProfileClientProps) {
   const [profileData, setProfileData] = useState(initialData);
   const [editSection, setEditSection] = useState<EditSection>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
 
-  const handleEditClose = () => setEditSection(null);
+  const handleEditClose = (open: boolean) => {
+    if (!open) {
+      if (hasUnsavedChanges) {
+        const confirmed = window.confirm(
+          'You have unsaved changes. Are you sure you want to discard them?'
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+      setEditSection(null);
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  const handleFormChange = () => {
+    if (!hasUnsavedChanges) {
+      setHasUnsavedChanges(true);
+    }
+  };
 
   const handleEditSave = async (data: Partial<CompleteOnboardingDataV2>) => {
     try {
@@ -101,6 +121,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       // Merge updated data into local state
       setProfileData((prev) => ({ ...prev, ...data } as ProfileData));
       setEditSection(null);
+      setHasUnsavedChanges(false);
       toast({
         title: 'Profile updated',
         description: 'Your financial information has been saved.',
@@ -514,6 +535,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             onNext={(data) => handleEditSave(data)}
             initialData={formData}
             submitLabel="Save"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -525,10 +547,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step2RetirementInfo
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -540,10 +563,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step3FinancialInfo
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -555,10 +579,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step4RiskTolerance
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -570,10 +595,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step2bSavingsContributions
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -585,10 +611,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step3bIncomeExpenses
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -600,10 +627,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <Step4bAssetsDebts
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>
@@ -615,10 +643,11 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           </DialogHeader>
           <StepIncomeStreams
             onNext={(data) => handleEditSave(data)}
-            onBack={handleEditClose}
+            onBack={() => handleEditClose(false)}
             initialData={formData}
             submitLabel="Save"
             cancelLabel="Cancel"
+            onChange={handleFormChange}
           />
         </DialogContent>
       </Dialog>

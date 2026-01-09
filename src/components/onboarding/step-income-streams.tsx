@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
@@ -27,6 +28,7 @@ interface StepIncomeStreamsProps {
   initialData?: Partial<OnboardingStepIncomeStreamsData>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
 export function StepIncomeStreams({
@@ -35,18 +37,26 @@ export function StepIncomeStreams({
   initialData,
   submitLabel = 'Continue',
   cancelLabel = 'Back',
+  onChange,
 }: StepIncomeStreamsProps) {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStepIncomeStreamsData>({
     resolver: zodResolver(stepIncomeStreamsSchema),
     defaultValues: {
       incomeStreams: initialData?.incomeStreams || [],
     },
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   const { fields, append, remove } = useFieldArray({
     control,

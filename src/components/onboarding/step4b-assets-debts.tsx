@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, Home, ChevronDown, ChevronUp } from 'lucide-react';
@@ -28,6 +28,7 @@ interface Step4bProps {
   initialData?: Partial<OnboardingStep4AssetsDebtsData>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
 export function Step4bAssetsDebts({
@@ -36,6 +37,7 @@ export function Step4bAssetsDebts({
   initialData,
   submitLabel = 'Continue',
   cancelLabel = 'Back',
+  onChange,
 }: Step4bProps) {
   // Track which properties have mortgage section expanded
   const [expandedMortgages, setExpandedMortgages] = useState<Set<number>>(new Set());
@@ -56,7 +58,7 @@ export function Step4bAssetsDebts({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     watch,
   } = useForm<OnboardingStep4AssetsDebtsData>({
     resolver: zodResolver(step4AssetsDebtsSchema),
@@ -66,6 +68,13 @@ export function Step4bAssetsDebts({
       debts: initialData?.debts || [],
     },
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   // Watch properties to check for mortgage values
   const properties = watch('realEstateProperties');

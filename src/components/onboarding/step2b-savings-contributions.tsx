@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
@@ -26,6 +27,7 @@ interface Step2bProps {
   initialData?: Partial<OnboardingStep2SavingsData>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
 export function Step2bSavingsContributions({
@@ -34,12 +36,13 @@ export function Step2bSavingsContributions({
   initialData,
   submitLabel = 'Continue',
   cancelLabel = 'Back',
+  onChange,
 }: Step2bProps) {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep2SavingsData>({
     resolver: zodResolver(step2SavingsSchema),
     defaultValues: {
@@ -54,6 +57,13 @@ export function Step2bSavingsContributions({
       ],
     },
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   const { fields, append, remove } = useFieldArray({
     control,

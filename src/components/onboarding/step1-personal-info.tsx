@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -20,17 +21,25 @@ interface Step1Props {
   onNext: (data: OnboardingStep1Data) => void;
   initialData?: Partial<OnboardingStep1Data>;
   submitLabel?: string;
+  onChange?: () => void;
 }
 
-export function Step1PersonalInfo({ onNext, initialData, submitLabel = 'Continue' }: Step1Props) {
+export function Step1PersonalInfo({ onNext, initialData, submitLabel = 'Continue', onChange }: Step1Props) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep1Data>({
     resolver: zodResolver(step1Schema),
     defaultValues: initialData,
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   const currentYear = new Date().getFullYear();
 

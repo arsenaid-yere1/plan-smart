@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -21,18 +22,26 @@ interface Step3Props {
   initialData?: Partial<OnboardingStep3Data>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
-export function Step3FinancialInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back' }: Step3Props) {
+export function Step3FinancialInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back', onChange }: Step3Props) {
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep3Data>({
     resolver: zodResolver(step3Schema),
     defaultValues: initialData,
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   const annualIncome = watch('annualIncome') || 0;
   const savingsRate = watch('savingsRate') || 0;

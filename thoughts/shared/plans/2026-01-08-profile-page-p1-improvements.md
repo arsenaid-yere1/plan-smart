@@ -395,13 +395,13 @@ export function Collapsible({
 - [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
-- [ ] Can navigate to Collapsible header using Tab key
-- [ ] Can toggle section using Enter or Space key
-- [ ] Focus ring appears when using keyboard navigation
-- [ ] Screen reader announces "button, expanded" or "button, collapsed"
-- [ ] Screen reader announces "Edit Basics" (with section name) for edit buttons
-- [ ] Screen reader announces region when content is expanded
-- [ ] Visual chevron rotates with smooth 200ms transition
+- [x] Can navigate to Collapsible header using Tab key
+- [x] Can toggle section using Enter or Space key
+- [x] Focus ring appears when using keyboard navigation
+- [x] Screen reader announces "button, expanded" or "button, collapsed"
+- [x] Screen reader announces "Edit Basics" (with section name) for edit buttons
+- [x] Screen reader announces region when content is expanded
+- [x] Visual chevron rotates with smooth 200ms transition
 
 ---
 
@@ -559,9 +559,9 @@ Apply the same pattern to all 8 dialogs.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Open an edit dialog, make a change, click X or outside - confirm dialog appears

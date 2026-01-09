@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ interface Step3bProps {
   initialData?: Partial<OnboardingStep3IncomeExpensesData>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
 export function Step3bIncomeExpenses({
@@ -29,15 +31,23 @@ export function Step3bIncomeExpenses({
   initialData,
   submitLabel = 'Continue',
   cancelLabel = 'Back',
+  onChange,
 }: Step3bProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep3IncomeExpensesData>({
     resolver: zodResolver(step3IncomeExpensesSchema),
     defaultValues: initialData,
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   const handleSkip = () => {
     onNext({ incomeExpenses: undefined });

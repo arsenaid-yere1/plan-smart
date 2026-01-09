@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -23,14 +24,15 @@ interface Step2Props {
   initialData?: Partial<OnboardingStep2Data>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
-export function Step2RetirementInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back' }: Step2Props) {
+export function Step2RetirementInfo({ onNext, onBack, initialData, submitLabel = 'Continue', cancelLabel = 'Back', onChange }: Step2Props) {
   const {
     register,
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep2Data>({
     resolver: zodResolver(step2Schema),
     defaultValues: {
@@ -38,6 +40,13 @@ export function Step2RetirementInfo({ onNext, onBack, initialData, submitLabel =
       ...initialData,
     },
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   return (
     <Card>

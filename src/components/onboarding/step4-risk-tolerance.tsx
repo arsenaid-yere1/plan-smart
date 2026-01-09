@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface Step4Props {
   initialData?: Partial<OnboardingStep4Data>;
   submitLabel?: string;
   cancelLabel?: string;
+  onChange?: () => void;
 }
 
 export function Step4RiskTolerance({
@@ -30,11 +32,12 @@ export function Step4RiskTolerance({
   initialData,
   submitLabel = 'Continue',
   cancelLabel = 'Back',
+  onChange,
 }: Step4Props) {
   const {
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<OnboardingStep4Data>({
     resolver: zodResolver(step4Schema),
     defaultValues: {
@@ -42,6 +45,13 @@ export function Step4RiskTolerance({
       ...initialData,
     },
   });
+
+  // Report changes to parent
+  useEffect(() => {
+    if (isDirty && onChange) {
+      onChange();
+    }
+  }, [isDirty, onChange]);
 
   return (
     <Card>
