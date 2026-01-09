@@ -65,6 +65,7 @@ export const financialSnapshot = pgTable('financial_snapshot', {
 
   // Financial data from onboarding (existing)
   birthYear: integer('birth_year').notNull(),
+  stateOfResidence: text('state_of_residence'), // US state code (e.g., 'CA', 'TX')
   targetRetirementAge: integer('target_retirement_age').notNull(),
   filingStatus: text('filing_status').notNull(),
   annualIncome: numeric('annual_income', { precision: 12, scale: 2 }).notNull(),

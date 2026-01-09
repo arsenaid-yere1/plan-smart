@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { step1Schema } from '@/lib/validation/onboarding';
-import type { OnboardingStep1Data } from '@/types/onboarding';
+import { US_STATES, type OnboardingStep1Data } from '@/types/onboarding';
 
 interface Step1Props {
   onNext: (data: OnboardingStep1Data) => void;
@@ -57,6 +58,22 @@ export function Step1PersonalInfo({ onNext, initialData, submitLabel = 'Continue
             <p className="text-sm text-muted-foreground">
               We use your birth year to calculate your current age and
               retirement timeline
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="stateOfResidence">State of residence (optional)</Label>
+            <Select
+              id="stateOfResidence"
+              options={[...US_STATES]}
+              placeholder="Select your state"
+              {...register('stateOfResidence')}
+            />
+            {errors.stateOfResidence && (
+              <p className="text-sm text-red-500">{errors.stateOfResidence.message}</p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              Your state helps us estimate state income taxes in retirement
             </p>
           </div>
 

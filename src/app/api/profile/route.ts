@@ -35,6 +35,9 @@ export async function PATCH(request: NextRequest) {
     if (data.birthYear !== undefined) {
       updateData.birthYear = data.birthYear;
     }
+    if (data.stateOfResidence !== undefined) {
+      updateData.stateOfResidence = data.stateOfResidence;
+    }
     if (data.targetRetirementAge !== undefined) {
       updateData.targetRetirementAge = data.targetRetirementAge;
     }

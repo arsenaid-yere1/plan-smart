@@ -25,9 +25,31 @@ import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
 import { calculateNetWorth } from '@/lib/utils/net-worth';
 import { NetWorthSummary } from '@/components/dashboard/NetWorthSummary';
 
+// Helper to get state label from code
+const getStateLabel = (code: string | null): string => {
+  if (!code) return '—';
+  const states: Record<string, string> = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+    'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
+    'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
+    'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
+    'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
+    'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
+    'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
+    'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
+    'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
+    'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia',
+  };
+  return states[code] || code;
+};
+
 // Profile data structure matching what we fetch from the database
 export interface ProfileData {
   birthYear: number;
+  stateOfResidence: string | null;
   targetRetirementAge: number;
   filingStatus: FilingStatus;
   annualIncome: number;
@@ -108,8 +130,12 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
     : undefined;
 
   // Transform ProfileData to format expected by step components
+  // Destructure to exclude fields that need null-to-undefined conversion (they are handled explicitly below)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { stateOfResidence: _sor, primaryResidence: _pr, incomeExpenses: _ie, ...restProfileData } = profileData;
   const formData: Partial<CompleteOnboardingDataV2> = {
-    ...profileData,
+    ...restProfileData,
+    stateOfResidence: (profileData.stateOfResidence ?? undefined) as CompleteOnboardingDataV2['stateOfResidence'], // Convert null to undefined for react-hook-form
     investmentAccounts: profileData.investmentAccounts.map((acc) => ({
       ...acc,
       type: acc.type as CompleteOnboardingDataV2['investmentAccounts'][0]['type'],
@@ -166,6 +192,10 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           <div>
             <span className="text-muted-foreground">Current Age:</span>
             <span className="ml-2 font-medium">{currentAge}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">State of Residence:</span>
+            <span className="ml-2 font-medium">{getStateLabel(profileData.stateOfResidence)}</span>
           </div>
         </div>
       </Collapsible>

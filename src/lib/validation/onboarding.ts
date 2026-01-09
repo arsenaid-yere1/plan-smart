@@ -2,11 +2,21 @@ import { z } from 'zod';
 
 const currentYear = new Date().getFullYear();
 
+// Valid US state codes
+const US_STATE_CODES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
+] as const;
+
 export const step1Schema = z.object({
   birthYear: z
     .number()
     .min(1920, 'Birth year must be 1920 or later')
     .max(currentYear - 18, 'You must be at least 18 years old'),
+  stateOfResidence: z.enum(US_STATE_CODES).optional(),
 });
 
 export const step2Schema = z.object({

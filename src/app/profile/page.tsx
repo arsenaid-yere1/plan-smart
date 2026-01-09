@@ -24,6 +24,7 @@ export default async function ProfilePage() {
   // Transform DB types to client-safe format
   const profileData = {
     birthYear: snapshot.birthYear,
+    stateOfResidence: snapshot.stateOfResidence ?? null,
     targetRetirementAge: snapshot.targetRetirementAge,
     filingStatus: snapshot.filingStatus as FilingStatus,
     annualIncome: Number(snapshot.annualIncome),

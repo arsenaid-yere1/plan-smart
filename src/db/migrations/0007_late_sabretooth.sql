@@ -1,0 +1,1 @@
+ALTER TABLE "financial_snapshot" ADD COLUMN "state_of_residence" text;
