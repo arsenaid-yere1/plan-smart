@@ -117,11 +117,11 @@ No changes needed here, but verify the component works correctly after the formD
 - [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
-- [ ] Navigate to /profile with a state already set - verify state displays in Basics section
-- [ ] Click "Edit" on Basics section - verify state dropdown shows the correct state selected
-- [ ] For users without a state set - verify placeholder "Select your state" appears
-- [ ] Change state selection and save - verify new state persists
-- [ ] The state selection works the same as during initial onboarding
+- [x] Navigate to /profile with a state already set - verify state displays in Basics section
+- [x] Click "Edit" on Basics section - verify state dropdown shows the correct state selected
+- [x] For users without a state set - verify placeholder "Select your state" appears
+- [x] Change state selection and save - verify new state persists
+- [x] The state selection works the same as during initial onboarding
 
 **Implementation Note**: This is a small bug fix that should be done first as it affects the editing experience for the Basics section.
 
@@ -260,17 +260,17 @@ export default function ProfileLoading() {
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
-- [ ] New Skeleton component exists at `src/components/ui/skeleton.tsx`
-- [ ] Loading file exists at `src/app/profile/loading.tsx`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
+- [x] New Skeleton component exists at `src/components/ui/skeleton.tsx`
+- [x] Loading file exists at `src/app/profile/loading.tsx`
 
 #### Manual Verification:
-- [ ] Skeleton appears briefly when navigating to /profile with slow network (DevTools Network throttling to "Slow 3G")
-- [ ] Skeleton layout matches the actual profile layout structure
-- [ ] Skeleton animates with pulse effect
-- [ ] No layout shift when content loads
+- [x] Skeleton appears briefly when navigating to /profile with slow network (DevTools Network throttling to "Slow 3G")
+- [x] Skeleton layout matches the actual profile layout structure
+- [x] Skeleton animates with pulse effect
+- [x] No layout shift when content loads
 
 ---
 
@@ -390,9 +390,9 @@ export function Collapsible({
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Can navigate to Collapsible header using Tab key
