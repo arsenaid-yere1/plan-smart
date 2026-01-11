@@ -22,12 +22,41 @@ export function Collapsible({
   id,
 }: CollapsibleProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = React.useState<number | undefined>(
+    defaultOpen ? undefined : 0
+  );
 
   // Generate stable IDs for accessibility
   const generatedId = React.useId();
   const baseId = id || generatedId;
   const headerId = `${baseId}-header`;
   const contentId = `${baseId}-content`;
+
+  // Update height when content or open state changes
+  React.useEffect(() => {
+    if (!contentRef.current) return;
+
+    if (isOpen) {
+      const height = contentRef.current.scrollHeight;
+      setContentHeight(height);
+      // After transition, remove fixed height to allow dynamic content
+      const timer = setTimeout(() => {
+        setContentHeight(undefined);
+      }, 200); // Match transition duration
+      return () => clearTimeout(timer);
+    } else {
+      // First set to current height, then to 0 for animation
+      const height = contentRef.current.scrollHeight;
+      setContentHeight(height);
+      // Use requestAnimationFrame to ensure the height is set before animating to 0
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setContentHeight(0);
+        });
+      });
+    }
+  }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -75,11 +104,16 @@ export function Collapsible({
       </div>
       <div
         id={contentId}
+        ref={contentRef}
         role="region"
         aria-labelledby={headerId}
-        hidden={!isOpen}
+        aria-hidden={!isOpen}
+        className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
+        style={{
+          maxHeight: contentHeight === undefined ? 'none' : `${contentHeight}px`,
+        }}
       >
-        {isOpen && <div className="px-4 pb-4">{children}</div>}
+        <div className="px-4 pb-4">{children}</div>
       </div>
     </div>
   );

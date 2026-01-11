@@ -720,9 +720,9 @@ export function Collapsible({
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] TypeScript compiles without errors: `npm run typecheck`
-- [ ] Linting passes: `npm run lint`
-- [ ] Build succeeds: `npm run build`
+- [x] TypeScript compiles without errors: `npm run typecheck`
+- [x] Linting passes: `npm run lint`
+- [x] Build succeeds: `npm run build`
 
 #### Manual Verification:
 - [ ] Collapsible sections animate smoothly when opening (200ms duration)
