@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
 import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, type Assumptions } from '@/components/projections';
 import { ScenarioInput, ScenarioExplanation } from '@/components/scenarios';
+import { InsightsSection } from '@/components/insights';
 import type { ScenarioExplanationResponse } from '@/lib/scenarios/types';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
@@ -456,6 +457,9 @@ export function PlansClient({
               shortfallAge={shortfallAge}
             />
           </div>
+
+          {/* Insights Section */}
+          <InsightsSection isScenarioActive={isScenarioActive} />
 
           {/* Table */}
           <ProjectionTable
