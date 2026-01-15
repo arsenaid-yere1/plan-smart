@@ -311,13 +311,11 @@ export function PlansClient({
       )}
 
       {/* Scenario Input Section */}
-      <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <ScenarioInput
-          currentAssumptions={assumptions}
-          onApply={handleScenarioApply}
-          disabled={isLoading}
-        />
-      </div>
+      <ScenarioInput
+        currentAssumptions={assumptions}
+        onApply={handleScenarioApply}
+        disabled={isLoading}
+      />
 
       {/* Scenario Explanation */}
       {isScenarioActive && (scenarioExplanation || isExplanationLoading) && (
