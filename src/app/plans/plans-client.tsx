@@ -10,6 +10,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
 import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, type Assumptions } from '@/components/projections';
+import { ScenarioInput } from '@/components/scenarios';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
 import type { ProjectionResult } from '@/lib/projections/types';
 import type { ProjectionWarning } from '@/lib/projections/warnings';
@@ -202,6 +203,15 @@ export function PlansClient({
           ))}
         </div>
       )}
+
+      {/* Scenario Input Section */}
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <ScenarioInput
+          currentAssumptions={assumptions}
+          onApply={setAssumptions}
+          disabled={isLoading}
+        />
+      </div>
 
       {/* Mobile Assumptions Panel - Collapsible */}
       <div className="lg:hidden">
