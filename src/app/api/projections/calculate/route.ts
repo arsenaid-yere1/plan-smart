@@ -22,7 +22,7 @@ import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type In
 import { generateProjectionWarnings, type ProjectionWarning } from '@/lib/projections/warnings';
 import { createSecureQuery } from '@/db/secure-query';
 import type { RiskTolerance } from '@/types/database';
-import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson } from '@/db/schema/financial-snapshot';
+import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson, IncomeSourceJson } from '@/db/schema/financial-snapshot';
 import { createTimer } from '@/lib/monitoring/performance';
 
 /**
@@ -52,12 +52,36 @@ function validateAgeRelationships(
 }
 
 /**
+ * Calculate total annual income from income sources with variability adjustments.
+ * Falls back to annualIncome if no income sources are defined.
+ */
+function calculateTotalIncome(
+  incomeSources: IncomeSourceJson[] | null | undefined,
+  annualIncome: string
+): number {
+  if (incomeSources && incomeSources.length > 0) {
+    return incomeSources.reduce((sum, source) => {
+      // Apply variability adjustment for conservative estimates
+      const adjustmentFactor =
+        source.variability === 'variable'
+          ? 0.85
+          : source.variability === 'seasonal'
+          ? 0.9
+          : 1.0;
+      return sum + source.annualAmount * adjustmentFactor;
+    }, 0);
+  }
+  return parseFloat(annualIncome);
+}
+
+/**
  * Build income streams from snapshot with backward compatibility
  * If incomeStreams exists, use it. Otherwise, generate SS stream from legacy fields.
  */
 function buildIncomeStreams(
   snapshot: {
     incomeStreams?: IncomeStreamJson[] | null;
+    incomeSources?: IncomeSourceJson[] | null;
     annualIncome: string;
   },
   overrides?: {
@@ -77,9 +101,14 @@ function buildIncomeStreams(
   }
 
   // Backward compatibility: generate Social Security stream from legacy approach
+  // Use aggregated income from income sources if available, otherwise fall back to annualIncome
+  const incomeForSS = snapshot.incomeSources && snapshot.incomeSources.length > 0
+    ? snapshot.incomeSources.reduce((sum, s) => sum + s.annualAmount, 0)
+    : parseFloat(snapshot.annualIncome);
+
   const ssAge = overrides?.socialSecurityAge ?? DEFAULT_SS_AGE;
   const ssMonthly = overrides?.socialSecurityMonthly ??
-    estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
+    estimateSocialSecurityMonthly(incomeForSS);
 
   if (ssMonthly <= 0) {
     return [];
@@ -146,6 +175,7 @@ async function calculateProjection(
 
   // Calculate annual expenses
   const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
+  const incomeSources = snapshot.incomeSources as IncomeSourceJson[] | null;
   let annualExpenses: number;
 
   if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
@@ -154,8 +184,10 @@ async function calculateProjection(
     annualExpenses = monthly * 12;
   } else {
     // Derive from income and savings rate
+    // Use aggregated income from income sources if available (with variability adjustments)
+    const totalIncome = calculateTotalIncome(incomeSources, snapshot.annualIncome);
     annualExpenses = deriveAnnualExpenses(
-      parseFloat(snapshot.annualIncome),
+      totalIncome,
       parseFloat(snapshot.savingsRate)
     );
   }

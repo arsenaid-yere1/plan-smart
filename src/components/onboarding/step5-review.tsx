@@ -120,20 +120,52 @@ export function Step5Review({
           title="Income & Savings Rate"
           onEdit={() => setEditSection('income')}
         >
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Annual Income</dt>
-              <dd className="font-medium">
-                {formatCurrency(formData.annualIncome)}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Savings Rate</dt>
-              <dd className="font-medium">
-                {formatPercent(formData.savingsRate)}
-              </dd>
-            </div>
-          </dl>
+          <div className="space-y-4 text-sm">
+            <dl className="space-y-2">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Annual Income</dt>
+                <dd className="font-medium">
+                  {formatCurrency(formData.annualIncome)}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Savings Rate</dt>
+                <dd className="font-medium">
+                  {formatPercent(formData.savingsRate)}
+                </dd>
+              </div>
+            </dl>
+            {/* Income Sources Breakdown */}
+            {formData.incomeSources && formData.incomeSources.length > 0 && (
+              <div className="pt-3 border-t">
+                <h4 className="font-medium mb-2">Income Sources</h4>
+                <div className="space-y-2">
+                  {formData.incomeSources.map((source) => (
+                    <div key={source.id} className="flex justify-between items-center">
+                      <div>
+                        <span>{source.label}</span>
+                        {source.isPrimary && (
+                          <span className="ml-2 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded">
+                            Primary
+                          </span>
+                        )}
+                        <span className="text-muted-foreground text-xs block">
+                          {source.variability === 'recurring'
+                            ? 'Recurring'
+                            : source.variability === 'variable'
+                            ? 'Variable'
+                            : 'Seasonal'}
+                        </span>
+                      </div>
+                      <span className="font-medium">
+                        {formatCurrency(source.annualAmount)}/yr
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </Collapsible>
 
         {/* Investment Accounts Section */}

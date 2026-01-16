@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     await db.insert(financialSnapshot).values({
       userId: user.id,
       birthYear: data.birthYear,
+      stateOfResidence: data.stateOfResidence ?? null,
       targetRetirementAge: data.targetRetirementAge,
       filingStatus: data.filingStatus,
       annualIncome: data.annualIncome.toString(),
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
       incomeExpenses: data.incomeExpenses || null,
       // Epic 3: Income streams
       incomeStreams: data.incomeStreams || [],
+      // Epic 7: Income sources for tax classification
+      incomeSources: data.incomeSources || null,
     });
 
     // Calculate total savings for plan config

@@ -73,6 +73,9 @@ export async function PATCH(request: NextRequest) {
     if (data.incomeStreams !== undefined) {
       updateData.incomeStreams = data.incomeStreams;
     }
+    if (data.incomeSources !== undefined) {
+      updateData.incomeSources = data.incomeSources;
+    }
 
     // Update database
     const result = await db

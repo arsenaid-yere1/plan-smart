@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { incomeSourceSchema } from './income-sources';
 
 const currentYear = new Date().getFullYear();
 
@@ -27,16 +28,39 @@ export const step2Schema = z.object({
   filingStatus: z.enum(['single', 'married', 'head_of_household']),
 });
 
-export const step3Schema = z.object({
-  annualIncome: z
-    .number()
-    .min(0, 'Annual income cannot be negative')
-    .max(10000000, 'Annual income cannot exceed $10,000,000'),
-  savingsRate: z
-    .number()
-    .min(0, 'Savings rate cannot be negative')
-    .max(100, 'Savings rate cannot exceed 100%'),
-});
+export const step3Schema = z
+  .object({
+    annualIncome: z
+      .number()
+      .min(0, 'Annual income cannot be negative')
+      .max(10000000, 'Annual income cannot exceed $10,000,000'),
+    savingsRate: z
+      .number()
+      .min(0, 'Savings rate cannot be negative')
+      .max(100, 'Savings rate cannot exceed 100%'),
+    incomeSources: z.array(incomeSourceSchema).optional(),
+  })
+  .refine(
+    (data) => {
+      // If income sources provided, they must sum to annual income (within $1 tolerance)
+      if (data.incomeSources && data.incomeSources.length > 0) {
+        const total = data.incomeSources.reduce((sum, s) => sum + s.annualAmount, 0);
+        return Math.abs(total - data.annualIncome) <= 1;
+      }
+      return true;
+    },
+    { message: 'Income sources must add up to your total annual income', path: ['incomeSources'] }
+  )
+  .refine(
+    (data) => {
+      // If income sources provided, exactly one must be primary
+      if (data.incomeSources && data.incomeSources.length > 0) {
+        return data.incomeSources.filter((s) => s.isPrimary).length === 1;
+      }
+      return true;
+    },
+    { message: 'Please mark one income source as your primary source', path: ['incomeSources'] }
+  );
 
 export const step4Schema = z.object({
   riskTolerance: z.enum(['conservative', 'moderate', 'aggressive']),

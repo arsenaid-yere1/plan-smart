@@ -1,4 +1,8 @@
 import type { FilingStatus, RiskTolerance } from './database';
+import type { IncomeSource } from './income-sources';
+
+// Re-export income source types
+export * from './income-sources';
 
 // US State codes for residence selection
 export const US_STATES = [
@@ -70,6 +74,7 @@ export interface OnboardingStep2Data {
 export interface OnboardingStep3Data {
   annualIncome: number;
   savingsRate: number;
+  incomeSources?: IncomeSource[]; // Optional for backward compatibility
 }
 
 export interface OnboardingStep4Data {

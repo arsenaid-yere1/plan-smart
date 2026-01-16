@@ -47,6 +47,27 @@ export type IncomeStreamJson = {
   inflationAdjusted: boolean;
 };
 
+export type IncomeSourceJson = {
+  id: string;
+  type:
+    | 'w2_employment'
+    | 'self_employed'
+    | 'business_owner'
+    | 'contract_1099'
+    | 'rental_income'
+    | 'investment_income';
+  label: string;
+  annualAmount: number;
+  variability: 'recurring' | 'variable' | 'seasonal';
+  flexibility: {
+    canDefer: boolean;
+    canReduce: boolean;
+    canRestructure: boolean;
+  };
+  isPrimary: boolean;
+  notes?: string;
+};
+
 export type RealEstatePropertyJson = {
   id: string;
   name: string;
@@ -80,6 +101,9 @@ export const financialSnapshot = pgTable('financial_snapshot', {
 
   // Epic 3: Income streams for retirement
   incomeStreams: jsonb('income_streams').$type<IncomeStreamJson[]>(),
+
+  // Epic 7: Income sources for tax classification (working-age income)
+  incomeSources: jsonb('income_sources').$type<IncomeSourceJson[]>(),
 
   // Real estate properties (multiple properties support)
   realEstateProperties: jsonb('real_estate_properties').$type<RealEstatePropertyJson[]>(),

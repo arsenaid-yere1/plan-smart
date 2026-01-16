@@ -20,6 +20,7 @@ import type {
   IncomeExpensesJson,
   IncomeStreamJson,
   RealEstatePropertyJson,
+  IncomeSourceJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
 import { calculateNetWorth } from '@/lib/utils/net-worth';
@@ -61,6 +62,7 @@ export interface ProfileData {
   debts: DebtJson[];
   incomeExpenses: IncomeExpensesJson | null;
   incomeStreams: IncomeStreamJson[];
+  incomeSources: IncomeSourceJson[] | null; // Epic 7: Income source classification
 }
 
 type EditSection =
@@ -172,6 +174,7 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
     })),
     incomeExpenses: profileData.incomeExpenses ?? undefined,
     incomeStreams: profileData.incomeStreams ?? [],
+    incomeSources: profileData.incomeSources ?? undefined,
   };
 
   // Helper to format income stream type for display
@@ -251,15 +254,46 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
         defaultOpen
         onEdit={() => setEditSection('income')}
       >
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Annual Income:</span>
-            <span className="ml-2 font-medium">{formatCurrency(profileData.annualIncome)}</span>
+        <div className="space-y-4 text-sm">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-muted-foreground">Annual Income:</span>
+              <span className="ml-2 font-medium">{formatCurrency(profileData.annualIncome)}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Savings Rate:</span>
+              <span className="ml-2 font-medium">{formatPercent(profileData.savingsRate)}</span>
+            </div>
           </div>
-          <div>
-            <span className="text-muted-foreground">Savings Rate:</span>
-            <span className="ml-2 font-medium">{formatPercent(profileData.savingsRate)}</span>
-          </div>
+          {/* Income Sources Breakdown */}
+          {profileData.incomeSources && profileData.incomeSources.length > 0 && (
+            <div className="pt-3 border-t">
+              <h4 className="font-medium mb-2">Income Sources</h4>
+              <div className="space-y-2">
+                {profileData.incomeSources.map((source) => (
+                  <div key={source.id} className="flex justify-between border-b pb-2 last:border-0">
+                    <div>
+                      <span className="font-medium">{source.label}</span>
+                      {source.isPrimary && (
+                        <span className="ml-2 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded">
+                          Primary
+                        </span>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {source.variability === 'recurring'
+                          ? 'Recurring'
+                          : source.variability === 'variable'
+                          ? 'Variable'
+                          : 'Seasonal'}{' '}
+                        income
+                      </div>
+                    </div>
+                    <span className="font-medium">{formatCurrency(source.annualAmount)}/yr</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Collapsible>
 
