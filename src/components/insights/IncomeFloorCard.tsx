@@ -48,7 +48,29 @@ export function IncomeFloorCard({
   }
 
   const statusConfig = getStatusConfig(analysis.status);
-  const coveragePercent = Math.round(analysis.coverageRatioAtRetirement * 100);
+
+  // If floor is established at a later age, show coverage at that age instead of retirement
+  // This gives a more accurate picture when Social Security starts after retirement
+  let coveragePercent: number;
+  let displayedGuaranteedIncome = analysis.guaranteedIncomeAtRetirement;
+  let displayedEssentialExpenses = analysis.essentialExpensesAtRetirement;
+  let coverageAge: number | null = null;
+
+  if (analysis.floorEstablishedAge !== null && analysis.coverageByAge.length > 0) {
+    const floorAgeData = analysis.coverageByAge.find(
+      c => c.age === analysis.floorEstablishedAge
+    );
+    if (floorAgeData) {
+      coveragePercent = Math.min(Math.round(floorAgeData.coverageRatio * 100), 100);
+      displayedGuaranteedIncome = floorAgeData.guaranteedIncome;
+      displayedEssentialExpenses = floorAgeData.essentialExpenses;
+      coverageAge = analysis.floorEstablishedAge;
+    } else {
+      coveragePercent = Math.round(analysis.coverageRatioAtRetirement * 100);
+    }
+  } else {
+    coveragePercent = Math.round(analysis.coverageRatioAtRetirement * 100);
+  }
 
   return (
     <Card>
@@ -90,15 +112,19 @@ export function IncomeFloorCard({
         {/* Coverage Details */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted-foreground">Guaranteed Income</p>
+            <p className="text-muted-foreground">
+              Guaranteed Income{coverageAge ? ` (age ${coverageAge})` : ''}
+            </p>
             <p className="font-medium">
-              ${analysis.guaranteedIncomeAtRetirement.toLocaleString()}/yr
+              ${displayedGuaranteedIncome.toLocaleString()}/yr
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Essential Expenses</p>
+            <p className="text-muted-foreground">
+              Essential Expenses{coverageAge ? ` (age ${coverageAge})` : ''}
+            </p>
             <p className="font-medium">
-              ${analysis.essentialExpensesAtRetirement.toLocaleString()}/yr
+              ${displayedEssentialExpenses.toLocaleString()}/yr
             </p>
           </div>
         </div>
