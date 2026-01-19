@@ -45,6 +45,9 @@ export type IncomeStreamJson = {
   startAge: number;
   endAge?: number;
   inflationAdjusted: boolean;
+  // Epic 8: Safety-First Income Floor
+  isGuaranteed: boolean;
+  isSpouse?: boolean;
 };
 
 export type IncomeSourceJson = {

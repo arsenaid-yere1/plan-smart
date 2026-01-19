@@ -122,6 +122,8 @@ function buildIncomeStreams(
     startAge: ssAge,
     endAge: undefined,
     inflationAdjusted: true,
+    isGuaranteed: true,
+    isSpouse: false,
   }];
 }
 

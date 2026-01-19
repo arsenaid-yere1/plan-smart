@@ -227,6 +227,8 @@ export default async function DashboardPage() {
             startAge: DEFAULT_SS_AGE,
             endAge: undefined,
             inflationAdjusted: true,
+            isGuaranteed: true,
+            isSpouse: false,
           }];
         } else {
           incomeStreams = [];

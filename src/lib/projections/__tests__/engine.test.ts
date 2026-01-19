@@ -72,6 +72,7 @@ describe('runProjection', () => {
         startAge: 67,
         endAge: undefined,
         inflationAdjusted: true,
+        isGuaranteed: true,
       },
     ],
     annualDebtPayments: 0,
@@ -197,6 +198,7 @@ describe('runProjection', () => {
           startAge: 67,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
       ],
       annualDebtPayments: 0,
@@ -259,6 +261,7 @@ describe('runProjection', () => {
           startAge: 67,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
       ],
       annualDebtPayments: 0,
@@ -306,6 +309,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 67,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
         {
           id: 'pension',
@@ -315,6 +319,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: undefined,
           inflationAdjusted: false,
+          isGuaranteed: true,
         },
       ],
     };
@@ -345,6 +350,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: 70,
           inflationAdjusted: false,
+          isGuaranteed: false,
         },
         {
           id: 'ss',
@@ -354,6 +360,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 70,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
       ],
     };
@@ -387,6 +394,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: undefined,
           inflationAdjusted: true, // Will grow with inflation
+          isGuaranteed: true,
         },
         {
           id: 'pension',
@@ -396,6 +404,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: undefined,
           inflationAdjusted: false, // Will stay fixed
+          isGuaranteed: true,
         },
       ],
     };
@@ -444,6 +453,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: 75, // Sell property at 75
           inflationAdjusted: true,
+          isGuaranteed: false,
         },
         {
           id: 'ss',
@@ -453,6 +463,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 67,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
       ],
     };
@@ -484,6 +495,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 65,
           endAge: undefined,
           inflationAdjusted: true,
+          isGuaranteed: true,
         },
       ],
     };
@@ -520,6 +532,7 @@ describe('runProjection - Income Streams', () => {
           startAge: 70, // Deferred annuity
           endAge: undefined,
           inflationAdjusted: false,
+          isGuaranteed: true,
         },
       ],
     };

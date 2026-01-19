@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Shield, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,8 @@ import {
   type OnboardingStepIncomeStreamsData,
 } from '@/lib/validation/onboarding';
 import { INCOME_STREAM_TYPE_OPTIONS } from '@/types/onboarding';
+import type { IncomeStreamType } from '@/types/onboarding';
+import { isGuaranteedIncomeType } from '@/lib/projections/types';
 
 interface StepIncomeStreamsProps {
   onNext: (data: OnboardingStepIncomeStreamsData) => void;
@@ -43,6 +45,8 @@ export function StepIncomeStreams({
     register,
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isDirty },
   } = useForm<OnboardingStepIncomeStreamsData>({
     resolver: zodResolver(stepIncomeStreamsSchema),
@@ -64,14 +68,17 @@ export function StepIncomeStreams({
   });
 
   const addIncomeStream = () => {
+    const defaultType: IncomeStreamType = 'social_security';
     append({
       id: crypto.randomUUID(),
       name: '',
-      type: 'social_security',
+      type: defaultType,
       annualAmount: 0,
       startAge: 67,
       endAge: undefined,
       inflationAdjusted: true,
+      isGuaranteed: isGuaranteedIncomeType(defaultType),
+      isSpouse: false,
     });
   };
 
@@ -132,7 +139,12 @@ export function StepIncomeStreams({
                       <Select
                         options={[...INCOME_STREAM_TYPE_OPTIONS]}
                         value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
+                        onChange={(e) => {
+                          const newType = e.target.value as IncomeStreamType;
+                          field.onChange(newType);
+                          // Auto-update isGuaranteed based on new type
+                          setValue(`incomeStreams.${index}.isGuaranteed`, isGuaranteedIncomeType(newType));
+                        }}
                       />
                     )}
                   />
@@ -199,24 +211,66 @@ export function StepIncomeStreams({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Controller
-                  name={`incomeStreams.${index}.inflationAdjusted`}
-                  control={control}
-                  render={({ field }) => (
-                    <Checkbox
-                      id={`incomeStreams.${index}.inflationAdjusted`}
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* COLA checkbox */}
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    name={`incomeStreams.${index}.inflationAdjusted`}
+                    control={control}
+                    render={({ field: colaField }) => (
+                      <Checkbox
+                        id={`incomeStreams.${index}.inflationAdjusted`}
+                        checked={colaField.value}
+                        onCheckedChange={colaField.onChange}
+                      />
+                    )}
+                  />
+                  <Label
+                    htmlFor={`incomeStreams.${index}.inflationAdjusted`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    Adjusts for inflation (COLA)
+                  </Label>
+                </div>
+
+                {/* Spouse toggle - only for SS and pension */}
+                {(watch(`incomeStreams.${index}.type`) === 'social_security' ||
+                  watch(`incomeStreams.${index}.type`) === 'pension') && (
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name={`incomeStreams.${index}.isSpouse`}
+                      control={control}
+                      render={({ field: spouseField }) => (
+                        <Checkbox
+                          id={`incomeStreams.${index}.isSpouse`}
+                          checked={spouseField.value ?? false}
+                          onCheckedChange={spouseField.onChange}
+                        />
+                      )}
                     />
+                    <Label
+                      htmlFor={`incomeStreams.${index}.isSpouse`}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Spouse&apos;s benefit
+                    </Label>
+                  </div>
+                )}
+
+                {/* Guaranteed indicator */}
+                <div className="flex items-center gap-2 text-sm ml-auto">
+                  {watch(`incomeStreams.${index}.isGuaranteed`) ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Guaranteed
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Variable
+                    </span>
                   )}
-                />
-                <Label
-                  htmlFor={`incomeStreams.${index}.inflationAdjusted`}
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Adjusts for inflation (COLA)
-                </Label>
+                </div>
               </div>
             </div>
           ))}

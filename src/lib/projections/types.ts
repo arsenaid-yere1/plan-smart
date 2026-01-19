@@ -17,6 +17,22 @@ export type IncomeStreamType =
   | 'other';
 
 /**
+ * Income types considered guaranteed (not dependent on market conditions)
+ */
+export const GUARANTEED_INCOME_TYPES: IncomeStreamType[] = [
+  'social_security',
+  'pension',
+  'annuity',
+];
+
+/**
+ * Determine if an income type is considered guaranteed
+ */
+export function isGuaranteedIncomeType(type: IncomeStreamType): boolean {
+  return GUARANTEED_INCOME_TYPES.includes(type);
+}
+
+/**
  * Individual income stream for retirement projection
  */
 export interface IncomeStream {
@@ -27,6 +43,9 @@ export interface IncomeStream {
   startAge: number;          // Age when income begins
   endAge?: number;           // Age when income ends (undefined = lifetime)
   inflationAdjusted: boolean; // Whether to apply COLA
+  // Epic 8: Safety-First Income Floor
+  isGuaranteed: boolean;     // Auto-set based on type
+  isSpouse?: boolean;        // For household income differentiation (SS, pension)
 }
 
 /**

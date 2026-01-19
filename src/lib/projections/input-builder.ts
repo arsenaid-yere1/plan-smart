@@ -1,5 +1,5 @@
-import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary } from './types';
-import { ACCOUNT_TAX_CATEGORY } from './types';
+import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary, IncomeStreamType } from './types';
+import { ACCOUNT_TAX_CATEGORY, isGuaranteedIncomeType } from './types';
 import type { RealEstatePropertyJson } from '@/db/schema/financial-snapshot';
 import type { financialSnapshot } from '@/db/schema/financial-snapshot';
 import {
@@ -79,8 +79,14 @@ export function buildProjectionInputFromSnapshot(
   const annualHealthcareCosts =
     overrides.annualHealthcareCosts ?? estimateHealthcareCosts(retirementAge);
 
-  // Build income streams
-  const incomeStreams = overrides.incomeStreams ?? snapshot.incomeStreams ?? [];
+  // Build income streams with migration for legacy data
+  const rawStreams = overrides.incomeStreams ?? snapshot.incomeStreams ?? [];
+  // Ensure isGuaranteed is set for all streams (migration for legacy data)
+  const incomeStreams: IncomeStream[] = rawStreams.map(stream => ({
+    ...stream,
+    isGuaranteed: stream.isGuaranteed ?? isGuaranteedIncomeType(stream.type as IncomeStreamType),
+    isSpouse: stream.isSpouse ?? false,
+  }));
 
   return {
     currentAge,

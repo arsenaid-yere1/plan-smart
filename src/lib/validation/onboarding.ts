@@ -138,6 +138,9 @@ export const incomeStreamSchema = z.object({
   startAge: z.number().min(50, 'Start age must be at least 50').max(90, 'Start age must be 90 or less'),
   endAge: z.number().min(50).max(120).optional(),
   inflationAdjusted: z.boolean(),
+  // Epic 8: Safety-First Income Floor
+  isGuaranteed: z.boolean(),
+  isSpouse: z.boolean().optional(),
 });
 
 export const stepIncomeStreamsSchema = z.object({

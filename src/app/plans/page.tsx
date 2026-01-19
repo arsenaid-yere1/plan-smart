@@ -252,6 +252,8 @@ export default async function PlansPage() {
         startAge: DEFAULT_SS_AGE,
         endAge: undefined,
         inflationAdjusted: true,
+        isGuaranteed: true,
+        isSpouse: false,
       }];
     } else {
       incomeStreams = [];

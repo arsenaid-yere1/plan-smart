@@ -206,6 +206,9 @@ export interface IncomeStream {
   startAge: number;
   endAge?: number;
   inflationAdjusted: boolean;
+  // Epic 8: Safety-First Income Floor
+  isGuaranteed: boolean;
+  isSpouse?: boolean;
 }
 
 export const INCOME_STREAM_TYPE_OPTIONS = [

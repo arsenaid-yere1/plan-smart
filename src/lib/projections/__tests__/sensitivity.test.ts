@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { analyzeSensitivity, identifyLowFrictionWins, identifySensitiveAssumptions } from '../sensitivity';
 import type { ProjectionInput } from '../types';
 
