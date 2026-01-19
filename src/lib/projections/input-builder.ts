@@ -9,9 +9,11 @@ import {
   DEFAULT_CONTRIBUTION_GROWTH_RATE,
   DEFAULT_CONTRIBUTION_ALLOCATION,
   DEFAULT_RETURN_RATES,
+  DEFAULT_SS_AGE,
   deriveAnnualExpenses,
   estimateAnnualDebtPayments,
   estimateHealthcareCosts,
+  estimateSocialSecurityMonthly,
 } from './assumptions';
 import type { RiskTolerance } from '@/types/database';
 
@@ -88,13 +90,35 @@ export function buildProjectionInputFromSnapshot(
     overrides.annualHealthcareCosts ?? estimateHealthcareCosts(retirementAge);
 
   // Build income streams with migration for legacy data
+  let incomeStreams: IncomeStream[];
   const rawStreams = overrides.incomeStreams ?? snapshot.incomeStreams ?? [];
-  // Ensure isGuaranteed is set for all streams (migration for legacy data)
-  const incomeStreams: IncomeStream[] = rawStreams.map(stream => ({
-    ...stream,
-    isGuaranteed: stream.isGuaranteed ?? isGuaranteedIncomeType(stream.type as IncomeStreamType),
-    isSpouse: stream.isSpouse ?? false,
-  }));
+
+  if (rawStreams.length > 0) {
+    // User has explicit income streams - use them with migration for legacy data
+    incomeStreams = rawStreams.map(stream => ({
+      ...stream,
+      isGuaranteed: stream.isGuaranteed ?? isGuaranteedIncomeType(stream.type as IncomeStreamType),
+      isSpouse: stream.isSpouse ?? false,
+    }));
+  } else {
+    // No explicit income streams - auto-generate estimated Social Security
+    const ssMonthly = estimateSocialSecurityMonthly(Number(snapshot.annualIncome));
+    if (ssMonthly > 0) {
+      incomeStreams = [{
+        id: 'ss-auto',
+        name: 'Social Security (estimated)',
+        type: 'social_security',
+        annualAmount: ssMonthly * 12,
+        startAge: DEFAULT_SS_AGE,
+        endAge: undefined,
+        inflationAdjusted: true,
+        isGuaranteed: true,
+        isSpouse: false,
+      }];
+    } else {
+      incomeStreams = [];
+    }
+  }
 
   return {
     currentAge,
