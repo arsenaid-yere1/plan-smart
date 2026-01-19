@@ -41,6 +41,13 @@ export function StepIncomeStreams({
   cancelLabel = 'Back',
   onChange,
 }: StepIncomeStreamsProps) {
+  // Ensure all initial income streams have isGuaranteed set (migration for legacy data)
+  const migratedIncomeStreams = (initialData?.incomeStreams || []).map(stream => ({
+    ...stream,
+    isGuaranteed: stream.isGuaranteed ?? isGuaranteedIncomeType(stream.type),
+    isSpouse: stream.isSpouse ?? false,
+  }));
+
   const {
     register,
     control,
@@ -51,7 +58,7 @@ export function StepIncomeStreams({
   } = useForm<OnboardingStepIncomeStreamsData>({
     resolver: zodResolver(stepIncomeStreamsSchema),
     defaultValues: {
-      incomeStreams: initialData?.incomeStreams || [],
+      incomeStreams: migratedIncomeStreams,
     },
   });
 
