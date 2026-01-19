@@ -190,20 +190,23 @@ export default async function DashboardPage() {
         0
       );
 
-      // Calculate annual expenses
+      // Calculate annual expenses (preserve essential vs discretionary)
       const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
       let annualExpenses: number;
+      let annualEssentialExpenses: number;
+      let annualDiscretionaryExpenses: number;
 
       if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
-        const monthly =
-          (incomeExpenses.monthlyEssential || 0) +
-          (incomeExpenses.monthlyDiscretionary || 0);
-        annualExpenses = monthly * 12;
+        annualEssentialExpenses = (incomeExpenses.monthlyEssential || 0) * 12;
+        annualDiscretionaryExpenses = (incomeExpenses.monthlyDiscretionary || 0) * 12;
+        annualExpenses = annualEssentialExpenses + annualDiscretionaryExpenses;
       } else {
         annualExpenses = deriveAnnualExpenses(
           parseFloat(snapshot.annualIncome),
           parseFloat(snapshot.savingsRate)
         );
+        annualEssentialExpenses = annualExpenses;
+        annualDiscretionaryExpenses = 0;
       }
 
       // Estimate debt payments
@@ -249,7 +252,9 @@ export default async function DashboardPage() {
         expectedReturn,
         inflationRate: DEFAULT_INFLATION_RATE,
         contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
-        annualExpenses,
+        annualEssentialExpenses,
+        annualDiscretionaryExpenses,
+        annualExpenses, // backward compatibility
         annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
         healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
         incomeStreams,

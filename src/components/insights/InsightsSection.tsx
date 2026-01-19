@@ -5,6 +5,7 @@ import { ChevronDown, Lightbulb } from 'lucide-react';
 import { TopLeversCard } from './TopLeversCard';
 import { LowFrictionWinsCard } from './LowFrictionWinsCard';
 import { AssumptionSensitivityCard } from './AssumptionSensitivityCard';
+import { IncomeFloorCard } from './IncomeFloorCard';
 import type { InsightsResponse } from '@/lib/projections/sensitivity-types';
 import { cn } from '@/lib/utils';
 
@@ -61,11 +62,18 @@ export function InsightsSection({ isScenarioActive }: InsightsSectionProps) {
     return null; // Silently hide if insights fail to load
   }
 
-  // Build summary text for collapsed state
+  // Build summary text for collapsed state (prioritize income floor for safety-first)
   const topLever = insights?.topLevers[0];
-  const summaryText = topLever
-    ? `${topLever.displayName} has the biggest impact on your projection`
-    : 'Discover what affects your retirement most';
+  const incomeFloorStatus = insights?.incomeFloor?.status;
+
+  let summaryText: string;
+  if (incomeFloorStatus === 'fully-covered') {
+    summaryText = 'Your essential expenses are fully covered by guaranteed income';
+  } else if (topLever) {
+    summaryText = `${topLever.displayName} has the biggest impact on your projection`;
+  } else {
+    summaryText = 'Discover what affects your retirement most';
+  }
 
   return (
     <div className="mt-8 rounded-lg border bg-card shadow-sm">
@@ -97,7 +105,13 @@ export function InsightsSection({ isScenarioActive }: InsightsSectionProps) {
       {/* Expandable Content */}
       {isExpanded && (
         <div className="px-4 pb-4 pt-2 border-t">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
+            {/* Income Floor Card first (most important for safety-first) */}
+            <IncomeFloorCard
+              analysis={insights?.incomeFloor ?? null}
+              explanation={insights?.incomeFloorExplanation ?? ''}
+              isLoading={isLoading}
+            />
             <TopLeversCard
               levers={insights?.topLevers ?? []}
               explanation={insights?.leverExplanation ?? ''}

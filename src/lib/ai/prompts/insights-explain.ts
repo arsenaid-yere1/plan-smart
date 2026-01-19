@@ -119,3 +119,50 @@ ${assumptionDescriptions}
 
 Generate a 2-3 sentence explanation about these sensitivity findings. Encourage periodic review rather than immediate action.`;
 }
+
+/**
+ * System prompt for income floor explanation generation (Epic 8)
+ */
+export const INCOME_FLOOR_EXPLANATION_SYSTEM_PROMPT = `You are a financial planning assistant explaining income floor analysis results.
+
+Your task is to provide a brief, personalized explanation of the user's income floor status - whether their guaranteed income (Social Security, pensions, annuities) covers their essential living expenses.
+
+Guidelines:
+- Be encouraging but honest
+- Focus on the safety and security aspect
+- If floor is established, emphasize the psychological benefit of knowing essential expenses are covered
+- If partial or insufficient, be matter-of-fact without being alarming
+- Never give specific financial advice or recommendations
+- Keep explanation to 2-3 sentences maximum
+- Use plain language, avoid jargon
+
+Respond with JSON: { "explanation": "your explanation here" }`;
+
+/**
+ * Build user message for income floor explanation
+ */
+export function buildIncomeFloorUserMessage(
+  analysis: {
+    status: string;
+    coverageRatioAtRetirement: number;
+    essentialExpensesAtRetirement: number;
+    guaranteedIncomeAtRetirement: number;
+    floorEstablishedAge: number | null;
+  },
+  incomeStreams: Array<{ name: string; isGuaranteed: boolean }>,
+  retirementAge: number
+): string {
+  const guaranteedStreams = incomeStreams.filter(s => s.isGuaranteed);
+  const streamNames = guaranteedStreams.map(s => s.name).join(', ');
+
+  return `Income Floor Analysis:
+- Status: ${analysis.status}
+- Coverage ratio at retirement: ${Math.round(analysis.coverageRatioAtRetirement * 100)}%
+- Guaranteed income sources: ${streamNames || 'None'}
+- Essential expenses: $${analysis.essentialExpensesAtRetirement.toLocaleString()}/year
+- Guaranteed income at retirement: $${analysis.guaranteedIncomeAtRetirement.toLocaleString()}/year
+- Floor established age: ${analysis.floorEstablishedAge ?? 'Not established'}
+- Retirement age: ${retirementAge}
+
+Provide a brief, personalized explanation of what this means for the user's retirement security.`;
+}

@@ -175,23 +175,28 @@ async function calculateProjection(
     0
   );
 
-  // Calculate annual expenses
+  // Calculate annual expenses (preserve essential vs discretionary)
   const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
   const incomeSources = snapshot.incomeSources as IncomeSourceJson[] | null;
   let annualExpenses: number;
+  let annualEssentialExpenses: number;
+  let annualDiscretionaryExpenses: number;
 
   if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
     // Use actual expense data if available
-    const monthly = (incomeExpenses.monthlyEssential || 0) + (incomeExpenses.monthlyDiscretionary || 0);
-    annualExpenses = monthly * 12;
+    annualEssentialExpenses = (incomeExpenses.monthlyEssential || 0) * 12;
+    annualDiscretionaryExpenses = (incomeExpenses.monthlyDiscretionary || 0) * 12;
+    annualExpenses = annualEssentialExpenses + annualDiscretionaryExpenses;
   } else {
-    // Derive from income and savings rate
+    // Derive from income and savings rate - treat all as essential
     // Use aggregated income from income sources if available (with variability adjustments)
     const totalIncome = calculateTotalIncome(incomeSources, snapshot.annualIncome);
     annualExpenses = deriveAnnualExpenses(
       totalIncome,
       parseFloat(snapshot.savingsRate)
     );
+    annualEssentialExpenses = annualExpenses;
+    annualDiscretionaryExpenses = 0;
   }
 
   // Estimate debt payments
@@ -223,7 +228,9 @@ async function calculateProjection(
     expectedReturn: (overrides.expectedReturn as number) ?? DEFAULT_RETURN_RATES[riskTolerance],
     inflationRate: (overrides.inflationRate as number) ?? DEFAULT_INFLATION_RATE,
     contributionGrowthRate: (overrides.contributionGrowthRate as number) ?? DEFAULT_CONTRIBUTION_GROWTH_RATE,
-    annualExpenses,
+    annualEssentialExpenses,
+    annualDiscretionaryExpenses,
+    annualExpenses, // backward compatibility
     annualHealthcareCosts,
     healthcareInflationRate: (overrides.healthcareInflationRate as number) ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams, // New: replaces socialSecurityAge/socialSecurityMonthly

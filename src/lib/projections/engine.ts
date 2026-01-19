@@ -136,6 +136,8 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
     let inflows = 0;
     let outflows = 0;
     let withdrawalsByType: BalanceByType | undefined;
+    let currentEssentialExpenses: number | undefined;
+    let currentDiscretionaryExpenses: number | undefined;
 
     if (!isRetired) {
       // ACCUMULATION PHASE
@@ -159,9 +161,13 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
 
     } else {
       // DRAWDOWN PHASE
-      // Calculate inflation-adjusted general expenses
+      // Calculate inflation-adjusted expenses (essential vs discretionary)
       const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
-      const generalExpenses = input.annualExpenses * inflationMultiplier;
+
+      // Epic 8: Track essential and discretionary expenses separately
+      const essentialExpenses = (input.annualEssentialExpenses ?? input.annualExpenses) * inflationMultiplier;
+      const discretionaryExpenses = (input.annualDiscretionaryExpenses ?? 0) * inflationMultiplier;
+      const generalExpenses = essentialExpenses + discretionaryExpenses;
 
       // Calculate healthcare costs with separate (higher) inflation
       const healthcareInflationMultiplier = Math.pow(1 + input.healthcareInflationRate, yearsFromRetirement);
@@ -204,6 +210,10 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       if (isAlreadyRetired && age === input.currentAge) {
         projectedRetirementBalance = totalBalance(input.balancesByType);
       }
+
+      // Store expense breakdown in record
+      currentEssentialExpenses = Math.round(essentialExpenses * 100) / 100;
+      currentDiscretionaryExpenses = Math.round(discretionaryExpenses * 100) / 100;
     }
 
     records.push({
@@ -218,6 +228,8 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         taxable: Math.max(0, Math.round(balances.taxable * 100) / 100),
       },
       withdrawalsByType,
+      essentialExpenses: currentEssentialExpenses,
+      discretionaryExpenses: currentDiscretionaryExpenses,
     });
 
     // Capture retirement balance to match chart data point at retirement age

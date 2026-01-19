@@ -13,6 +13,8 @@ describe('sensitivity analysis', () => {
     expectedReturn: 0.07,
     inflationRate: 0.025,
     contributionGrowthRate: 0.02,
+    annualEssentialExpenses: 40000,
+    annualDiscretionaryExpenses: 20000,
     annualExpenses: 60000,
     annualHealthcareCosts: 8000,
     healthcareInflationRate: 0.05,

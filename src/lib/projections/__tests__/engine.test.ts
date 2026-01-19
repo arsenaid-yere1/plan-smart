@@ -60,6 +60,8 @@ describe('runProjection', () => {
     expectedReturn: 0.06,
     inflationRate: 0.025,
     contributionGrowthRate: 0,
+    annualEssentialExpenses: 35000,
+    annualDiscretionaryExpenses: 15000,
     annualExpenses: 50000,
     annualHealthcareCosts: 6500, // Medicare-age estimate
     healthcareInflationRate: 0.05, // 5% healthcare inflation
@@ -186,6 +188,8 @@ describe('runProjection', () => {
       expectedReturn: 0.04,
       inflationRate: 0.03,
       contributionGrowthRate: 0,
+      annualEssentialExpenses: 60000,
+      annualDiscretionaryExpenses: 20000,
       annualExpenses: 80000, // Very high expenses
       annualHealthcareCosts: 6500,
       healthcareInflationRate: 0.05,
@@ -249,6 +253,8 @@ describe('runProjection', () => {
       expectedReturn: 0.04,
       inflationRate: 0.02,
       contributionGrowthRate: 0,
+      annualEssentialExpenses: 35000,
+      annualDiscretionaryExpenses: 15000,
       annualExpenses: 50000, // High expenses
       annualHealthcareCosts: 6500,
       healthcareInflationRate: 0.05,
@@ -290,6 +296,8 @@ describe('runProjection - Income Streams', () => {
     expectedReturn: 0.05,
     inflationRate: 0.025,
     contributionGrowthRate: 0,
+    annualEssentialExpenses: 40000,
+    annualDiscretionaryExpenses: 20000,
     annualExpenses: 60000,
     annualHealthcareCosts: 8000,
     healthcareInflationRate: 0.05,
@@ -484,6 +492,8 @@ describe('runProjection - Income Streams', () => {
     // High income streams should reduce need to withdraw from savings
     const inputHighIncome: ProjectionInput = {
       ...baseInputForIncomeTests,
+      annualEssentialExpenses: 35000,
+      annualDiscretionaryExpenses: 15000,
       annualExpenses: 50000,
       annualHealthcareCosts: 5000,
       incomeStreams: [
@@ -502,6 +512,8 @@ describe('runProjection - Income Streams', () => {
 
     const inputNoIncome: ProjectionInput = {
       ...baseInputForIncomeTests,
+      annualEssentialExpenses: 35000,
+      annualDiscretionaryExpenses: 15000,
       annualExpenses: 50000,
       annualHealthcareCosts: 5000,
       incomeStreams: [],

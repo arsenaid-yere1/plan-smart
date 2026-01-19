@@ -15,10 +15,14 @@ import type { InsightsResponse } from '@/lib/projections/sensitivity-types';
 import {
   LEVER_EXPLANATION_SYSTEM_PROMPT,
   SENSITIVITY_EXPLANATION_SYSTEM_PROMPT,
+  INCOME_FLOOR_EXPLANATION_SYSTEM_PROMPT,
   buildLeverUserMessage,
   buildSensitivityUserMessage,
+  buildIncomeFloorUserMessage,
 } from '@/lib/ai/prompts/insights-explain';
 import { validateInsightsExplanation } from '@/lib/ai/validate-insights';
+import { calculateIncomeFloor, hasGuaranteedIncome } from '@/lib/projections/income-floor';
+import type { IncomeFloorAnalysis } from '@/lib/projections/income-floor-types';
 
 const MAX_RETRIES = 2;
 
@@ -66,6 +70,12 @@ export async function POST(_request: NextRequest) {
     // Identify sensitive assumptions
     const sensitiveAssumptions = identifySensitiveAssumptions(input, sensitivityResult);
 
+    // Calculate income floor (Epic 8)
+    let incomeFloor: IncomeFloorAnalysis | null = null;
+    if (hasGuaranteedIncome(input.incomeStreams) && input.annualEssentialExpenses > 0) {
+      incomeFloor = calculateIncomeFloor(input);
+    }
+
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
       // Return results without AI explanations
@@ -79,6 +89,8 @@ export async function POST(_request: NextRequest) {
           balance: sensitivityResult.baselineBalance,
           depletion: sensitivityResult.baselineDepletion,
         },
+        incomeFloor,
+        incomeFloorExplanation: '',
       } satisfies InsightsResponse);
     }
 
@@ -158,6 +170,47 @@ export async function POST(_request: NextRequest) {
       }
     }
 
+    // Generate income floor explanation (Epic 8)
+    let incomeFloorExplanation = '';
+    if (incomeFloor) {
+      const incomeFloorUserMessage = buildIncomeFloorUserMessage(
+        incomeFloor,
+        input.incomeStreams,
+        input.retirementAge
+      );
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const incomeFloorCompletion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: INCOME_FLOOR_EXPLANATION_SYSTEM_PROMPT },
+              { role: 'user', content: incomeFloorUserMessage },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0,
+            max_tokens: 256,
+          });
+
+          const incomeFloorContent = incomeFloorCompletion.choices[0]?.message?.content;
+          if (!incomeFloorContent) continue;
+
+          const incomeFloorParsed = JSON.parse(incomeFloorContent) as { explanation: string };
+          // Use same validation as other explanations
+          const validation = validateInsightsExplanation(incomeFloorParsed.explanation);
+
+          if (validation.valid) {
+            incomeFloorExplanation = incomeFloorParsed.explanation;
+            break;
+          } else {
+            console.warn('Income floor explanation validation failed:', validation.violations);
+          }
+        } catch (error) {
+          console.error('Income floor explanation generation error:', error);
+        }
+      }
+    }
+
     return NextResponse.json({
       topLevers: sensitivityResult.topLevers,
       leverExplanation,
@@ -168,6 +221,8 @@ export async function POST(_request: NextRequest) {
         balance: sensitivityResult.baselineBalance,
         depletion: sensitivityResult.baselineDepletion,
       },
+      incomeFloor,
+      incomeFloorExplanation,
     } satisfies InsightsResponse);
   } catch (error) {
     console.error('Insights analysis error:', error);

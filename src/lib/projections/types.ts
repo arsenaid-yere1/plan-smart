@@ -94,7 +94,14 @@ export interface ProjectionInput {
   // Annual contribution growth rate (default 0%)
   contributionGrowthRate: number;
 
-  // Annual expenses in today's dollars (excluding healthcare)
+  // Epic 8: Expense breakdown for income floor analysis
+  /** Annual essential expenses in today's dollars (housing, food, insurance, etc.) */
+  annualEssentialExpenses: number;
+
+  /** Annual discretionary expenses in today's dollars (travel, entertainment, etc.) */
+  annualDiscretionaryExpenses: number;
+
+  /** @deprecated Use annualEssentialExpenses + annualDiscretionaryExpenses. Kept for backward compatibility. */
   annualExpenses: number;
 
   // Healthcare costs (separate due to higher inflation)
@@ -156,6 +163,10 @@ export interface ProjectionRecord {
   // Account-level breakdown for tax strategy visibility
   balanceByType: BalanceByType;
   withdrawalsByType?: BalanceByType;
+
+  // Epic 8: Expense breakdown during retirement
+  essentialExpenses?: number;
+  discretionaryExpenses?: number;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { ProjectionInput } from './types';
+import type { IncomeFloorAnalysis } from './income-floor-types';
 
 /**
  * Result of varying a single lever
@@ -65,4 +66,7 @@ export interface InsightsResponse {
     balance: number;
     depletion: number | null;
   };
+  // Epic 8: Income Floor Analysis
+  incomeFloor: IncomeFloorAnalysis | null;  // null if no income streams
+  incomeFloorExplanation: string;
 }

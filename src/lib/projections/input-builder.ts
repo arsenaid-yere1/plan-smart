@@ -56,18 +56,26 @@ export function buildProjectionInputFromSnapshot(
     0
   );
 
-  // Calculate annual expenses
-  let annualExpenses: number;
+  // Calculate annual expenses - preserve essential vs discretionary (Epic 8)
+  let annualEssentialExpenses: number;
+  let annualDiscretionaryExpenses: number;
+
   const incomeExpenses = snapshot.incomeExpenses;
   if (incomeExpenses?.monthlyEssential != null || incomeExpenses?.monthlyDiscretionary != null) {
-    annualExpenses =
-      ((incomeExpenses.monthlyEssential ?? 0) + (incomeExpenses.monthlyDiscretionary ?? 0)) * 12;
+    annualEssentialExpenses = (incomeExpenses.monthlyEssential ?? 0) * 12;
+    annualDiscretionaryExpenses = (incomeExpenses.monthlyDiscretionary ?? 0) * 12;
   } else {
-    annualExpenses = deriveAnnualExpenses(
+    // Fallback: derive from income/savings rate, treat all as essential
+    const derivedExpenses = deriveAnnualExpenses(
       Number(snapshot.annualIncome),
       Number(snapshot.savingsRate)
     );
+    annualEssentialExpenses = derivedExpenses;
+    annualDiscretionaryExpenses = 0;
   }
+
+  // For backward compatibility
+  const annualExpenses = annualEssentialExpenses + annualDiscretionaryExpenses;
 
   // Calculate debt payments
   const annualDebtPayments = estimateAnnualDebtPayments(snapshot.debts ?? []);
@@ -98,7 +106,9 @@ export function buildProjectionInputFromSnapshot(
     expectedReturn: overrides.expectedReturn ?? DEFAULT_RETURN_RATES[riskTolerance],
     inflationRate: overrides.inflationRate ?? DEFAULT_INFLATION_RATE,
     contributionGrowthRate: overrides.contributionGrowthRate ?? DEFAULT_CONTRIBUTION_GROWTH_RATE,
-    annualExpenses,
+    annualEssentialExpenses,
+    annualDiscretionaryExpenses,
+    annualExpenses, // backward compatibility
     annualHealthcareCosts,
     healthcareInflationRate: overrides.healthcareInflationRate ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,

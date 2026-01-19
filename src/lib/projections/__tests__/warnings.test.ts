@@ -13,6 +13,8 @@ describe('generateProjectionWarnings', () => {
     expectedReturn: 0.06,
     inflationRate: 0.025,
     contributionGrowthRate: 0,
+    annualEssentialExpenses: 35000,
+    annualDiscretionaryExpenses: 15000,
     annualExpenses: 50000,
     annualHealthcareCosts: 6500,
     healthcareInflationRate: 0.05,
