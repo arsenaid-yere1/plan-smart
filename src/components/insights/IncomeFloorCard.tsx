@@ -67,19 +67,19 @@ export function IncomeFloorCard({
         {/* Status Indicator */}
         <div
           className={cn(
-            'flex items-center justify-between p-3 rounded-lg',
+            'flex items-center justify-between gap-3 p-3 rounded-lg',
             statusConfig.bgColor
           )}
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <p className={cn('font-semibold', statusConfig.textColor)}>
               {statusConfig.label}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground break-words">
               {analysis.insightStatement}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <p className={cn('text-2xl font-bold', statusConfig.textColor)}>
               {coveragePercent}%
             </p>

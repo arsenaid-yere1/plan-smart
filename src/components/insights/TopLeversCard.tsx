@@ -71,31 +71,31 @@ function LeverItem({ lever, rank }: { lever: LeverImpact; rank: number }) {
   const isPositive = lever.impactOnBalance > 0;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         <span className={cn(
-          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+          'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
           rank === 1 && 'bg-primary text-primary-foreground',
           rank === 2 && 'bg-secondary text-secondary-foreground',
           rank === 3 && 'bg-muted-foreground/20 text-muted-foreground'
         )}>
           {rank}
         </span>
-        <div>
-          <p className="font-medium text-sm">{lever.displayName}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-sm truncate">{lever.displayName}</p>
           <p className="text-xs text-muted-foreground">
             {lever.testDirection === 'increase' ? '+' : '-'}{formatDeltaValue(lever.lever, lever.testDelta)}
           </p>
         </div>
       </div>
       <div className={cn(
-        'text-right',
+        'text-right shrink-0',
         isPositive ? 'text-success' : 'text-destructive'
       )}>
-        <p className="font-semibold text-sm">
+        <p className="font-semibold text-sm whitespace-nowrap">
           {isPositive ? '+' : ''}{formatCurrency(lever.impactOnBalance)}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground whitespace-nowrap">
           {lever.percentImpact.toFixed(1)}% impact
         </p>
       </div>

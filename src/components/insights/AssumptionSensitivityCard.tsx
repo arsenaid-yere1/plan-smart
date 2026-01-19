@@ -69,17 +69,17 @@ export function AssumptionSensitivityCard({
 function AssumptionItem({ assumption }: { assumption: SensitiveAssumption }) {
   return (
     <div className="p-3 rounded-lg border">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="font-medium text-sm">{assumption.displayName}</h4>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h4 className="font-medium text-sm truncate min-w-0 flex-1">{assumption.displayName}</h4>
         <SensitivityMeter score={assumption.sensitivityScore} />
       </div>
       <p className="text-sm text-muted-foreground mb-2">
         Current: <span className="font-medium text-foreground">{assumption.formattedValue}</span>
       </p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground break-words">
         {assumption.explanation}
       </p>
-      <p className="text-xs text-primary mt-2">
+      <p className="text-xs text-primary mt-2 break-words">
         {assumption.reviewSuggestion}
       </p>
     </div>

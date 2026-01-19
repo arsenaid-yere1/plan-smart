@@ -61,28 +61,28 @@ export function LowFrictionWinsCard({ wins, isLoading }: LowFrictionWinsCardProp
 function WinItem({ win }: { win: LowFrictionWin }) {
   return (
     <div className="p-4 rounded-lg border bg-card">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <h4 className="font-medium text-sm">{win.title}</h4>
             <EffortBadge level={win.effortLevel} />
           </div>
-          <p className="text-sm text-muted-foreground mb-2">
+          <p className="text-sm text-muted-foreground mb-2 break-words">
             {win.description}
           </p>
-          <p className="text-sm">
+          <p className="text-sm break-words">
             <span className="text-success font-medium">
               {win.impactDescription}
             </span>
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-success">
+        <div className="text-right shrink-0">
+          <p className="text-lg font-bold text-success whitespace-nowrap">
             +{formatCurrency(win.potentialImpact)}
           </p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground italic mt-3 pt-3 border-t">
+      <p className="text-xs text-muted-foreground italic mt-3 pt-3 border-t break-words">
         {win.uncertaintyCaveat}
       </p>
     </div>

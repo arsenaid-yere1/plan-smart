@@ -105,7 +105,7 @@ export function InsightsSection({ isScenarioActive }: InsightsSectionProps) {
       {/* Expandable Content */}
       {isExpanded && (
         <div className="px-4 pb-4 pt-2 border-t">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4">
+          <div className="grid gap-6 md:grid-cols-2 mt-4">
             {/* Income Floor Card first (most important for safety-first) */}
             <IncomeFloorCard
               analysis={insights?.incomeFloor ?? null}
