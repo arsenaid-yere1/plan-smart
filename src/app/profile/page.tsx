@@ -37,6 +37,7 @@ export default async function ProfilePage() {
     incomeExpenses: snapshot.incomeExpenses ?? null,
     incomeStreams: snapshot.incomeStreams ?? [],
     incomeSources: snapshot.incomeSources ?? null,
+    spendingPhases: snapshot.spendingPhases ?? null, // Epic 9
   };
 
   return (

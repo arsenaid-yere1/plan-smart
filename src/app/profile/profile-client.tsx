@@ -21,8 +21,11 @@ import type {
   IncomeStreamJson,
   RealEstatePropertyJson,
   IncomeSourceJson,
+  SpendingPhaseConfigJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
+import { SpendingPhaseEditor } from '@/components/spending-phase-editor';
+import type { SpendingPhaseConfig } from '@/lib/projections/types';
 import { calculateNetWorth } from '@/lib/utils/net-worth';
 import { NetWorthSummary } from '@/components/dashboard/NetWorthSummary';
 
@@ -63,6 +66,7 @@ export interface ProfileData {
   incomeExpenses: IncomeExpensesJson | null;
   incomeStreams: IncomeStreamJson[];
   incomeSources: IncomeSourceJson[] | null; // Epic 7: Income source classification
+  spendingPhases: SpendingPhaseConfigJson | null; // Epic 9: Spending phase configuration
 }
 
 type EditSection =
@@ -127,6 +131,38 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
       toast({
         title: 'Profile updated',
         description: 'Your financial information has been saved.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Epic 9: Handler for saving spending phases (inline save, no dialog)
+  const handleSpendingPhasesChange = async (config: SpendingPhaseConfig) => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spendingPhases: config }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update spending phases');
+      }
+
+      // Update local state
+      setProfileData((prev) => ({
+        ...prev,
+        spendingPhases: config as SpendingPhaseConfigJson,
+      }));
+      toast({
+        title: 'Spending phases updated',
+        description: 'Your spending phase configuration has been saved.',
       });
     } catch (error) {
       toast({
@@ -557,6 +593,18 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
             No retirement income streams configured. Add Social Security, pensions, or other income sources.
           </p>
         )}
+      </Collapsible>
+
+      {/* Epic 9: Spending Phases Section */}
+      <Collapsible
+        title="Spending Phases"
+        defaultOpen={false}
+      >
+        <SpendingPhaseEditor
+          config={profileData.spendingPhases as SpendingPhaseConfig | undefined}
+          retirementAge={profileData.targetRetirementAge}
+          onChange={handleSpendingPhasesChange}
+        />
       </Collapsible>
 
       {/* Edit Dialogs */}
