@@ -49,16 +49,12 @@ export function Step3bIncomeExpenses({
     }
   }, [isDirty, onChange]);
 
-  const handleSkip = () => {
-    onNext({ incomeExpenses: undefined });
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Monthly Expenses</CardTitle>
         <CardDescription>
-          Help us understand your spending (optional - you can skip this step)
+          Help us understand your spending patterns
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -117,14 +113,6 @@ export function Step3bIncomeExpenses({
               className="flex-1"
             >
               {cancelLabel}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleSkip}
-              className="flex-1"
-            >
-              Skip
             </Button>
             <Button type="submit" className="flex-1">
               {submitLabel}
