@@ -42,8 +42,9 @@ import type {
   DebtJson,
   IncomeExpensesJson,
   IncomeStreamJson,
+  SpendingPhaseConfigJson,
 } from '@/db/schema/financial-snapshot';
-import type { IncomeStream } from '@/lib/projections/types';
+import type { IncomeStream, SpendingPhaseConfig } from '@/lib/projections/types';
 import { PlansClient } from './plans-client';
 
 export const metadata: Metadata = {
@@ -263,6 +264,9 @@ export default async function PlansPage() {
     }
   }
 
+  // Epic 9: Get spending phase config
+  const spendingPhaseConfig = snapshot.spendingPhases as SpendingPhaseConfigJson | null;
+
   // Build projection input
   const projectionInput: ProjectionInput = {
     currentAge,
@@ -281,6 +285,7 @@ export default async function PlansPage() {
     healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,
     annualDebtPayments,
+    spendingPhaseConfig: spendingPhaseConfig as SpendingPhaseConfig | undefined,
   };
 
   // Run projection with error handling

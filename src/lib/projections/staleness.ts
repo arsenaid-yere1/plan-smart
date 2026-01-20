@@ -1,4 +1,4 @@
-import type { ProjectionInput, BalanceByType, IncomeStream } from './types';
+import type { ProjectionInput, BalanceByType, IncomeStream, SpendingPhaseConfig } from './types';
 
 export interface StalenessResult {
   isStale: boolean;
@@ -72,6 +72,15 @@ export function checkProjectionStaleness(
     };
   }
 
+  // Epic 9: Deep compare spending phase config
+  if (!deepEqualSpendingPhases(storedInputs.spendingPhaseConfig, currentInputs.spendingPhaseConfig)) {
+    changedFields.push('spendingPhaseConfig');
+    changes['spendingPhaseConfig'] = {
+      previous: storedInputs.spendingPhaseConfig,
+      current: currentInputs.spendingPhaseConfig,
+    };
+  }
+
   return {
     isStale: changedFields.length > 0,
     changedFields,
@@ -93,6 +102,29 @@ function deepEqualIncomeStreams(a: IncomeStream[], b: IncomeStream[]): boolean {
   // Sort by ID for consistent comparison
   const sortedA = [...a].sort((x, y) => x.id.localeCompare(y.id));
   const sortedB = [...b].sort((x, y) => x.id.localeCompare(y.id));
+
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
+
+function deepEqualSpendingPhases(
+  a: SpendingPhaseConfig | undefined,
+  b: SpendingPhaseConfig | undefined
+): boolean {
+  // Both undefined or null
+  if (!a && !b) return true;
+  // One defined, other not
+  if (!a || !b) return false;
+  // Both disabled
+  if (!a.enabled && !b.enabled) return true;
+  // One enabled, other not
+  if (a.enabled !== b.enabled) return false;
+
+  // Both enabled - compare phases
+  if (a.phases.length !== b.phases.length) return false;
+
+  // Sort by ID for consistent comparison
+  const sortedA = [...a.phases].sort((x, y) => x.id.localeCompare(y.id));
+  const sortedB = [...b.phases].sort((x, y) => x.id.localeCompare(y.id));
 
   return JSON.stringify(sortedA) === JSON.stringify(sortedB);
 }
