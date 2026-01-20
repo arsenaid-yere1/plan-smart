@@ -1,4 +1,4 @@
-import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary, IncomeStreamType } from './types';
+import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary, IncomeStreamType, SpendingPhaseConfig } from './types';
 import { ACCOUNT_TAX_CATEGORY, isGuaranteedIncomeType } from './types';
 import type { RealEstatePropertyJson } from '@/db/schema/financial-snapshot';
 import type { financialSnapshot } from '@/db/schema/financial-snapshot';
@@ -29,6 +29,8 @@ export interface ProjectionOverrides {
   annualHealthcareCosts?: number;
   healthcareInflationRate?: number;
   contributionAllocation?: BalanceByType;
+  // Epic 9: Spending phase configuration override
+  spendingPhaseConfig?: SpendingPhaseConfig;
 }
 
 export function buildProjectionInputFromSnapshot(
@@ -120,6 +122,12 @@ export function buildProjectionInputFromSnapshot(
     }
   }
 
+  // Epic 9: Build spending phase config from overrides or snapshot
+  // Override takes precedence over snapshot
+  const spendingPhaseConfig = overrides.spendingPhaseConfig
+    ?? (snapshot.spendingPhases as SpendingPhaseConfig | null)
+    ?? undefined;
+
   return {
     currentAge,
     retirementAge,
@@ -137,6 +145,7 @@ export function buildProjectionInputFromSnapshot(
     healthcareInflationRate: overrides.healthcareInflationRate ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,
     annualDebtPayments,
+    spendingPhaseConfig,
   };
 }
 

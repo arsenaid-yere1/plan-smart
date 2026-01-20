@@ -1,6 +1,53 @@
 import { z } from 'zod';
 
 /**
+ * Individual spending phase validation schema
+ */
+export const spendingPhaseSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'Phase name is required').max(50),
+  startAge: z.number().int().min(50, 'Start age must be at least 50').max(100),
+  endAge: z.number().int().min(50).max(120).optional(),
+
+  // Multipliers (0.1 to 2.0 = 10% to 200%)
+  essentialMultiplier: z.number()
+    .min(0.1, 'Multiplier must be at least 10%')
+    .max(2.0, 'Multiplier cannot exceed 200%'),
+  discretionaryMultiplier: z.number()
+    .min(0.0, 'Multiplier cannot be negative')
+    .max(3.0, 'Multiplier cannot exceed 300%'),
+
+  // Optional absolute amounts
+  absoluteEssential: z.number().min(0).max(500000).optional(),
+  absoluteDiscretionary: z.number().min(0).max(500000).optional(),
+});
+
+/**
+ * Spending phase config validation with cross-field rules
+ */
+export const spendingPhaseConfigSchema = z.object({
+  enabled: z.boolean(),
+  phases: z.array(spendingPhaseSchema)
+    .min(1, 'At least one phase is required when enabled')
+    .max(4, 'Maximum 4 phases allowed'),
+}).refine(
+  (data) => {
+    if (!data.enabled) return true;
+
+    // Validate phases are ordered by startAge with no gaps
+    const sorted = [...data.phases].sort((a, b) => a.startAge - b.startAge);
+    for (let i = 1; i < sorted.length; i++) {
+      // Phases should be ordered (next startAge > previous startAge)
+      if (sorted[i].startAge <= sorted[i - 1].startAge) {
+        return false;
+      }
+    }
+    return true;
+  },
+  { message: 'Phases must have unique, ascending start ages' }
+);
+
+/**
  * Income stream validation schema
  */
 export const incomeStreamSchema = z.object({
@@ -102,6 +149,9 @@ export const projectionRequestSchema = z.object({
 
   // Contribution allocation override
   contributionAllocation: contributionAllocationSchema.optional(),
+
+  // Epic 9: Spending phase config override
+  spendingPhaseConfig: spendingPhaseConfigSchema.optional(),
 });
 
 export type ProjectionRequestInput = z.infer<typeof projectionRequestSchema>;

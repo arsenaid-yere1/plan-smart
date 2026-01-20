@@ -76,6 +76,10 @@ export async function PATCH(request: NextRequest) {
     if (data.incomeSources !== undefined) {
       updateData.incomeSources = data.incomeSources;
     }
+    // Epic 9: Spending phases
+    if (data.spendingPhases !== undefined) {
+      updateData.spendingPhases = data.spendingPhases;
+    }
 
     // Update database
     const result = await db

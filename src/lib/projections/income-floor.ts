@@ -8,6 +8,7 @@
 import type { IncomeStream, ProjectionInput } from './types';
 import type { IncomeFloorAnalysis, YearlyCoverage } from './income-floor-types';
 import { COVERAGE_THRESHOLDS } from './income-floor-types';
+import { calculatePhaseAdjustedExpenses } from './engine';
 
 /**
  * Calculate total guaranteed income for a given age
@@ -45,9 +46,22 @@ export function calculateIncomeFloor(input: ProjectionInput): IncomeFloorAnalysi
     const year = currentYear + (age - input.currentAge);
     const yearsFromRetirement = age - input.retirementAge;
 
-    // Calculate inflation-adjusted essential expenses
+    // Calculate inflation multiplier
     const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
-    const essentialExpenses = input.annualEssentialExpenses * inflationMultiplier;
+
+    // Epic 9: Calculate phase-adjusted essential expenses
+    const baseEssential = input.annualEssentialExpenses;
+    const baseDiscretionary = input.annualDiscretionaryExpenses ?? 0;
+
+    const phaseResult = calculatePhaseAdjustedExpenses(
+      age,
+      baseEssential,
+      baseDiscretionary,
+      input.spendingPhaseConfig
+    );
+
+    // Apply inflation to phase-adjusted essential expenses only
+    const essentialExpenses = phaseResult.essential * inflationMultiplier;
 
     // Calculate guaranteed income for this age
     const guaranteedIncome = calculateGuaranteedIncome(

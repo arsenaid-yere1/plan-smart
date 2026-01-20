@@ -50,6 +50,23 @@ export type IncomeStreamJson = {
   isSpouse?: boolean;
 };
 
+// Epic 9: Spending phase configuration types
+export type SpendingPhaseJson = {
+  id: string;
+  name: string;
+  startAge: number;
+  endAge?: number;
+  essentialMultiplier: number;
+  discretionaryMultiplier: number;
+  absoluteEssential?: number;
+  absoluteDiscretionary?: number;
+};
+
+export type SpendingPhaseConfigJson = {
+  enabled: boolean;
+  phases: SpendingPhaseJson[];
+};
+
 export type IncomeSourceJson = {
   id: string;
   type:
@@ -110,6 +127,9 @@ export const financialSnapshot = pgTable('financial_snapshot', {
 
   // Real estate properties (multiple properties support)
   realEstateProperties: jsonb('real_estate_properties').$type<RealEstatePropertyJson[]>(),
+
+  // Epic 9: Spending phase configuration
+  spendingPhases: jsonb('spending_phases').$type<SpendingPhaseConfigJson>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

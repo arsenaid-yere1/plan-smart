@@ -1,5 +1,5 @@
 import type { RiskTolerance } from '@/types/database';
-import type { BalanceByType } from './types';
+import type { BalanceByType, SpendingPhase, SpendingPhaseConfig } from './types';
 
 /**
  * Default expected return rates by risk tolerance
@@ -67,6 +67,52 @@ export function estimateHealthcareCosts(age: number): number {
   } else {
     return DEFAULT_HEALTHCARE_COSTS_BY_AGE['75plus'];
   }
+}
+
+/**
+ * Default spending phases based on retirement research
+ * Go-Go: Active early retirement (travel, hobbies)
+ * Slow-Go: Moderate activity, reduced spending
+ * No-Go: Focus on care, minimal discretionary
+ */
+export const DEFAULT_SPENDING_PHASES: SpendingPhase[] = [
+  {
+    id: 'go-go',
+    name: 'Go-Go Years',
+    startAge: 65,
+    essentialMultiplier: 1.0,
+    discretionaryMultiplier: 1.1,  // 110% discretionary (travel, hobbies)
+  },
+  {
+    id: 'slow-go',
+    name: 'Slow-Go',
+    startAge: 75,
+    essentialMultiplier: 0.95,
+    discretionaryMultiplier: 0.75,  // 75% discretionary
+  },
+  {
+    id: 'no-go',
+    name: 'No-Go',
+    startAge: 85,
+    essentialMultiplier: 0.90,
+    discretionaryMultiplier: 0.50,  // 50% discretionary
+  },
+];
+
+/**
+ * Get default spending phase config adjusted for actual retirement age
+ */
+export function getDefaultSpendingPhaseConfig(retirementAge: number): SpendingPhaseConfig {
+  const phases = DEFAULT_SPENDING_PHASES.map((phase, index) => ({
+    ...phase,
+    // Adjust first phase to start at actual retirement age
+    startAge: index === 0 ? retirementAge : phase.startAge,
+  }));
+
+  return {
+    enabled: false,  // Opt-in: disabled by default
+    phases,
+  };
 }
 
 /**

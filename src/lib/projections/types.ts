@@ -70,6 +70,33 @@ export interface BalanceByType {
 }
 
 /**
+ * Individual spending phase configuration
+ * Supports both multiplier-based and absolute amount spending
+ */
+export interface SpendingPhase {
+  id: string;
+  name: string;
+  startAge: number;
+  endAge?: number;  // Inferred from next phase or maxAge if not specified
+
+  // Multiplier-based spending (1.0 = 100% of base)
+  essentialMultiplier: number;
+  discretionaryMultiplier: number;
+
+  // Optional absolute amount overrides (takes precedence over multipliers)
+  absoluteEssential?: number;
+  absoluteDiscretionary?: number;
+}
+
+/**
+ * Complete spending phase configuration
+ */
+export interface SpendingPhaseConfig {
+  enabled: boolean;
+  phases: SpendingPhase[];
+}
+
+/**
  * Core inputs required for projection calculation
  * Derived from financial snapshot + optional overrides
  */
@@ -113,6 +140,9 @@ export interface ProjectionInput {
 
   // Annual debt payments (reduces effective contributions)
   annualDebtPayments: number;
+
+  /** Optional spending phase configuration for age-based spending variation */
+  spendingPhaseConfig?: SpendingPhaseConfig;
 }
 
 /**
@@ -167,6 +197,10 @@ export interface ProjectionRecord {
   // Epic 8: Expense breakdown during retirement
   essentialExpenses?: number;
   discretionaryExpenses?: number;
+
+  // Epic 9: Phase information for UI display
+  activePhaseId?: string;
+  activePhaseName?: string;
 }
 
 /**

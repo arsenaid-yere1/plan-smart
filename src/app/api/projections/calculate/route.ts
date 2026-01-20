@@ -18,7 +18,7 @@ import {
   estimateAnnualDebtPayments,
   estimateHealthcareCosts,
 } from '@/lib/projections/assumptions';
-import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions } from '@/lib/projections/types';
+import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions, type SpendingPhaseConfig } from '@/lib/projections/types';
 import { generateProjectionWarnings, type ProjectionWarning } from '@/lib/projections/warnings';
 import { createSecureQuery } from '@/db/secure-query';
 import type { RiskTolerance } from '@/types/database';
@@ -235,6 +235,10 @@ async function calculateProjection(
     healthcareInflationRate: (overrides.healthcareInflationRate as number) ?? DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams, // New: replaces socialSecurityAge/socialSecurityMonthly
     annualDebtPayments,
+    // Epic 9: Spending phase configuration
+    spendingPhaseConfig: (overrides.spendingPhaseConfig as SpendingPhaseConfig | undefined)
+      ?? (snapshot.spendingPhases as SpendingPhaseConfig | null)
+      ?? undefined,
   };
 
   // Validate age relationships
@@ -297,6 +301,7 @@ async function calculateProjection(
       inflationRate: projectionInput.inflationRate,
       contributionGrowthRate: projectionInput.contributionGrowthRate,
       incomeStreams: projectionInput.incomeStreams, // New field
+      spendingPhaseConfig: projectionInput.spendingPhaseConfig, // Epic 9
       // Derived values for transparency
       annualExpenses,
       annualDebtPayments,

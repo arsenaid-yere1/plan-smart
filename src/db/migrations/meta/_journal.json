@@ -64,6 +64,13 @@
       "when": 1768521104406,
       "tag": "0008_amazing_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768870137878,
+      "tag": "0009_slim_post",
+      "breakpoints": true
     }
   ]
 }

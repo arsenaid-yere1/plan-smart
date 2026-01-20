@@ -5,6 +5,8 @@ import type {
   BalanceByType,
   WithdrawalResult,
   IncomeStream,
+  SpendingPhaseConfig,
+  SpendingPhase,
 } from './types';
 
 /**
@@ -108,6 +110,62 @@ function calculateTotalIncome(
 }
 
 /**
+ * Get the active spending phase for a given age
+ */
+function getActivePhaseForAge(
+  age: number,
+  config?: SpendingPhaseConfig
+): SpendingPhase | null {
+  if (!config?.enabled || !config.phases.length) {
+    return null;
+  }
+
+  // Sort phases by startAge descending to find the active one
+  const sortedPhases = [...config.phases].sort((a, b) => b.startAge - a.startAge);
+
+  for (const phase of sortedPhases) {
+    if (age >= phase.startAge) {
+      return phase;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calculate phase-adjusted expenses for a given age
+ * Returns expenses before inflation adjustment
+ */
+export function calculatePhaseAdjustedExpenses(
+  age: number,
+  baseEssential: number,
+  baseDiscretionary: number,
+  config?: SpendingPhaseConfig
+): { essential: number; discretionary: number; activePhase: SpendingPhase | null } {
+  const activePhase = getActivePhaseForAge(age, config);
+
+  if (!activePhase) {
+    // No phase active, return base amounts (flat spending)
+    return {
+      essential: baseEssential,
+      discretionary: baseDiscretionary,
+      activePhase: null,
+    };
+  }
+
+  // Absolute amounts take precedence over multipliers
+  const essential = activePhase.absoluteEssential !== undefined
+    ? activePhase.absoluteEssential
+    : baseEssential * activePhase.essentialMultiplier;
+
+  const discretionary = activePhase.absoluteDiscretionary !== undefined
+    ? activePhase.absoluteDiscretionary
+    : baseDiscretionary * activePhase.discretionaryMultiplier;
+
+  return { essential, discretionary, activePhase };
+}
+
+/**
  * Run the complete retirement projection
  *
  * Uses end-of-year model:
@@ -138,6 +196,8 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
     let withdrawalsByType: BalanceByType | undefined;
     let currentEssentialExpenses: number | undefined;
     let currentDiscretionaryExpenses: number | undefined;
+    let currentActivePhaseId: string | undefined;
+    let currentActivePhaseName: string | undefined;
 
     if (!isRetired) {
       // ACCUMULATION PHASE
@@ -161,12 +221,22 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
 
     } else {
       // DRAWDOWN PHASE
-      // Calculate inflation-adjusted expenses (essential vs discretionary)
       const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
 
-      // Epic 8: Track essential and discretionary expenses separately
-      const essentialExpenses = (input.annualEssentialExpenses ?? input.annualExpenses) * inflationMultiplier;
-      const discretionaryExpenses = (input.annualDiscretionaryExpenses ?? 0) * inflationMultiplier;
+      // Epic 9: Calculate phase-adjusted base expenses (before inflation)
+      const baseEssential = input.annualEssentialExpenses ?? input.annualExpenses;
+      const baseDiscretionary = input.annualDiscretionaryExpenses ?? 0;
+
+      const phaseResult = calculatePhaseAdjustedExpenses(
+        age,
+        baseEssential,
+        baseDiscretionary,
+        input.spendingPhaseConfig
+      );
+
+      // Apply inflation to phase-adjusted amounts
+      const essentialExpenses = phaseResult.essential * inflationMultiplier;
+      const discretionaryExpenses = phaseResult.discretionary * inflationMultiplier;
       const generalExpenses = essentialExpenses + discretionaryExpenses;
 
       // Calculate healthcare costs with separate (higher) inflation
@@ -211,9 +281,11 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         projectedRetirementBalance = totalBalance(input.balancesByType);
       }
 
-      // Store expense breakdown in record
+      // Store expense breakdown and phase info in record
       currentEssentialExpenses = Math.round(essentialExpenses * 100) / 100;
       currentDiscretionaryExpenses = Math.round(discretionaryExpenses * 100) / 100;
+      currentActivePhaseId = phaseResult.activePhase?.id;
+      currentActivePhaseName = phaseResult.activePhase?.name;
     }
 
     records.push({
@@ -230,6 +302,8 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       withdrawalsByType,
       essentialExpenses: currentEssentialExpenses,
       discretionaryExpenses: currentDiscretionaryExpenses,
+      activePhaseId: currentActivePhaseId,
+      activePhaseName: currentActivePhaseName,
     });
 
     // Capture retirement balance to match chart data point at retirement age

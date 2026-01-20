@@ -9,6 +9,12 @@ import {
   step4AssetsDebtsSchema,
   stepIncomeStreamsSchema,
 } from './onboarding';
+import { spendingPhaseConfigSchema } from './projections';
+
+// Epic 9: Spending phases schema for profile updates
+const spendingPhasesSchema = z.object({
+  spendingPhases: spendingPhaseConfigSchema.optional(),
+});
 
 // Partial schema for profile updates - all fields optional
 export const profileUpdateSchema = step1Schema
@@ -19,6 +25,7 @@ export const profileUpdateSchema = step1Schema
   .merge(step3IncomeExpensesSchema)
   .merge(step4AssetsDebtsSchema)
   .merge(stepIncomeStreamsSchema)
+  .merge(spendingPhasesSchema)
   .partial();
 
 export type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
