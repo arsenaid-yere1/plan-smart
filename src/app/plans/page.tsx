@@ -179,39 +179,24 @@ export default async function PlansPage() {
     retirementAge: profileRetirementAge,
   };
 
-  // If we have a saved projection, use it
-  if (savedProjection) {
-    const savedAssumptions = savedProjection.assumptions as {
-      expectedReturn: number;
-      inflationRate: number;
-      retirementAge: number;
-    };
+  // Get saved assumptions if they exist (user may have customized them)
+  const savedAssumptions = savedProjection?.assumptions as {
+    expectedReturn: number;
+    inflationRate: number;
+    retirementAge: number;
+  } | undefined;
 
-    // Use saved assumptions as the current state
-    const currentAssumptions = {
-      expectedReturn: savedAssumptions.expectedReturn,
-      inflationRate: savedAssumptions.inflationRate,
-      retirementAge: savedAssumptions.retirementAge,
-    };
+  // Use saved assumptions or defaults
+  const currentAssumptions = savedAssumptions
+    ? {
+        expectedReturn: savedAssumptions.expectedReturn,
+        inflationRate: savedAssumptions.inflationRate,
+        retirementAge: savedAssumptions.retirementAge,
+      }
+    : defaultAssumptions;
 
-    return (
-      <PageContainer>
-        <PlansClient
-          initialProjection={{
-            records: savedProjection.records as ReturnType<typeof runProjection>['records'],
-            summary: savedProjection.summary as ReturnType<typeof runProjection>['summary'],
-          }}
-          currentAge={currentAge}
-          defaultAssumptions={defaultAssumptions}
-          currentAssumptions={currentAssumptions}
-          monthlySpending={monthlySpending}
-          planId={plan.id}
-        />
-      </PageContainer>
-    );
-  }
-
-  // No saved projection - create one with defaults
+  // Always recalculate projection with current snapshot data
+  // This ensures profile changes (like spending phases) are reflected
   const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
 
   // Calculate balances by tax category
@@ -267,21 +252,21 @@ export default async function PlansPage() {
   // Epic 9: Get spending phase config
   const spendingPhaseConfig = snapshot.spendingPhases as SpendingPhaseConfigJson | null;
 
-  // Build projection input
+  // Build projection input using currentAssumptions (may have user customizations)
   const projectionInput: ProjectionInput = {
     currentAge,
-    retirementAge: profileRetirementAge,
+    retirementAge: currentAssumptions.retirementAge,
     maxAge: DEFAULT_MAX_AGE,
     balancesByType,
     annualContribution,
     contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
-    expectedReturn: profileExpectedReturn,
-    inflationRate: DEFAULT_INFLATION_RATE,
+    expectedReturn: currentAssumptions.expectedReturn,
+    inflationRate: currentAssumptions.inflationRate,
     contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
     annualEssentialExpenses,
     annualDiscretionaryExpenses,
     annualExpenses, // backward compatibility
-    annualHealthcareCosts: estimateHealthcareCosts(profileRetirementAge),
+    annualHealthcareCosts: estimateHealthcareCosts(currentAssumptions.retirementAge),
     healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
     incomeStreams,
     annualDebtPayments,
@@ -325,7 +310,7 @@ export default async function PlansPage() {
         initialProjection={projection!}
         currentAge={currentAge}
         defaultAssumptions={defaultAssumptions}
-        currentAssumptions={defaultAssumptions}
+        currentAssumptions={currentAssumptions}
         monthlySpending={monthlySpending}
         planId={plan.id}
       />
