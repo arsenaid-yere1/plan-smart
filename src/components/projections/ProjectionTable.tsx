@@ -100,7 +100,7 @@ export function ProjectionTable({ records, retirementAge }: ProjectionTableProps
                             ? 'bg-success/10 text-success'
                             : 'bg-primary/10 text-primary'
                         )}>
-                          {row.isRetirement ? 'Retirement' : 'Accumulation'}
+                          {row.activePhaseName || (row.isRetirement ? 'Retirement' : 'Accumulation')}
                         </span>
                       </td>
                     </tr>

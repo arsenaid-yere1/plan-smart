@@ -292,7 +292,7 @@ export function ProjectionChart({
                       </p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase'}
+                      {data.activePhaseName || (data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase')}
                     </p>
                   </div>
                 );
