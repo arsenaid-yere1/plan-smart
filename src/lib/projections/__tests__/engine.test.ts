@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { runProjection, withdrawFromAccounts } from '../engine';
-import type { ProjectionInput, BalanceByType } from '../types';
+import {
+  runProjection,
+  withdrawFromAccounts,
+  calculatePhaseAdjustedExpenses,
+} from '../engine';
+import type { ProjectionInput, BalanceByType, SpendingPhaseConfig } from '../types';
 
 describe('withdrawFromAccounts', () => {
   it('should withdraw from taxable first', () => {
@@ -558,5 +562,407 @@ describe('runProjection - Income Streams', () => {
     // After annuity starts, should have fixed income
     const ageAt72 = result.records.find(r => r.age === 72)!;
     expect(ageAt72.inflows).toBe(25000); // Fixed amount, no inflation
+  });
+});
+
+describe('calculatePhaseAdjustedExpenses', () => {
+  const baseEssential = 40000;
+  const baseDiscretionary = 20000;
+
+  it('should return base amounts when config is undefined', () => {
+    const result = calculatePhaseAdjustedExpenses(
+      70,
+      baseEssential,
+      baseDiscretionary,
+      undefined
+    );
+
+    expect(result.essential).toBe(baseEssential);
+    expect(result.discretionary).toBe(baseDiscretionary);
+    expect(result.activePhase).toBeNull();
+  });
+
+  it('should return base amounts when config is disabled', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: false,
+      phases: [
+        {
+          id: 'phase-1',
+          name: 'Go-Go',
+          startAge: 65,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.5,
+        },
+      ],
+    };
+
+    const result = calculatePhaseAdjustedExpenses(70, baseEssential, baseDiscretionary, config);
+
+    expect(result.essential).toBe(baseEssential);
+    expect(result.discretionary).toBe(baseDiscretionary);
+    expect(result.activePhase).toBeNull();
+  });
+
+  it('should apply multipliers for active phase', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: true,
+      phases: [
+        {
+          id: 'go-go',
+          name: 'Go-Go Years',
+          startAge: 65,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.5,
+        },
+      ],
+    };
+
+    const result = calculatePhaseAdjustedExpenses(70, baseEssential, baseDiscretionary, config);
+
+    expect(result.essential).toBe(40000); // 40000 * 1.0
+    expect(result.discretionary).toBe(30000); // 20000 * 1.5
+    expect(result.activePhase?.id).toBe('go-go');
+    expect(result.activePhase?.name).toBe('Go-Go Years');
+  });
+
+  it('should select correct phase based on age', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: true,
+      phases: [
+        {
+          id: 'go-go',
+          name: 'Go-Go Years',
+          startAge: 65,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.5,
+        },
+        {
+          id: 'slow-go',
+          name: 'Slow-Go Years',
+          startAge: 75,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.0,
+        },
+        {
+          id: 'no-go',
+          name: 'No-Go Years',
+          startAge: 85,
+          essentialMultiplier: 1.1,
+          discretionaryMultiplier: 0.5,
+        },
+      ],
+    };
+
+    // Age 70 - should be in Go-Go phase
+    const goGoResult = calculatePhaseAdjustedExpenses(70, baseEssential, baseDiscretionary, config);
+    expect(goGoResult.activePhase?.id).toBe('go-go');
+    expect(goGoResult.discretionary).toBe(30000); // 20000 * 1.5
+
+    // Age 80 - should be in Slow-Go phase
+    const slowGoResult = calculatePhaseAdjustedExpenses(80, baseEssential, baseDiscretionary, config);
+    expect(slowGoResult.activePhase?.id).toBe('slow-go');
+    expect(slowGoResult.discretionary).toBe(20000); // 20000 * 1.0
+
+    // Age 90 - should be in No-Go phase
+    const noGoResult = calculatePhaseAdjustedExpenses(90, baseEssential, baseDiscretionary, config);
+    expect(noGoResult.activePhase?.id).toBe('no-go');
+    expect(noGoResult.essential).toBe(44000); // 40000 * 1.1
+    expect(noGoResult.discretionary).toBe(10000); // 20000 * 0.5
+  });
+
+  it('should use absolute amounts when specified (override multipliers)', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: true,
+      phases: [
+        {
+          id: 'go-go',
+          name: 'Go-Go Years',
+          startAge: 65,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.5,
+          absoluteEssential: 50000,
+          absoluteDiscretionary: 35000,
+        },
+      ],
+    };
+
+    const result = calculatePhaseAdjustedExpenses(70, baseEssential, baseDiscretionary, config);
+
+    // Absolute amounts should take precedence
+    expect(result.essential).toBe(50000);
+    expect(result.discretionary).toBe(35000);
+  });
+
+  it('should handle discretionary multiplier of 0 (no discretionary spending)', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: true,
+      phases: [
+        {
+          id: 'no-go',
+          name: 'No-Go Years',
+          startAge: 85,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 0,
+        },
+      ],
+    };
+
+    const result = calculatePhaseAdjustedExpenses(90, baseEssential, baseDiscretionary, config);
+
+    expect(result.essential).toBe(40000);
+    expect(result.discretionary).toBe(0);
+  });
+
+  it('should return base amounts when age is before all phases', () => {
+    const config: SpendingPhaseConfig = {
+      enabled: true,
+      phases: [
+        {
+          id: 'go-go',
+          name: 'Go-Go Years',
+          startAge: 65,
+          essentialMultiplier: 1.0,
+          discretionaryMultiplier: 1.5,
+        },
+      ],
+    };
+
+    // Age 60 is before retirement/phase start
+    const result = calculatePhaseAdjustedExpenses(60, baseEssential, baseDiscretionary, config);
+
+    expect(result.essential).toBe(baseEssential);
+    expect(result.discretionary).toBe(baseDiscretionary);
+    expect(result.activePhase).toBeNull();
+  });
+});
+
+describe('runProjection - Phase-Based Spending', () => {
+  const baseInputForPhaseTests: ProjectionInput = {
+    currentAge: 65,
+    retirementAge: 65,
+    maxAge: 75,
+    balancesByType: { taxDeferred: 500000, taxFree: 200000, taxable: 100000 },
+    annualContribution: 0,
+    contributionAllocation: { taxDeferred: 60, taxFree: 30, taxable: 10 },
+    expectedReturn: 0.05,
+    inflationRate: 0.025,
+    contributionGrowthRate: 0,
+    annualEssentialExpenses: 40000,
+    annualDiscretionaryExpenses: 20000,
+    annualExpenses: 60000,
+    annualHealthcareCosts: 8000,
+    healthcareInflationRate: 0.05,
+    incomeStreams: [],
+    annualDebtPayments: 0,
+  };
+
+  it('should produce different outflows with phases enabled vs disabled', () => {
+    // Without phases (flat spending)
+    const flatResult = runProjection(baseInputForPhaseTests);
+
+    // With phases (higher discretionary in early years)
+    const phasedInput: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      spendingPhaseConfig: {
+        enabled: true,
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go Years',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.5, // 50% more discretionary spending
+          },
+        ],
+      },
+    };
+    const phasedResult = runProjection(phasedInput);
+
+    // First year outflows should differ
+    const flatFirstYear = flatResult.records[0];
+    const phasedFirstYear = phasedResult.records[0];
+
+    // Phased spending should have higher outflows
+    // Flat: 40000 + 20000 + 8000 = 68000
+    // Phased: 40000 + 30000 + 8000 = 78000
+    expect(phasedFirstYear.outflows).toBeGreaterThan(flatFirstYear.outflows);
+
+    // Ending balance should be lower with higher early spending
+    expect(phasedResult.summary.endingBalance).toBeLessThan(flatResult.summary.endingBalance);
+  });
+
+  it('should transition between phases at correct ages', () => {
+    const input: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      maxAge: 90,
+      balancesByType: { taxDeferred: 1000000, taxFree: 500000, taxable: 500000 },
+      spendingPhaseConfig: {
+        enabled: true,
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.5,
+          },
+          {
+            id: 'slow-go',
+            name: 'Slow-Go',
+            startAge: 75,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.0,
+          },
+          {
+            id: 'no-go',
+            name: 'No-Go',
+            startAge: 85,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 0.5,
+          },
+        ],
+      },
+    };
+
+    const result = runProjection(input);
+
+    // Age 65-74 should be Go-Go phase
+    const age70Record = result.records.find(r => r.age === 70);
+    expect(age70Record?.activePhaseId).toBe('go-go');
+    expect(age70Record?.activePhaseName).toBe('Go-Go');
+
+    // Age 75-84 should be Slow-Go phase
+    const age80Record = result.records.find(r => r.age === 80);
+    expect(age80Record?.activePhaseId).toBe('slow-go');
+    expect(age80Record?.activePhaseName).toBe('Slow-Go');
+
+    // Age 85+ should be No-Go phase
+    const age88Record = result.records.find(r => r.age === 88);
+    expect(age88Record?.activePhaseId).toBe('no-go');
+    expect(age88Record?.activePhaseName).toBe('No-Go');
+  });
+
+  it('should record expense breakdown in records', () => {
+    const input: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      spendingPhaseConfig: {
+        enabled: true,
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.5,
+          },
+        ],
+      },
+    };
+
+    const result = runProjection(input);
+    const firstRecord = result.records[0];
+
+    // Should have expense breakdown
+    expect(firstRecord.essentialExpenses).toBeDefined();
+    expect(firstRecord.discretionaryExpenses).toBeDefined();
+
+    // Essential should be base amount (no multiplier change)
+    expect(firstRecord.essentialExpenses).toBe(40000);
+
+    // Discretionary should have 1.5x multiplier
+    expect(firstRecord.discretionaryExpenses).toBe(30000);
+  });
+
+  it('should fall back to flat spending when phases disabled', () => {
+    const input: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      spendingPhaseConfig: {
+        enabled: false, // Disabled
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.5,
+          },
+        ],
+      },
+    };
+
+    const result = runProjection(input);
+    const firstRecord = result.records[0];
+
+    // Should NOT have phase info
+    expect(firstRecord.activePhaseId).toBeUndefined();
+    expect(firstRecord.activePhaseName).toBeUndefined();
+
+    // Expenses should be base amounts (no multiplier)
+    expect(firstRecord.essentialExpenses).toBe(40000);
+    expect(firstRecord.discretionaryExpenses).toBe(20000);
+  });
+
+  it('should apply inflation to phase-adjusted expenses', () => {
+    const input: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      inflationRate: 0.03, // 3% inflation
+      annualHealthcareCosts: 0, // Zero healthcare to simplify test
+      spendingPhaseConfig: {
+        enabled: true,
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.0,
+          },
+        ],
+      },
+    };
+
+    const result = runProjection(input);
+
+    // Year 0 (age 65): no inflation yet
+    expect(result.records[0].outflows).toBe(60000);
+
+    // Year 1 (age 66): 3% inflation
+    const expectedYear1 = 60000 * 1.03;
+    expect(result.records[1].outflows).toBeCloseTo(expectedYear1, 0);
+
+    // Year 2 (age 67): 3% compounded
+    const expectedYear2 = 60000 * Math.pow(1.03, 2);
+    expect(result.records[2].outflows).toBeCloseTo(expectedYear2, 0);
+  });
+
+  it('should not apply spending phases during accumulation', () => {
+    const input: ProjectionInput = {
+      ...baseInputForPhaseTests,
+      currentAge: 30,
+      retirementAge: 65,
+      maxAge: 70,
+      balancesByType: { taxDeferred: 50000, taxFree: 25000, taxable: 25000 },
+      annualContribution: 20000,
+      spendingPhaseConfig: {
+        enabled: true,
+        phases: [
+          {
+            id: 'go-go',
+            name: 'Go-Go',
+            startAge: 65,
+            essentialMultiplier: 1.0,
+            discretionaryMultiplier: 1.5,
+          },
+        ],
+      },
+    };
+
+    const result = runProjection(input);
+
+    // Check accumulation years (before retirement)
+    const age40Record = result.records.find(r => r.age === 40);
+    expect(age40Record?.activePhaseId).toBeUndefined();
+    expect(age40Record?.activePhaseName).toBeUndefined();
+    expect(age40Record?.outflows).toBe(0); // No expenses during accumulation
   });
 });

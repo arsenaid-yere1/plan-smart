@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
-import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, type Assumptions } from '@/components/projections';
+import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, SpendingCompareTab, type Assumptions } from '@/components/projections';
 import { ScenarioInput, ScenarioExplanation } from '@/components/scenarios';
 import { InsightsSection } from '@/components/insights';
 import type { ScenarioExplanationResponse } from '@/lib/scenarios/types';
@@ -42,6 +42,7 @@ export function PlansClient({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [inputWarnings, setInputWarnings] = useState<ProjectionWarning[]>([]);
   const [mobileAssumptionsOpen, setMobileAssumptionsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'assets' | 'compare'>('assets');
 
   // Scenario state
   const [isScenarioActive, setIsScenarioActive] = useState(false);
@@ -441,29 +442,65 @@ export function PlansClient({
             </Card>
           </div>
 
-          {/* Chart */}
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Assets Over Time</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Your projected balance from age {currentAge} to 90
-            </p>
-            <ProjectionChart
-              records={projection.records}
-              retirementAge={assumptions.retirementAge}
-              currentAge={currentAge}
-              inflationRate={assumptions.inflationRate}
-              shortfallAge={shortfallAge}
-            />
+          {/* Tab Navigation */}
+          <div className="border-b">
+            <nav className="flex gap-4" aria-label="Projection views">
+              <button
+                onClick={() => setActiveTab('assets')}
+                className={`py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === 'assets'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Assets Over Time
+              </button>
+              <button
+                onClick={() => setActiveTab('compare')}
+                className={`py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === 'compare'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Compare Spending
+              </button>
+            </nav>
           </div>
 
-          {/* Insights Section */}
-          <InsightsSection isScenarioActive={isScenarioActive} />
+          {/* Tab Content */}
+          {activeTab === 'assets' ? (
+            <>
+              {/* Chart */}
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Assets Over Time</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your projected balance from age {currentAge} to 90
+                </p>
+                <ProjectionChart
+                  records={projection.records}
+                  retirementAge={assumptions.retirementAge}
+                  currentAge={currentAge}
+                  inflationRate={assumptions.inflationRate}
+                  shortfallAge={shortfallAge}
+                />
+              </div>
 
-          {/* Table */}
-          <ProjectionTable
-            records={projection.records}
-            retirementAge={assumptions.retirementAge}
-          />
+              {/* Insights Section */}
+              <InsightsSection isScenarioActive={isScenarioActive} />
+
+              {/* Table */}
+              <ProjectionTable
+                records={projection.records}
+                retirementAge={assumptions.retirementAge}
+              />
+            </>
+          ) : (
+            <SpendingCompareTab
+              retirementAge={assumptions.retirementAge}
+              inflationRate={assumptions.inflationRate}
+            />
+          )}
         </div>
 
         {/* Right Column: Assumptions Panel (Desktop only) */}

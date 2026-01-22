@@ -251,3 +251,55 @@ export interface PropertySummary {
   totalMortgage: number;
   totalEquity: number;
 }
+
+/**
+ * Comparison result between flat and phased spending strategies
+ * Used by Story 9.2 to show trade-offs
+ */
+export interface SpendingComparison {
+  flatSpending: {
+    /** Total spending from retirement to maxAge */
+    totalLifetimeSpending: number;
+    /** Age when portfolio depletes, or null if never */
+    portfolioDepletionAge: number | null;
+    /** Portfolio balance at maxAge */
+    endingBalance: number;
+    /** Year-by-year spending amounts for chart */
+    yearlySpending: { age: number; amount: number }[];
+  };
+  phasedSpending: {
+    /** Total spending from retirement to maxAge */
+    totalLifetimeSpending: number;
+    /** Age when portfolio depletes, or null if never */
+    portfolioDepletionAge: number | null;
+    /** Portfolio balance at maxAge */
+    endingBalance: number;
+    /** Year-by-year spending with phase info for chart */
+    yearlySpending: { age: number; amount: number; phase: string | null }[];
+    /** Extra spending in early years vs flat approach */
+    earlyYearsBonus: number;
+    /** Number of years considered "early years" (default: first 10 years of retirement) */
+    earlyYearsCount: number;
+  };
+  /** Age where cumulative spending equals between strategies, or null if never */
+  breakEvenAge: number | null;
+  /** Difference in portfolio longevity (positive = phased lasts longer) */
+  longevityDifference: number;
+}
+
+/**
+ * Response from /api/projections/compare endpoint
+ */
+export interface SpendingComparisonResponse {
+  comparison: SpendingComparison;
+  inputs: {
+    retirementAge: number;
+    maxAge: number;
+    baseEssentialExpenses: number;
+    baseDiscretionaryExpenses: number;
+    phases: SpendingPhase[];
+  };
+  meta: {
+    calculationTimeMs: number;
+  };
+}
