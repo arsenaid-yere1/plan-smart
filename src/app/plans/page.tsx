@@ -313,6 +313,7 @@ export default async function PlansPage() {
         currentAssumptions={currentAssumptions}
         monthlySpending={monthlySpending}
         planId={plan.id}
+        initialSpendingConfig={spendingPhaseConfig as SpendingPhaseConfig | null}
       />
     </PageContainer>
   );

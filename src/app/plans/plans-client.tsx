@@ -25,6 +25,7 @@ interface PlansClientProps {
   currentAssumptions: Assumptions;
   monthlySpending: number;
   planId: string;
+  initialSpendingConfig?: SpendingPhaseConfig | null;
 }
 
 export function PlansClient({
@@ -34,6 +35,7 @@ export function PlansClient({
   currentAssumptions,
   monthlySpending,
   planId,
+  initialSpendingConfig,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(currentAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
@@ -53,23 +55,9 @@ export function PlansClient({
 
   // Spending phase edit state
   const [editingPhaseId, setEditingPhaseId] = useState<string | null>(null);
-  const [spendingConfig, setSpendingConfig] = useState<SpendingPhaseConfig | null>(null);
-
-  // Fetch spending config on mount
-  useEffect(() => {
-    const fetchSpendingConfig = async () => {
-      try {
-        const response = await fetch('/api/profile');
-        if (response.ok) {
-          const data = await response.json();
-          setSpendingConfig(data.profile?.spendingPhases ?? null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch spending config:', error);
-      }
-    };
-    fetchSpendingConfig();
-  }, []);
+  const [spendingConfig, setSpendingConfig] = useState<SpendingPhaseConfig | null>(
+    initialSpendingConfig ?? null
+  );
 
   // Debounced recalculation
   useEffect(() => {
