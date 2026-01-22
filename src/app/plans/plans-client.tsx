@@ -9,12 +9,12 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
-import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, SpendingCompareTab, type Assumptions } from '@/components/projections';
+import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, SpendingCompareTab, SpendingPhaseEditModal, type Assumptions } from '@/components/projections';
 import { ScenarioInput, ScenarioExplanation } from '@/components/scenarios';
 import { InsightsSection } from '@/components/insights';
 import type { ScenarioExplanationResponse } from '@/lib/scenarios/types';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
-import type { ProjectionResult } from '@/lib/projections/types';
+import type { ProjectionResult, SpendingPhaseConfig } from '@/lib/projections/types';
 import type { ProjectionWarning } from '@/lib/projections/warnings';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +50,26 @@ export function PlansClient({
   const [baseAssumptions, setBaseAssumptions] = useState<Assumptions | null>(null);
   const [scenarioExplanation, setScenarioExplanation] = useState<ScenarioExplanationResponse | null>(null);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
+
+  // Spending phase edit state
+  const [editingPhaseId, setEditingPhaseId] = useState<string | null>(null);
+  const [spendingConfig, setSpendingConfig] = useState<SpendingPhaseConfig | null>(null);
+
+  // Fetch spending config on mount
+  useEffect(() => {
+    const fetchSpendingConfig = async () => {
+      try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const data = await response.json();
+          setSpendingConfig(data.profile?.spendingPhases ?? null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch spending config:', error);
+      }
+    };
+    fetchSpendingConfig();
+  }, []);
 
   // Debounced recalculation
   useEffect(() => {
@@ -150,6 +170,54 @@ export function PlansClient({
     setBaseAssumptions(null);
     setScenarioExplanation(null);
   }, [baseAssumptions]);
+
+  // Refetch projection (used after spending config changes)
+  const refetchProjection = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/projections/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId,
+          expectedReturn: assumptions.expectedReturn,
+          inflationRate: assumptions.inflationRate,
+          retirementAge: assumptions.retirementAge,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjection(data.projection);
+      }
+    } catch (error) {
+      console.error('Failed to refetch projection:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [planId, assumptions]);
+
+  // Handle saving spending config changes
+  const handleSaveSpendingConfig = useCallback(async (config: SpendingPhaseConfig) => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spendingPhases: config }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save spending config');
+      }
+
+      setSpendingConfig(config);
+      // Trigger projection recalculation
+      await refetchProjection();
+    } catch (error) {
+      console.error('Failed to save spending config:', error);
+      throw error;
+    }
+  }, [refetchProjection]);
 
   // Fetch scenario explanation when scenario projection is ready
   useEffect(() => {
@@ -483,6 +551,8 @@ export function PlansClient({
                   currentAge={currentAge}
                   inflationRate={assumptions.inflationRate}
                   shortfallAge={shortfallAge}
+                  spendingEnabled={spendingConfig?.enabled ?? false}
+                  onPhaseClick={setEditingPhaseId}
                 />
               </div>
 
@@ -516,6 +586,15 @@ export function PlansClient({
           />
         </div>
       </div>
+
+      {/* Spending Phase Edit Modal */}
+      <SpendingPhaseEditModal
+        open={editingPhaseId !== null}
+        onOpenChange={(open) => !open && setEditingPhaseId(null)}
+        phaseId={editingPhaseId}
+        config={spendingConfig}
+        onSave={handleSaveSpendingConfig}
+      />
     </div>
   );
 }

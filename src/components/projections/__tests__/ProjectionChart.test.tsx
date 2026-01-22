@@ -217,3 +217,183 @@ describe('ProjectionChart', () => {
     expect(screen.getByText('View by:')).toBeInTheDocument();
   });
 });
+
+// Test data for spending view
+const mockRecordsWithSpending: ProjectionRecord[] = [
+  {
+    age: 65,
+    year: 2030,
+    balance: 1000000,
+    inflows: 0,
+    outflows: 50000,
+    balanceByType: { taxDeferred: 500000, taxFree: 300000, taxable: 200000 },
+    essentialExpenses: 30000,
+    discretionaryExpenses: 20000,
+    activePhaseName: 'Go-Go Years',
+    activePhaseId: 'phase-1',
+  },
+  {
+    age: 75,
+    year: 2040,
+    balance: 800000,
+    inflows: 0,
+    outflows: 40000,
+    balanceByType: { taxDeferred: 400000, taxFree: 250000, taxable: 150000 },
+    essentialExpenses: 28000,
+    discretionaryExpenses: 12000,
+    activePhaseName: 'Slow-Go',
+    activePhaseId: 'phase-2',
+  },
+  {
+    age: 85,
+    year: 2050,
+    balance: 600000,
+    inflows: 0,
+    outflows: 35000,
+    balanceByType: { taxDeferred: 300000, taxFree: 200000, taxable: 100000 },
+    essentialExpenses: 30000,
+    discretionaryExpenses: 5000,
+    activePhaseName: 'No-Go',
+    activePhaseId: 'phase-3',
+  },
+];
+
+describe('ProjectionChart - Spending View', () => {
+  it('shows view toggle when spending is enabled', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /balance/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /spending/i })).toBeInTheDocument();
+  });
+
+  it('hides view toggle when spending is not enabled', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={false}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /spending/i })).not.toBeInTheDocument();
+  });
+
+  it('defaults to balance view when spending is enabled', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    const balanceButton = screen.getByRole('button', { name: /balance/i });
+    const spendingButton = screen.getByRole('button', { name: /spending/i });
+
+    expect(balanceButton).toHaveAttribute('aria-pressed', 'true');
+    expect(spendingButton).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('toggles to spending view when clicking Spending button', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    const spendingButton = screen.getByRole('button', { name: /spending/i });
+    fireEvent.click(spendingButton);
+
+    expect(spendingButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /balance/i })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('shows spending legend items when in spending view', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    // Switch to spending view
+    fireEvent.click(screen.getByRole('button', { name: /spending/i }));
+
+    // Should show spending-specific legend items
+    expect(screen.getByText('Annual Spending')).toBeInTheDocument();
+    expect(screen.getByText('Phase Boundary')).toBeInTheDocument();
+
+    // Should not show balance legend items
+    expect(screen.queryByText('Accumulation')).not.toBeInTheDocument();
+    expect(screen.queryByText('Total Balance')).not.toBeInTheDocument();
+  });
+
+  it('shows phase names in spending legend', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    // Switch to spending view
+    fireEvent.click(screen.getByRole('button', { name: /spending/i }));
+
+    // Should show phase names in legend
+    expect(screen.getByText('Go-Go Years')).toBeInTheDocument();
+    expect(screen.getByText('Slow-Go')).toBeInTheDocument();
+    expect(screen.getByText('No-Go')).toBeInTheDocument();
+  });
+
+  it('does not call onPhaseClick when not provided', () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    // Switch to spending view - should not error without onPhaseClick
+    fireEvent.click(screen.getByRole('button', { name: /spending/i }));
+
+    // No errors expected
+    expect(screen.getByText('Annual Spending')).toBeInTheDocument();
+  });
+
+  it('has correct aria-labelledby for view mode toggle', async () => {
+    render(
+      <ProjectionChart
+        records={mockRecordsWithSpending}
+        retirementAge={65}
+        currentAge={55}
+        spendingEnabled={true}
+      />
+    );
+
+    const toggleGroups = screen.getAllByRole('group');
+    // Should now have 3 toggle groups: x-axis, inflation, and view mode
+    expect(toggleGroups.length).toBe(3);
+    expect(toggleGroups[2]).toHaveAttribute('aria-labelledby', 'view-mode-label');
+  });
+});

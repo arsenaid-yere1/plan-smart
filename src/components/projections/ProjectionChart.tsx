@@ -15,6 +15,15 @@ import {
 import type { ProjectionRecord } from '@/lib/projections/types';
 
 type XAxisType = 'age' | 'year';
+type ViewMode = 'balance' | 'spending';
+
+// Phase colors matching existing design system
+const PHASE_COLORS: Record<string, string> = {
+  'Go-Go Years': 'hsl(var(--success))',
+  'Slow-Go': 'hsl(var(--warning))',
+  'No-Go': 'hsl(var(--muted-foreground))',
+  default: 'hsl(var(--primary))',
+};
 
 interface ProjectionChartProps {
   records: ProjectionRecord[];
@@ -22,6 +31,9 @@ interface ProjectionChartProps {
   currentAge: number;
   inflationRate?: number;
   shortfallAge?: number;
+  // New props for spending view
+  spendingEnabled?: boolean; // Whether user has spending phases configured
+  onPhaseClick?: (phaseId: string) => void; // Handler for click-to-edit
 }
 
 function formatCurrency(value: number): string {
@@ -48,9 +60,12 @@ export function ProjectionChart({
   currentAge,
   inflationRate = 0.025,
   shortfallAge,
+  spendingEnabled = false,
+  onPhaseClick,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('balance');
 
   const chartData = useMemo(() => {
     type ChartDataPoint = ProjectionRecord & {
@@ -122,6 +137,57 @@ export function ProjectionChart({
 
     return data;
   }, [records, xAxisType, retirementAge, currentAge, inflationRate, adjustForInflation]);
+
+  // Spending data transformation for spending view
+  const spendingData = useMemo(() => {
+    if (viewMode !== 'spending') return [];
+
+    return records
+      .filter((record) => record.age >= retirementAge)
+      .map((record) => {
+        const yearsFromRetirement = record.age - retirementAge;
+        const inflationFactor = Math.pow(1 + inflationRate, yearsFromRetirement);
+
+        // Total spending = outflows (includes healthcare)
+        const nominalSpending = record.outflows;
+        const realSpending = nominalSpending / inflationFactor;
+        const displaySpending = adjustForInflation ? realSpending : nominalSpending;
+
+        return {
+          xValue: xAxisType === 'age' ? record.age : record.year,
+          age: record.age,
+          year: record.year,
+          spending: displaySpending,
+          nominalSpending,
+          realSpending,
+          phase: record.activePhaseName,
+          phaseId: record.activePhaseId,
+          essentialExpenses: record.essentialExpenses,
+          discretionaryExpenses: record.discretionaryExpenses,
+        };
+      });
+  }, [records, retirementAge, inflationRate, adjustForInflation, xAxisType, viewMode]);
+
+  // Phase boundary calculation
+  const phaseBoundaries = useMemo(() => {
+    if (viewMode !== 'spending') return [];
+
+    const boundaries: { xValue: number; phase: string; phaseId?: string }[] = [];
+    let currentPhase: string | null = null;
+
+    for (const point of spendingData) {
+      if (point.phase !== currentPhase && point.phase) {
+        boundaries.push({
+          xValue: point.xValue,
+          phase: point.phase,
+          phaseId: point.phaseId,
+        });
+        currentPhase = point.phase;
+      }
+    }
+
+    return boundaries;
+  }, [spendingData, viewMode]);
 
   const retirementXValue = useMemo(() => {
     if (xAxisType === 'age') {
@@ -222,14 +288,63 @@ export function ProjectionChart({
             </button>
           </div>
         </div>
+
+        {/* View Mode Toggle - only show if spending phases enabled */}
+        {spendingEnabled && (
+          <div className="flex items-center gap-2">
+            <span id="view-mode-label" className="text-sm text-muted-foreground">
+              Chart:
+            </span>
+            <div
+              className="inline-flex rounded-lg border border-border p-1"
+              role="group"
+              aria-labelledby="view-mode-label"
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('balance')}
+                aria-pressed={viewMode === 'balance'}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                  viewMode === 'balance'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Balance
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('spending')}
+                aria-pressed={viewMode === 'spending'}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                  viewMode === 'spending'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Spending
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chart Container */}
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={chartData}
+            data={viewMode === 'spending' ? spendingData : chartData}
             margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
+            onClick={(e) => {
+              if (viewMode === 'spending' && onPhaseClick) {
+                const event = e as unknown as { activePayload?: Array<{ payload?: { phaseId?: string } }> };
+                const phaseId = event?.activePayload?.[0]?.payload?.phaseId;
+                if (phaseId) {
+                  onPhaseClick(phaseId);
+                }
+              }
+            }}
+            style={{ cursor: viewMode === 'spending' && onPhaseClick ? 'pointer' : 'default' }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -252,6 +367,40 @@ export function ProjectionChart({
             <Tooltip
               content={({ active, payload }) => {
                 if (!active || !payload || !payload[0]) return null;
+
+                // Handle spending view tooltip
+                if (viewMode === 'spending') {
+                  const data = payload[0].payload as (typeof spendingData)[0];
+                  const phaseColor = PHASE_COLORS[data.phase ?? 'default'] ?? PHASE_COLORS.default;
+
+                  return (
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-md">
+                      <p className="text-sm font-medium text-foreground">
+                        {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
+                      </p>
+                      <p className="text-sm font-medium" style={{ color: phaseColor }}>
+                        {adjustForInflation ? "Today's $: " : 'Future $: '}
+                        {formatTooltipCurrency(data.spending)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {adjustForInflation
+                          ? `(${formatTooltipCurrency(data.nominalSpending)} in future dollars)`
+                          : `(${formatTooltipCurrency(data.realSpending)} in today's dollars)`}
+                      </p>
+                      {data.essentialExpenses !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
+                          <p>Essential: {formatTooltipCurrency(data.essentialExpenses ?? 0)}</p>
+                          <p>Discretionary: {formatTooltipCurrency(data.discretionaryExpenses ?? 0)}</p>
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs" style={{ color: phaseColor }}>
+                        {data.phase ?? 'Retirement Phase'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Handle balance view tooltip
                 const data = payload[0].payload as ProjectionRecord & {
                   xValue: number;
                   isRetirement: boolean;
@@ -298,121 +447,192 @@ export function ProjectionChart({
                 );
               }}
             />
-            {/* Zero baseline for negative balances */}
-            {hasNegativeBalance && (
-              <ReferenceLine
-                y={0}
-                stroke="hsl(var(--muted-foreground))"
-                strokeDasharray="3 3"
-              />
+            {/* Spending view elements */}
+            {viewMode === 'spending' && (
+              <>
+                {/* Phase boundary reference lines (skip first phase - it starts at retirement) */}
+                {phaseBoundaries.slice(1).map((boundary) => (
+                  <ReferenceLine
+                    key={`phase-${boundary.xValue}`}
+                    x={boundary.xValue}
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeDasharray="5 5"
+                    label={{
+                      value: boundary.phase,
+                      position: 'top',
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: 10,
+                    }}
+                  />
+                ))}
+
+                {/* Spending area fill */}
+                <Area
+                  type="monotone"
+                  dataKey="spending"
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--primary))"
+                  fillOpacity={0.15}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{
+                    r: 6,
+                    fill: 'hsl(var(--primary))',
+                    stroke: 'hsl(var(--background))',
+                    strokeWidth: 2,
+                    cursor: onPhaseClick ? 'pointer' : 'default',
+                  }}
+                />
+              </>
             )}
-            {/* Retirement age marker */}
-            <ReferenceLine
-              x={retirementXValue}
-              stroke="hsl(var(--muted-foreground))"
-              strokeDasharray="5 5"
-              label={{
-                value: 'Retirement',
-                position: 'top',
-                fill: 'hsl(var(--muted-foreground))',
-                fontSize: 12,
-              }}
-            />
-            {/* Shortfall marker */}
-            {shortfallXValue !== null && (
-              <ReferenceLine
-                x={shortfallXValue}
-                stroke="hsl(var(--destructive))"
-                strokeDasharray="5 5"
-                label={{
-                  value: 'Shortfall',
-                  position: 'top',
-                  fill: 'hsl(var(--destructive))',
-                  fontSize: 12,
-                }}
-              />
+
+            {/* Balance view elements */}
+            {viewMode === 'balance' && (
+              <>
+                {/* Zero baseline for negative balances */}
+                {hasNegativeBalance && (
+                  <ReferenceLine
+                    y={0}
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeDasharray="3 3"
+                  />
+                )}
+                {/* Retirement age marker */}
+                <ReferenceLine
+                  x={retirementXValue}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="5 5"
+                  label={{
+                    value: 'Retirement',
+                    position: 'top',
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: 12,
+                  }}
+                />
+                {/* Shortfall marker */}
+                {shortfallXValue !== null && (
+                  <ReferenceLine
+                    x={shortfallXValue}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="5 5"
+                    label={{
+                      value: 'Shortfall',
+                      position: 'top',
+                      fill: 'hsl(var(--destructive))',
+                      fontSize: 12,
+                    }}
+                  />
+                )}
+                {/* Accumulation phase area (light primary fill) */}
+                <Area
+                  type="monotone"
+                  dataKey="accumulationBalance"
+                  stroke="none"
+                  fill="hsl(var(--primary))"
+                  fillOpacity={0.1}
+                  connectNulls={false}
+                />
+                {/* Retirement phase area (light success fill) */}
+                <Area
+                  type="monotone"
+                  dataKey="retirementBalance"
+                  stroke="none"
+                  fill="hsl(var(--success))"
+                  fillOpacity={0.1}
+                  connectNulls={false}
+                />
+                {/* Positive balance line */}
+                <Line
+                  type="monotone"
+                  dataKey="positiveBalance"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls={false}
+                  activeDot={{
+                    r: 6,
+                    fill: 'hsl(var(--primary))',
+                    stroke: 'hsl(var(--background))',
+                    strokeWidth: 2,
+                  }}
+                />
+                {/* Negative balance line (red) */}
+                <Line
+                  type="monotone"
+                  dataKey="negativeBalance"
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls={false}
+                  activeDot={{
+                    r: 6,
+                    fill: 'hsl(var(--destructive))',
+                    stroke: 'hsl(var(--background))',
+                    strokeWidth: 2,
+                  }}
+                />
+              </>
             )}
-            {/* Accumulation phase area (light primary fill) */}
-            <Area
-              type="monotone"
-              dataKey="accumulationBalance"
-              stroke="none"
-              fill="hsl(var(--primary))"
-              fillOpacity={0.1}
-              connectNulls={false}
-            />
-            {/* Retirement phase area (light success fill) */}
-            <Area
-              type="monotone"
-              dataKey="retirementBalance"
-              stroke="none"
-              fill="hsl(var(--success))"
-              fillOpacity={0.1}
-              connectNulls={false}
-            />
-            {/* Positive balance line */}
-            <Line
-              type="monotone"
-              dataKey="positiveBalance"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              activeDot={{
-                r: 6,
-                fill: 'hsl(var(--primary))',
-                stroke: 'hsl(var(--background))',
-                strokeWidth: 2,
-              }}
-            />
-            {/* Negative balance line (red) */}
-            <Line
-              type="monotone"
-              dataKey="negativeBalance"
-              stroke="hsl(var(--destructive))"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              activeDot={{
-                r: 6,
-                fill: 'hsl(var(--destructive))',
-                stroke: 'hsl(var(--background))',
-                strokeWidth: 2,
-              }}
-            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-4 rounded-sm bg-primary/20" />
-          <span>Accumulation</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-4 rounded-sm bg-success/20" />
-          <span>Retirement</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-0.5 w-4 bg-primary" />
-          <span>Total Balance</span>
-        </div>
-        {hasNegativeBalance && (
-          <div className="flex items-center gap-2">
-            <div className="h-0.5 w-4 bg-destructive" />
-            <span>Depleted</span>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
-          <span>Retirement Start</span>
-        </div>
-        {shortfallAge && (
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-0.5 border-l-2 border-dashed border-destructive" />
-            <span>Funds Depleted</span>
-          </div>
+        {viewMode === 'spending' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-4 rounded-sm bg-primary/20" />
+              <span>Annual Spending</span>
+            </div>
+            {phaseBoundaries.map((boundary) => (
+              <div key={boundary.phase} className="flex items-center gap-2">
+                <div
+                  className="h-3 w-3 rounded-sm"
+                  style={{
+                    backgroundColor: PHASE_COLORS[boundary.phase] ?? PHASE_COLORS.default,
+                    opacity: 0.5,
+                  }}
+                />
+                <span>{boundary.phase}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
+              <span>Phase Boundary</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-4 rounded-sm bg-primary/20" />
+              <span>Accumulation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-4 rounded-sm bg-success/20" />
+              <span>Retirement</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-0.5 w-4 bg-primary" />
+              <span>Total Balance</span>
+            </div>
+            {hasNegativeBalance && (
+              <div className="flex items-center gap-2">
+                <div className="h-0.5 w-4 bg-destructive" />
+                <span>Depleted</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
+              <span>Retirement Start</span>
+            </div>
+            {shortfallAge && (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-0.5 border-l-2 border-dashed border-destructive" />
+                <span>Funds Depleted</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
