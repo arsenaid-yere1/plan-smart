@@ -499,6 +499,7 @@ export function PlansClient({
             <SpendingCompareTab
               retirementAge={assumptions.retirementAge}
               inflationRate={assumptions.inflationRate}
+              expectedReturn={assumptions.expectedReturn}
             />
           )}
         </div>

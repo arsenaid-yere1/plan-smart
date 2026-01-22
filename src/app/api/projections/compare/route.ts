@@ -15,6 +15,9 @@ import { createTimer } from '@/lib/monitoring/performance';
  * {
  *   earlyYearsCount?: number; // Default 10
  *   spendingPhaseConfig?: SpendingPhaseConfig; // Override stored phases
+ *   retirementAge?: number; // Override retirement age
+ *   inflationRate?: number; // Override inflation rate
+ *   expectedReturn?: number; // Override expected return
  * }
  */
 export async function POST(request: NextRequest) {
@@ -30,6 +33,9 @@ export async function POST(request: NextRequest) {
     const spendingPhaseConfigOverride = body.spendingPhaseConfig as
       | SpendingPhaseConfig
       | undefined;
+    const retirementAgeOverride = body.retirementAge as number | undefined;
+    const inflationRateOverride = body.inflationRate as number | undefined;
+    const expectedReturnOverride = body.expectedReturn as number | undefined;
 
     // Fetch financial snapshot
     const [snapshot] = await db
@@ -65,9 +71,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build projection input with spending phases
+    // Build projection input with spending phases and assumption overrides
     const projectionInput = buildProjectionInputFromSnapshot(snapshot, {
       spendingPhaseConfig,
+      retirementAge: retirementAgeOverride,
+      inflationRate: inflationRateOverride,
+      expectedReturn: expectedReturnOverride,
     });
 
     // Calculate comparison

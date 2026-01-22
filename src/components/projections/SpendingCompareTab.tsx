@@ -10,17 +10,21 @@ import type { SpendingComparison, SpendingComparisonResponse } from '@/lib/proje
 interface SpendingCompareTabProps {
   retirementAge: number;
   inflationRate: number;
+  expectedReturn?: number;
 }
 
 export function SpendingCompareTab({
   retirementAge,
   inflationRate,
+  expectedReturn,
 }: SpendingCompareTabProps) {
   const [comparison, setComparison] = useState<SpendingComparison | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchComparison = async () => {
       setIsLoading(true);
       setError(null);
@@ -29,7 +33,12 @@ export function SpendingCompareTab({
         const response = await fetch('/api/projections/compare', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({
+            retirementAge,
+            inflationRate,
+            expectedReturn,
+          }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -40,14 +49,22 @@ export function SpendingCompareTab({
         const data: SpendingComparisonResponse = await response.json();
         setComparison(data.comparison);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load comparison');
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setError(err.message);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchComparison();
-  }, []);
+    // Debounce the fetch to avoid too many API calls during slider adjustments
+    const timer = setTimeout(fetchComparison, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [retirementAge, inflationRate, expectedReturn]);
 
   if (isLoading) {
     return (
