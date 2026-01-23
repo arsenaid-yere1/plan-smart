@@ -22,10 +22,13 @@ import type {
   RealEstatePropertyJson,
   IncomeSourceJson,
   SpendingPhaseConfigJson,
+  DepletionTargetJson,
 } from '@/db/schema/financial-snapshot';
 import type { CompleteOnboardingDataV2 } from '@/types/onboarding';
 import { SpendingPhaseEditor } from '@/components/spending-phase-editor';
-import type { SpendingPhaseConfig } from '@/lib/projections/types';
+import { DepletionTargetInput } from '@/components/depletion-target-input';
+import type { SpendingPhaseConfig, DepletionTarget } from '@/lib/projections/types';
+import { DEFAULT_MAX_AGE } from '@/lib/projections/assumptions';
 import { calculateNetWorth } from '@/lib/utils/net-worth';
 import { NetWorthSummary } from '@/components/dashboard/NetWorthSummary';
 
@@ -67,6 +70,7 @@ export interface ProfileData {
   incomeStreams: IncomeStreamJson[];
   incomeSources: IncomeSourceJson[] | null; // Epic 7: Income source classification
   spendingPhases: SpendingPhaseConfigJson | null; // Epic 9: Spending phase configuration
+  depletionTarget: DepletionTargetJson | null; // Epic 10: Spending target configuration
 }
 
 type EditSection =
@@ -173,6 +177,38 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
     }
   };
 
+  // Epic 10: Handler for saving depletion target (inline save, no dialog)
+  const handleDepletionTargetChange = async (target: DepletionTarget) => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ depletionTarget: target }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update spending target');
+      }
+
+      // Update local state
+      setProfileData((prev) => ({
+        ...prev,
+        depletionTarget: target as DepletionTargetJson,
+      }));
+      toast({
+        title: 'Spending target updated',
+        description: 'Your spending target has been saved.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Format helpers
   const formatCurrency = (value: number | undefined) =>
     value !== undefined
@@ -231,6 +267,12 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
     profileData.investmentAccounts,
     profileData.realEstateProperties,
     profileData.debts
+  );
+
+  // Calculate total portfolio value for depletion target display
+  const totalPortfolioValue = profileData.investmentAccounts.reduce(
+    (sum, acc) => sum + acc.balance,
+    0
   );
 
   return (
@@ -604,6 +646,20 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
           config={profileData.spendingPhases as SpendingPhaseConfig | undefined}
           retirementAge={profileData.targetRetirementAge}
           onChange={handleSpendingPhasesChange}
+        />
+      </Collapsible>
+
+      {/* Epic 10: Spending Target Section */}
+      <Collapsible
+        title="Spending Target"
+        defaultOpen={false}
+      >
+        <DepletionTargetInput
+          target={profileData.depletionTarget as DepletionTarget | undefined}
+          currentAge={currentAge ?? 65}
+          maxAge={DEFAULT_MAX_AGE}
+          portfolioValue={totalPortfolioValue}
+          onChange={handleDepletionTargetChange}
         />
       </Collapsible>
 

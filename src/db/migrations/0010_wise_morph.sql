@@ -1,0 +1,1 @@
+ALTER TABLE "financial_snapshot" ADD COLUMN "depletion_target" jsonb;

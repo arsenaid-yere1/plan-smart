@@ -80,6 +80,10 @@ export async function PATCH(request: NextRequest) {
     if (data.spendingPhases !== undefined) {
       updateData.spendingPhases = data.spendingPhases;
     }
+    // Epic 10: Depletion target
+    if (data.depletionTarget !== undefined) {
+      updateData.depletionTarget = data.depletionTarget;
+    }
 
     // Update database
     const result = await db

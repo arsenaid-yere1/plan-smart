@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { DepletionTarget } from '@/lib/projections/types';
 
 /**
  * Individual spending phase validation schema
@@ -46,6 +47,54 @@ export const spendingPhaseConfigSchema = z.object({
   },
   { message: 'Phases must have unique, ascending start ages' }
 );
+
+/**
+ * Epic 10: Depletion target validation schema
+ * Note: Age constraints relative to currentAge/maxAge validated at runtime
+ */
+export const depletionTargetSchema = z.object({
+  enabled: z.boolean(),
+  targetPercentageSpent: z
+    .number()
+    .min(0, 'Spending percentage cannot be negative')
+    .max(100, 'Spending percentage cannot exceed 100%'),
+  targetAge: z
+    .number()
+    .int('Target age must be a whole number')
+    .min(50, 'Target age must be at least 50')
+    .max(120, 'Target age cannot exceed 120'),
+});
+
+/**
+ * Cross-field validation for depletion target
+ * Validates age constraints that require runtime context
+ *
+ * @param target - Depletion target to validate
+ * @param currentAge - User's current age
+ * @param maxAge - User's life expectancy setting
+ * @returns Validation result with any errors
+ */
+export function validateDepletionTarget(
+  target: DepletionTarget,
+  currentAge: number,
+  maxAge: number
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (target.targetAge <= currentAge) {
+    errors.push(
+      `Target age (${target.targetAge}) must be greater than your current age (${currentAge})`
+    );
+  }
+
+  if (target.targetAge > maxAge) {
+    errors.push(
+      `Target age (${target.targetAge}) cannot exceed your life expectancy (${maxAge})`
+    );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
 
 /**
  * Income stream validation schema

@@ -1,5 +1,5 @@
 import type { RiskTolerance } from '@/types/database';
-import type { BalanceByType, SpendingPhase, SpendingPhaseConfig } from './types';
+import type { BalanceByType, SpendingPhase, SpendingPhaseConfig, DepletionTarget } from './types';
 
 /**
  * Default expected return rates by risk tolerance
@@ -112,6 +112,30 @@ export function getDefaultSpendingPhaseConfig(retirementAge: number): SpendingPh
   return {
     enabled: false,  // Opt-in: disabled by default
     phases,
+  };
+}
+
+/**
+ * Epic 10: Default depletion target configuration
+ * Disabled by default to avoid surprising existing users
+ * Default values provide balanced starting point when enabled
+ */
+export const DEFAULT_DEPLETION_TARGET: DepletionTarget = {
+  enabled: false,
+  targetPercentageSpent: 50,  // Spend 50% of portfolio
+  targetAge: 85,              // By age 85
+};
+
+/**
+ * Get default depletion target adjusted for user's life expectancy
+ * @param maxAge - User's life expectancy setting
+ * @returns Default depletion target with age capped at maxAge - 5
+ */
+export function getDefaultDepletionTarget(maxAge: number): DepletionTarget {
+  return {
+    enabled: false,
+    targetPercentageSpent: 50,
+    targetAge: Math.min(85, maxAge - 5),  // 5 years before life expectancy
   };
 }
 

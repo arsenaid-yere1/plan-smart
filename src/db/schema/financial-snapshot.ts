@@ -67,6 +67,13 @@ export type SpendingPhaseConfigJson = {
   phases: SpendingPhaseJson[];
 };
 
+// Epic 10: Depletion target configuration type
+export type DepletionTargetJson = {
+  enabled: boolean;
+  targetPercentageSpent: number;
+  targetAge: number;
+};
+
 export type IncomeSourceJson = {
   id: string;
   type:
@@ -130,6 +137,9 @@ export const financialSnapshot = pgTable('financial_snapshot', {
 
   // Epic 9: Spending phase configuration
   spendingPhases: jsonb('spending_phases').$type<SpendingPhaseConfigJson>(),
+
+  // Epic 10: Depletion target configuration
+  depletionTarget: jsonb('depletion_target').$type<DepletionTargetJson>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

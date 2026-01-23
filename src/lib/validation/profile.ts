@@ -9,11 +9,16 @@ import {
   step4AssetsDebtsSchema,
   stepIncomeStreamsSchema,
 } from './onboarding';
-import { spendingPhaseConfigSchema } from './projections';
+import { spendingPhaseConfigSchema, depletionTargetSchema } from './projections';
 
 // Epic 9: Spending phases schema for profile updates
 const spendingPhasesSchema = z.object({
   spendingPhases: spendingPhaseConfigSchema.optional(),
+});
+
+// Epic 10: Depletion target schema for profile updates
+const depletionTargetUpdateSchema = z.object({
+  depletionTarget: depletionTargetSchema.optional(),
 });
 
 // Partial schema for profile updates - all fields optional
@@ -26,6 +31,7 @@ export const profileUpdateSchema = step1Schema
   .merge(step4AssetsDebtsSchema)
   .merge(stepIncomeStreamsSchema)
   .merge(spendingPhasesSchema)
+  .merge(depletionTargetUpdateSchema)
   .partial();
 
 export type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;

@@ -97,6 +97,16 @@ export interface SpendingPhaseConfig {
 }
 
 /**
+ * Epic 10: Intentional Portfolio Depletion Target
+ * Allows users to specify how much they want to spend by a certain age
+ */
+export interface DepletionTarget {
+  enabled: boolean;
+  targetPercentageSpent: number;  // 0-100, e.g., 75 means spend 75% by target age
+  targetAge: number;              // Age by which to reach spending target
+}
+
+/**
  * Core inputs required for projection calculation
  * Derived from financial snapshot + optional overrides
  */
@@ -143,6 +153,9 @@ export interface ProjectionInput {
 
   /** Optional spending phase configuration for age-based spending variation */
   spendingPhaseConfig?: SpendingPhaseConfig;
+
+  /** Epic 10: Optional depletion target configuration */
+  depletionTarget?: DepletionTarget;
 }
 
 /**
