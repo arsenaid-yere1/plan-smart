@@ -9,16 +9,16 @@ import {
   step4AssetsDebtsSchema,
   stepIncomeStreamsSchema,
 } from './onboarding';
-import { spendingPhaseConfigSchema, depletionTargetSchema } from './projections';
+import { spendingPhaseConfigSchema, depletionTargetWithReserveSchema } from './projections';
 
 // Epic 9: Spending phases schema for profile updates
 const spendingPhasesSchema = z.object({
   spendingPhases: spendingPhaseConfigSchema.optional(),
 });
 
-// Epic 10: Depletion target schema for profile updates
+// Epic 10: Depletion target schema for profile updates (includes reserve config)
 const depletionTargetUpdateSchema = z.object({
-  depletionTarget: depletionTargetSchema.optional(),
+  depletionTarget: depletionTargetWithReserveSchema.optional(),
 });
 
 // Partial schema for profile updates - all fields optional
