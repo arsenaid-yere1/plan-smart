@@ -1,5 +1,5 @@
 import type { RiskTolerance } from '@/types/database';
-import type { BalanceByType, SpendingPhase, SpendingPhaseConfig, DepletionTarget } from './types';
+import type { BalanceByType, SpendingPhase, SpendingPhaseConfig, DepletionTarget, ReservePurpose } from './types';
 
 /**
  * Default expected return rates by risk tolerance
@@ -216,3 +216,14 @@ export function estimateAnnualDebtPayments(
     return total + (monthlyPayment * 12);
   }, 0);
 }
+
+/**
+ * Epic 10.2: Reserve purpose labels for UI
+ */
+export const RESERVE_PURPOSE_LABELS: Record<ReservePurpose, string> = {
+  longevity: 'Longevity Protection',
+  emergency: 'Emergency Fund',
+  legacy: 'Legacy/Inheritance',
+  healthcare: 'Healthcare Reserve',
+  peace_of_mind: 'Peace of Mind',
+};

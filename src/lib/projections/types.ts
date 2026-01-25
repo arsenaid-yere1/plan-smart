@@ -104,6 +104,32 @@ export interface DepletionTarget {
   enabled: boolean;
   targetPercentageSpent: number;  // 0-100, e.g., 75 means spend 75% by target age
   targetAge: number;              // Age by which to reach spending target
+  /** Epic 10.2: Reserve preservation configuration */
+  reserve?: ReserveConfig;
+}
+
+/**
+ * Epic 10.2: Reserve Preservation Configuration
+ * Defines how much portfolio should be protected from spending
+ */
+export type ReserveType = 'derived' | 'percentage' | 'absolute';
+
+export type ReservePurpose =
+  | 'longevity'
+  | 'emergency'
+  | 'legacy'
+  | 'healthcare'
+  | 'peace_of_mind';
+
+export interface ReserveConfig {
+  /** How reserve is specified */
+  type: ReserveType;
+  /** Amount (only used if type is 'percentage' or 'absolute') */
+  amount?: number;
+  /** Optional purposes for documentation (does not affect calculations) */
+  purposes?: ReservePurpose[];
+  /** Optional notes */
+  notes?: string;
 }
 
 /**
@@ -156,6 +182,9 @@ export interface ProjectionInput {
 
   /** Epic 10: Optional depletion target configuration */
   depletionTarget?: DepletionTarget;
+
+  /** Epic 10.2: Pre-calculated absolute reserve floor amount */
+  reserveFloor?: number;
 }
 
 /**
@@ -214,6 +243,20 @@ export interface ProjectionRecord {
   // Epic 9: Phase information for UI display
   activePhaseId?: string;
   activePhaseName?: string;
+
+  // Epic 10.2: Reserve tracking
+  /** Amount above reserve floor (undefined if no reserve configured) */
+  reserveBalance?: number;
+  /** Whether withdrawal was constrained by reserve this year */
+  reserveConstrained?: boolean;
+  /** Stage of spending reduction: none, discretionary_reduced, essentials_only, essentials_reduced */
+  reductionStage?: 'none' | 'discretionary_reduced' | 'essentials_only' | 'essentials_reduced';
+  /** Actual essential spending after reserve constraint (may be less than planned) */
+  actualEssentialSpending?: number;
+  /** Actual discretionary spending after reserve constraint (may be less than planned) */
+  actualDiscretionarySpending?: number;
+  /** Unmet spending need due to reserve constraint */
+  spendingShortfall?: number;
 }
 
 /**
@@ -226,6 +269,16 @@ export interface ProjectionSummary {
   totalWithdrawals: number;
   yearsUntilDepletion: number | null;
   projectedRetirementBalance: number;
+
+  // Epic 10.2: Reserve summary
+  /** The absolute dollar reserve floor (undefined if no reserve) */
+  reserveFloor?: number;
+  /** Number of years where spending was constrained by reserve */
+  yearsReserveConstrained?: number;
+  /** First age when discretionary spending was reduced due to reserve */
+  firstReserveConstraintAge?: number | null;
+  /** First age when reduced to essentials only */
+  firstEssentialsOnlyAge?: number | null;
 }
 
 /**
@@ -242,6 +295,10 @@ export interface ProjectionResult {
 export interface WithdrawalResult {
   withdrawals: BalanceByType;
   shortfall: number;
+  /** Whether withdrawal was limited by reserve floor */
+  reserveConstrained?: boolean;
+  /** Unmet withdrawal need due to reserve constraint */
+  reserveShortfall?: number;
 }
 
 /**

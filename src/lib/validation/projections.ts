@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { DepletionTarget } from '@/lib/projections/types';
+import type { DepletionTarget, ReserveConfig } from '@/lib/projections/types';
 
 /**
  * Individual spending phase validation schema
@@ -94,6 +94,81 @@ export function validateDepletionTarget(
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Epic 10.2: Reserve configuration validation schema
+ */
+export const reserveConfigSchema = z.object({
+  type: z.enum(['derived', 'percentage', 'absolute']),
+  amount: z.number().min(0).optional(),
+  purposes: z.array(z.enum([
+    'longevity', 'emergency', 'legacy', 'healthcare', 'peace_of_mind'
+  ])).optional(),
+  notes: z.string().max(500).optional(),
+}).refine(
+  (data) => {
+    // Amount required for percentage and absolute types
+    if (data.type !== 'derived' && data.amount === undefined) {
+      return false;
+    }
+    return true;
+  },
+  { message: 'Amount is required for percentage and absolute reserve types' }
+);
+
+/**
+ * Extended depletion target schema with reserve
+ */
+export const depletionTargetWithReserveSchema = depletionTargetSchema.extend({
+  reserve: reserveConfigSchema.optional(),
+});
+
+/**
+ * Validate reserve configuration with runtime context
+ */
+export function validateReserveConfig(
+  reserve: ReserveConfig | undefined,
+  depletionTarget: DepletionTarget,
+  portfolioValue: number
+): { valid: boolean; errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!reserve) {
+    return { valid: true, errors, warnings };
+  }
+
+  // Validate absolute amount doesn't exceed portfolio
+  if (reserve.type === 'absolute' && reserve.amount !== undefined) {
+    if (reserve.amount > portfolioValue) {
+      errors.push('Reserve amount cannot exceed current portfolio value');
+    }
+  }
+
+  // Validate percentage is reasonable
+  if (reserve.type === 'percentage' && reserve.amount !== undefined) {
+    if (reserve.amount > 100) {
+      errors.push('Reserve percentage cannot exceed 100%');
+    }
+  }
+
+  // Warn about consistency between depletion and reserve
+  if (reserve.type !== 'derived') {
+    const impliedReserve = 100 - depletionTarget.targetPercentageSpent;
+    const actualReserve = reserve.type === 'percentage'
+      ? reserve.amount ?? 0
+      : ((reserve.amount ?? 0) / portfolioValue) * 100;
+
+    if (Math.abs(impliedReserve - actualReserve) > 5) {
+      warnings.push(
+        `Depletion target implies ${impliedReserve.toFixed(0)}% reserve, ` +
+        `but reserve is set to ${actualReserve.toFixed(0)}%`
+      );
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
 }
 
 /**

@@ -34,6 +34,8 @@ interface ProjectionChartProps {
   // New props for spending view
   spendingEnabled?: boolean; // Whether user has spending phases configured
   onPhaseClick?: (phaseId: string) => void; // Handler for click-to-edit
+  // Epic 10.2: Reserve floor for dual-area visualization
+  reserveFloor?: number;
 }
 
 function formatCurrency(value: number): string {
@@ -62,6 +64,7 @@ export function ProjectionChart({
   shortfallAge,
   spendingEnabled = false,
   onPhaseClick,
+  reserveFloor,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
@@ -137,6 +140,29 @@ export function ProjectionChart({
 
     return data;
   }, [records, xAxisType, retirementAge, currentAge, inflationRate, adjustForInflation]);
+
+  // Epic 10.2: Reserve chart data transformation
+  const chartDataWithReserve = useMemo(() => {
+    if (!reserveFloor || viewMode !== 'balance') return null;
+
+    return chartData.map((record) => {
+      // Calculate inflation-adjusted reserve floor for display consistency
+      const yearsFromNow = record.age - currentAge;
+      const inflationFactor = Math.pow(1 + inflationRate, yearsFromNow);
+      const displayReserveFloor = adjustForInflation ? reserveFloor / inflationFactor : reserveFloor;
+      const displayBalance = record.displayBalance;
+
+      return {
+        ...record,
+        // Reserve portion is the minimum of balance and reserve floor
+        reservePortion: Math.max(0, Math.min(displayBalance, displayReserveFloor)),
+        // Available portion is what's above the reserve floor
+        balanceAboveReserve: Math.max(0, displayBalance - displayReserveFloor),
+        // Display reserve floor for reference line
+        displayReserveFloor,
+      };
+    });
+  }, [chartData, reserveFloor, viewMode, currentAge, inflationRate, adjustForInflation]);
 
   // Spending data transformation for spending view
   const spendingData = useMemo(() => {
@@ -333,7 +359,7 @@ export function ProjectionChart({
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={viewMode === 'spending' ? spendingData : chartData}
+            data={viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData)}
             margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
             onClick={(e) => {
               if (viewMode === 'spending' && onPhaseClick) {
@@ -407,8 +433,12 @@ export function ProjectionChart({
                   displayBalance: number;
                   nominalBalance: number;
                   realBalance: number;
+                  reservePortion?: number;
+                  balanceAboveReserve?: number;
+                  displayReserveFloor?: number;
                 };
                 const isNegative = data.displayBalance < 0;
+                const hasReserve = reserveFloor !== undefined && data.displayReserveFloor !== undefined;
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-md">
                     <p className="text-sm font-medium text-foreground">
@@ -425,6 +455,22 @@ export function ProjectionChart({
                         ? `(${formatTooltipCurrency(data.nominalBalance)} in future dollars)`
                         : `(${formatTooltipCurrency(data.realBalance)} in today's dollars)`}
                     </p>
+                    {/* Epic 10.2: Reserve breakdown */}
+                    {hasReserve && data.displayBalance > 0 && (
+                      <>
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          Available: {formatTooltipCurrency(data.balanceAboveReserve ?? 0)}
+                        </p>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          Reserve: {formatTooltipCurrency(data.reservePortion ?? 0)}
+                        </p>
+                        {data.reserveConstrained && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            Spending reduced to protect reserve
+                          </p>
+                        )}
+                      </>
+                    )}
                     {isNegative && (
                       <p className="text-xs font-medium text-destructive">
                         ⚠ Funds depleted
@@ -523,39 +569,68 @@ export function ProjectionChart({
                     }}
                   />
                 )}
-                {/* Accumulation phase area (light primary fill) */}
-                <Area
-                  type="monotone"
-                  dataKey="accumulationBalance"
-                  stroke="none"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.1}
-                  connectNulls={false}
-                />
-                {/* Retirement phase area (light success fill) */}
-                <Area
-                  type="monotone"
-                  dataKey="retirementBalance"
-                  stroke="none"
-                  fill="hsl(var(--success))"
-                  fillOpacity={0.1}
-                  connectNulls={false}
-                />
-                {/* Positive balance line */}
-                <Line
-                  type="monotone"
-                  dataKey="positiveBalance"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls={false}
-                  activeDot={{
-                    r: 6,
-                    fill: 'hsl(var(--primary))',
-                    stroke: 'hsl(var(--background))',
-                    strokeWidth: 2,
-                  }}
-                />
+                {/* Epic 10.2: Reserve visualization */}
+                {chartDataWithReserve && (
+                  <>
+                    {/* Reserve zone (bottom) - protected funds */}
+                    <Area
+                      type="monotone"
+                      dataKey="reservePortion"
+                      stackId="reserve"
+                      fill="hsl(var(--warning) / 0.2)"
+                      stroke="hsl(var(--warning))"
+                      strokeWidth={1}
+                      name="Reserve"
+                    />
+                    {/* Available zone (top) - spendable funds */}
+                    <Area
+                      type="monotone"
+                      dataKey="balanceAboveReserve"
+                      stackId="reserve"
+                      fill="hsl(var(--success) / 0.2)"
+                      stroke="hsl(var(--success))"
+                      strokeWidth={2}
+                      name="Available"
+                    />
+                  </>
+                )}
+                {/* Accumulation phase area (light primary fill) - only when no reserve */}
+                {!chartDataWithReserve && (
+                  <>
+                    <Area
+                      type="monotone"
+                      dataKey="accumulationBalance"
+                      stroke="none"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.1}
+                      connectNulls={false}
+                    />
+                    {/* Retirement phase area (light success fill) */}
+                    <Area
+                      type="monotone"
+                      dataKey="retirementBalance"
+                      stroke="none"
+                      fill="hsl(var(--success))"
+                      fillOpacity={0.1}
+                      connectNulls={false}
+                    />
+                    {/* Positive balance line */}
+                    <Line
+                      type="monotone"
+                      dataKey="positiveBalance"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                      activeDot={{
+                        r: 6,
+                        fill: 'hsl(var(--primary))',
+                        stroke: 'hsl(var(--background))',
+                        strokeWidth: 2,
+                      }}
+                    />
+                  </>
+                )}
                 {/* Negative balance line (red) */}
                 <Line
                   type="monotone"
@@ -602,7 +677,42 @@ export function ProjectionChart({
               <span>Phase Boundary</span>
             </div>
           </>
+        ) : chartDataWithReserve ? (
+          // Epic 10.2: Reserve-enabled legend
+          <>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: 'hsl(var(--success))' }}
+              />
+              <span>Available for Spending</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: 'hsl(var(--warning))' }}
+              />
+              <span>Reserve</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
+              <span>Retirement Start</span>
+            </div>
+            {hasNegativeBalance && (
+              <div className="flex items-center gap-2">
+                <div className="h-0.5 w-4 bg-destructive" />
+                <span>Depleted</span>
+              </div>
+            )}
+            {shortfallAge && (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-0.5 border-l-2 border-dashed border-destructive" />
+                <span>Funds Depleted</span>
+              </div>
+            )}
+          </>
         ) : (
+          // Default legend without reserve
           <>
             <div className="flex items-center gap-2">
               <div className="h-3 w-4 rounded-sm bg-primary/20" />

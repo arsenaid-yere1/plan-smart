@@ -10,6 +10,18 @@ import type {
 } from './types';
 
 /**
+ * Epic 10.2: Result of reserve-constrained spending calculation
+ */
+interface ReserveConstrainedSpending {
+  essentialWithdrawal: number;
+  discretionaryWithdrawal: number;
+  totalWithdrawal: number;
+  reductionStage: 'none' | 'discretionary_reduced' | 'essentials_only' | 'essentials_reduced';
+  shortfall: number;
+  reserveConstrained: boolean;
+}
+
+/**
  * Execute tax-aware withdrawal strategy
  * Order: taxable → taxDeferred → taxFree (preserve tax-free growth longest)
  */
@@ -166,6 +178,91 @@ export function calculatePhaseAdjustedExpenses(
 }
 
 /**
+ * Epic 10.2: Calculate spending constrained by reserve floor
+ *
+ * Two-stage reduction:
+ * 1. Reduce discretionary proportionally, preserve essentials
+ * 2. If still insufficient, reduce to essentials only
+ * 3. If even essentials can't be covered, reduce essentials
+ */
+function calculateReserveConstrainedSpending(
+  balances: BalanceByType,
+  essentialExpenses: number,
+  discretionaryExpenses: number,
+  totalIncome: number,
+  reserveFloor: number | undefined
+): ReserveConstrainedSpending {
+  const currentTotal = totalBalance(balances);
+
+  // No reserve configured - no constraint
+  if (reserveFloor === undefined) {
+    const totalNeeded = Math.max(0, essentialExpenses + discretionaryExpenses - totalIncome);
+    return {
+      essentialWithdrawal: Math.max(0, essentialExpenses - totalIncome),
+      discretionaryWithdrawal: discretionaryExpenses,
+      totalWithdrawal: totalNeeded,
+      reductionStage: 'none',
+      shortfall: 0,
+      reserveConstrained: false,
+    };
+  }
+
+  const availableAboveReserve = Math.max(0, currentTotal - reserveFloor);
+
+  // Calculate what's needed from portfolio (after income)
+  const essentialFromPortfolio = Math.max(0, essentialExpenses - totalIncome);
+  const discretionaryFromPortfolio = discretionaryExpenses; // Discretionary fully from portfolio
+  const totalNeeded = essentialFromPortfolio + discretionaryFromPortfolio;
+
+  // Stage 1: No constraint needed
+  if (availableAboveReserve >= totalNeeded) {
+    return {
+      essentialWithdrawal: essentialFromPortfolio,
+      discretionaryWithdrawal: discretionaryFromPortfolio,
+      totalWithdrawal: totalNeeded,
+      reductionStage: 'none',
+      shortfall: 0,
+      reserveConstrained: false,
+    };
+  }
+
+  // Stage 2: Reduce discretionary proportionally, preserve essentials
+  if (availableAboveReserve >= essentialFromPortfolio) {
+    const remainingForDiscretionary = availableAboveReserve - essentialFromPortfolio;
+    return {
+      essentialWithdrawal: essentialFromPortfolio,
+      discretionaryWithdrawal: remainingForDiscretionary,
+      totalWithdrawal: availableAboveReserve,
+      reductionStage: 'discretionary_reduced',
+      shortfall: discretionaryFromPortfolio - remainingForDiscretionary,
+      reserveConstrained: true,
+    };
+  }
+
+  // Stage 3: Essentials only (no discretionary)
+  if (availableAboveReserve > 0) {
+    return {
+      essentialWithdrawal: availableAboveReserve,
+      discretionaryWithdrawal: 0,
+      totalWithdrawal: availableAboveReserve,
+      reductionStage: 'essentials_only',
+      shortfall: essentialFromPortfolio - availableAboveReserve + discretionaryFromPortfolio,
+      reserveConstrained: true,
+    };
+  }
+
+  // Stage 4: Reserve depleted - nothing available
+  return {
+    essentialWithdrawal: 0,
+    discretionaryWithdrawal: 0,
+    totalWithdrawal: 0,
+    reductionStage: 'essentials_reduced',
+    shortfall: totalNeeded,
+    reserveConstrained: true,
+  };
+}
+
+/**
  * Run the complete retirement projection
  *
  * Uses end-of-year model:
@@ -181,6 +278,11 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
   let totalWithdrawals = 0;
   let yearsUntilDepletion: number | null = null;
   let projectedRetirementBalance = 0;
+
+  // Epic 10.2: Reserve tracking
+  let yearsReserveConstrained = 0;
+  let firstReserveConstraintAge: number | null = null;
+  let firstEssentialsOnlyAge: number | null = null;
 
   // Handle already-retired case: skip accumulation if currentAge >= retirementAge
   const isAlreadyRetired = input.currentAge >= input.retirementAge;
@@ -198,6 +300,14 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
     let currentDiscretionaryExpenses: number | undefined;
     let currentActivePhaseId: string | undefined;
     let currentActivePhaseName: string | undefined;
+
+    // Epic 10.2: Reserve tracking variables for this year
+    let currentReserveBalance: number | undefined;
+    let currentReserveConstrained: boolean | undefined;
+    let currentReductionStage: 'none' | 'discretionary_reduced' | 'essentials_only' | 'essentials_reduced' | undefined;
+    let currentActualEssential: number | undefined;
+    let currentActualDiscretionary: number | undefined;
+    let currentShortfall: number | undefined;
 
     if (!isRetired) {
       // ACCUMULATION PHASE
@@ -237,23 +347,25 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       // Apply inflation to phase-adjusted amounts
       const essentialExpenses = phaseResult.essential * inflationMultiplier;
       const discretionaryExpenses = phaseResult.discretionary * inflationMultiplier;
-      const generalExpenses = essentialExpenses + discretionaryExpenses;
 
       // Calculate healthcare costs with separate (higher) inflation
       const healthcareInflationMultiplier = Math.pow(1 + input.healthcareInflationRate, yearsFromRetirement);
       const healthcareExpenses = input.annualHealthcareCosts * healthcareInflationMultiplier;
 
-      // Total expenses = general + healthcare
-      const expensesNeeded = generalExpenses + healthcareExpenses;
-
       // Calculate total income from all active streams
       const totalIncome = calculateTotalIncome(input.incomeStreams, age, inflationMultiplier);
 
-      // Net withdrawal needed from portfolio
-      const withdrawalNeeded = Math.max(0, expensesNeeded - totalIncome);
+      // Epic 10.2: Calculate reserve-constrained spending
+      const spendingResult = calculateReserveConstrainedSpending(
+        balances,
+        essentialExpenses,
+        discretionaryExpenses,
+        totalIncome,
+        input.reserveFloor
+      );
 
-      // Execute tax-aware withdrawal
-      const withdrawalResult = withdrawFromAccounts(withdrawalNeeded, balances);
+      // Execute tax-aware withdrawal with constrained amount
+      const withdrawalResult = withdrawFromAccounts(spendingResult.totalWithdrawal, balances);
       withdrawalsByType = withdrawalResult.withdrawals;
 
       // Update balances
@@ -268,8 +380,22 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         withdrawalResult.withdrawals.taxable;
 
       inflows = totalIncome;
-      outflows = expensesNeeded;
+      outflows = essentialExpenses + discretionaryExpenses + healthcareExpenses; // Original planned
       totalWithdrawals += actualWithdrawal;
+
+      // Epic 10.2: Track reserve constraints
+      if (spendingResult.reserveConstrained) {
+        yearsReserveConstrained++;
+        if (firstReserveConstraintAge === null) {
+          firstReserveConstraintAge = age;
+        }
+        if (spendingResult.reductionStage === 'essentials_only' ||
+            spendingResult.reductionStage === 'essentials_reduced') {
+          if (firstEssentialsOnlyAge === null) {
+            firstEssentialsOnlyAge = age;
+          }
+        }
+      }
 
       // Track depletion year
       if (yearsUntilDepletion === null && totalBalance(balances) <= 0) {
@@ -286,6 +412,16 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       currentDiscretionaryExpenses = Math.round(discretionaryExpenses * 100) / 100;
       currentActivePhaseId = phaseResult.activePhase?.id;
       currentActivePhaseName = phaseResult.activePhase?.name;
+
+      // Set reserve tracking fields for record
+      currentReserveBalance = input.reserveFloor !== undefined
+        ? Math.max(0, totalBalance(balances) - input.reserveFloor)
+        : undefined;
+      currentReserveConstrained = spendingResult.reserveConstrained;
+      currentReductionStage = spendingResult.reductionStage;
+      currentActualEssential = spendingResult.essentialWithdrawal + Math.min(totalIncome, essentialExpenses);
+      currentActualDiscretionary = spendingResult.discretionaryWithdrawal;
+      currentShortfall = spendingResult.shortfall;
     }
 
     records.push({
@@ -304,6 +440,13 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       discretionaryExpenses: currentDiscretionaryExpenses,
       activePhaseId: currentActivePhaseId,
       activePhaseName: currentActivePhaseName,
+      // Epic 10.2: Reserve tracking
+      reserveBalance: currentReserveBalance,
+      reserveConstrained: currentReserveConstrained,
+      reductionStage: currentReductionStage,
+      actualEssentialSpending: currentActualEssential,
+      actualDiscretionarySpending: currentActualDiscretionary,
+      spendingShortfall: currentShortfall,
     });
 
     // Capture retirement balance to match chart data point at retirement age
@@ -321,6 +464,11 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       totalWithdrawals: Math.round(totalWithdrawals * 100) / 100,
       yearsUntilDepletion,
       projectedRetirementBalance: Math.round(projectedRetirementBalance * 100) / 100,
+      // Epic 10.2: Reserve summary
+      reserveFloor: input.reserveFloor,
+      yearsReserveConstrained,
+      firstReserveConstraintAge,
+      firstEssentialsOnlyAge,
     },
   };
 }

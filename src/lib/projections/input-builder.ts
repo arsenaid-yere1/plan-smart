@@ -1,4 +1,4 @@
-import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary, IncomeStreamType, SpendingPhaseConfig } from './types';
+import type { ProjectionInput, BalanceByType, IncomeStream, TaxCategory, PropertySummary, IncomeStreamType, SpendingPhaseConfig, ReserveConfig, DepletionTarget } from './types';
 import { ACCOUNT_TAX_CATEGORY, isGuaranteedIncomeType } from './types';
 import type { RealEstatePropertyJson } from '@/db/schema/financial-snapshot';
 import type { financialSnapshot } from '@/db/schema/financial-snapshot';
@@ -19,6 +19,31 @@ import type { RiskTolerance } from '@/types/database';
 
 type FinancialSnapshotRow = typeof financialSnapshot.$inferSelect;
 
+/**
+ * Calculate the absolute reserve floor from reserve configuration
+ */
+function calculateReserveFloor(
+  reserve: ReserveConfig | undefined,
+  initialPortfolio: number,
+  depletionTarget: DepletionTarget
+): number | undefined {
+  if (!reserve || !depletionTarget.enabled) {
+    return undefined;
+  }
+
+  switch (reserve.type) {
+    case 'derived':
+      // Reserve = 100% - targetPercentageSpent
+      return initialPortfolio * (1 - depletionTarget.targetPercentageSpent / 100);
+    case 'percentage':
+      return initialPortfolio * ((reserve.amount ?? 0) / 100);
+    case 'absolute':
+      return reserve.amount ?? 0;
+    default:
+      return undefined;
+  }
+}
+
 export interface ProjectionOverrides {
   expectedReturn?: number;
   inflationRate?: number;
@@ -31,6 +56,8 @@ export interface ProjectionOverrides {
   contributionAllocation?: BalanceByType;
   // Epic 9: Spending phase configuration override
   spendingPhaseConfig?: SpendingPhaseConfig;
+  // Epic 10.2: Depletion target with reserve
+  depletionTarget?: DepletionTarget;
 }
 
 export function buildProjectionInputFromSnapshot(
@@ -128,6 +155,16 @@ export function buildProjectionInputFromSnapshot(
     ?? (snapshot.spendingPhases as SpendingPhaseConfig | null)
     ?? undefined;
 
+  // Epic 10.2: Calculate reserve floor from depletion target
+  const depletionTarget = overrides.depletionTarget
+    ?? (snapshot.depletionTarget as DepletionTarget | null)
+    ?? undefined;
+
+  const totalPortfolio = balancesByType.taxDeferred + balancesByType.taxFree + balancesByType.taxable;
+  const reserveFloor = depletionTarget?.reserve
+    ? calculateReserveFloor(depletionTarget.reserve, totalPortfolio, depletionTarget)
+    : undefined;
+
   return {
     currentAge,
     retirementAge,
@@ -146,6 +183,8 @@ export function buildProjectionInputFromSnapshot(
     incomeStreams,
     annualDebtPayments,
     spendingPhaseConfig,
+    depletionTarget,
+    reserveFloor,
   };
 }
 

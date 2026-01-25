@@ -68,10 +68,18 @@ export type SpendingPhaseConfigJson = {
 };
 
 // Epic 10: Depletion target configuration type
+export type ReserveConfigJson = {
+  type: 'derived' | 'percentage' | 'absolute';
+  amount?: number;
+  purposes?: ('longevity' | 'emergency' | 'legacy' | 'healthcare' | 'peace_of_mind')[];
+  notes?: string;
+};
+
 export type DepletionTargetJson = {
   enabled: boolean;
   targetPercentageSpent: number;
   targetAge: number;
+  reserve?: ReserveConfigJson;
 };
 
 export type IncomeSourceJson = {
