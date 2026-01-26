@@ -59,30 +59,12 @@ function formatTooltipCurrency(value: number): string {
   }).format(value);
 }
 
-// Custom label component for ReferenceLine that properly renders with CSS variables
-// Recharts passes viewBox with coordinates, and we pass our own labelText
-interface ReferenceLabelProps {
-  viewBox?: { x?: number; y?: number; width?: number; height?: number };
-  labelText: string;
-  colorVar: 'muted-foreground' | 'destructive' | 'primary';
-}
-
-function ReferenceLineLabel({ viewBox, labelText, colorVar }: ReferenceLabelProps) {
-  const x = viewBox?.x ?? 0;
-  // Use CSS variable via style - this resolves at render time
-  const style = { fill: `hsl(var(--${colorVar}))` };
-  return (
-    <text
-      x={x}
-      y={12}
-      style={style}
-      textAnchor="middle"
-      fontSize={12}
-    >
-      {labelText}
-    </text>
-  );
-}
+// Label colors - using actual HSL values since SVG doesn't resolve CSS vars in all contexts
+const LABEL_COLORS = {
+  muted: '#737373', // neutral-500 approximation
+  destructive: '#ef4444', // red-500
+  primary: '#3b82f6', // blue-500
+} as const;
 
 export function ProjectionChart({
   records,
@@ -569,13 +551,12 @@ export function ProjectionChart({
                     x={boundary.xValue}
                     stroke="hsl(var(--muted-foreground))"
                     strokeDasharray="5 5"
-                    label={({ viewBox }) => (
-                      <ReferenceLineLabel
-                        viewBox={viewBox}
-                        labelText={boundary.phase}
-                        colorVar="muted-foreground"
-                      />
-                    )}
+                    label={{
+                      value: boundary.phase,
+                      position: 'top',
+                      fill: LABEL_COLORS.muted,
+                      fontSize: 10,
+                    }}
                   />
                 ))}
 
@@ -615,13 +596,12 @@ export function ProjectionChart({
                   x={retirementXValue}
                   stroke="hsl(var(--muted-foreground))"
                   strokeDasharray="5 5"
-                  label={({ viewBox }) => (
-                    <ReferenceLineLabel
-                      viewBox={viewBox}
-                      labelText="Retirement"
-                      colorVar="muted-foreground"
-                    />
-                  )}
+                  label={{
+                    value: 'Retirement',
+                    position: 'top',
+                    fill: LABEL_COLORS.muted,
+                    fontSize: 12,
+                  }}
                 />
                 {/* Shortfall marker */}
                 {shortfallXValue !== null && (
@@ -629,13 +609,12 @@ export function ProjectionChart({
                     x={shortfallXValue}
                     stroke="hsl(var(--destructive))"
                     strokeDasharray="5 5"
-                    label={({ viewBox }) => (
-                      <ReferenceLineLabel
-                        viewBox={viewBox}
-                        labelText="Shortfall"
-                        colorVar="destructive"
-                      />
-                    )}
+                    label={{
+                      value: 'Shortfall',
+                      position: 'top',
+                      fill: LABEL_COLORS.destructive,
+                      fontSize: 12,
+                    }}
                   />
                 )}
                 {/* Epic 10.3: Depletion Target Age Marker */}
@@ -644,13 +623,12 @@ export function ProjectionChart({
                     x={depletionTargetXValue}
                     stroke="hsl(var(--primary))"
                     strokeDasharray="5 5"
-                    label={({ viewBox }) => (
-                      <ReferenceLineLabel
-                        viewBox={viewBox}
-                        labelText={`Target Age ${depletionTargetAge}`}
-                        colorVar="primary"
-                      />
-                    )}
+                    label={{
+                      value: `Target Age ${depletionTargetAge}`,
+                      position: 'top',
+                      fill: LABEL_COLORS.primary,
+                      fontSize: 12,
+                    }}
                   />
                 )}
                 {/* Epic 10.3: Target Trajectory Line */}
