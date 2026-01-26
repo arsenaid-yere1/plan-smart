@@ -1,15 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import type { DepletionFeedback, DepletionTarget } from '@/lib/projections/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Target, TrendingUp, TrendingDown, Check, AlertTriangle, Wallet, Calendar } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Check, AlertTriangle, Wallet, Calendar, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DepletionFeedbackSummaryProps {
   feedback: DepletionFeedback;
   depletionTarget: DepletionTarget;
   currentPlannedSpending: number;
+  defaultOpen?: boolean;
 }
 
 const statusConfig = {
@@ -51,7 +53,9 @@ export function DepletionFeedbackSummary({
   feedback,
   depletionTarget,
   currentPlannedSpending,
+  defaultOpen = true,
 }: DepletionFeedbackSummaryProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const { trajectoryStatus, sustainableMonthlySpending, sustainableAnnualSpending, phaseBreakdown } = feedback;
   const config = statusConfig[trajectoryStatus];
   const StatusIcon = config.icon;
@@ -67,17 +71,36 @@ export function DepletionFeedbackSummary({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Target className={cn('h-5 w-5', config.color)} />
-          <CardTitle className="text-base">Spending Guidance</CardTitle>
+      <CardHeader
+        className="pb-3 cursor-pointer select-none"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className={cn('h-5 w-5', config.color)} />
+            <CardTitle className="text-base">Spending Guidance</CardTitle>
+            <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', config.bgColor, config.color)}>
+              {config.label}
+            </span>
+          </div>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-muted-foreground transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
         </div>
         <CardDescription>
           How to reach {depletionTarget.targetPercentageSpent}% depletion by age {depletionTarget.targetAge}
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent
+        className={cn(
+          'space-y-4 overflow-hidden transition-all duration-200',
+          isOpen ? 'opacity-100' : 'max-h-0 py-0 opacity-0'
+        )}
+      >
         {/* Status Indicator */}
         <div
           className={cn(
