@@ -59,6 +59,30 @@ function formatTooltipCurrency(value: number): string {
   }).format(value);
 }
 
+// Custom label component for ReferenceLine that properly renders with CSS classes
+function ReferenceLineLabel({
+  viewBox,
+  value,
+  className,
+}: {
+  viewBox?: { x?: number; y?: number };
+  value: string;
+  className: string;
+}) {
+  if (!viewBox?.x) return null;
+  return (
+    <text
+      x={viewBox.x}
+      y={12}
+      className={className}
+      textAnchor="middle"
+      fontSize={12}
+    >
+      {value}
+    </text>
+  );
+}
+
 export function ProjectionChart({
   records,
   retirementAge,
@@ -544,12 +568,13 @@ export function ProjectionChart({
                     x={boundary.xValue}
                     stroke="hsl(var(--muted-foreground))"
                     strokeDasharray="5 5"
-                    label={{
-                      value: boundary.phase,
-                      position: 'top',
-                      fill: 'hsl(var(--muted-foreground))',
-                      fontSize: 10,
-                    }}
+                    label={({ viewBox }) => (
+                      <ReferenceLineLabel
+                        viewBox={viewBox}
+                        value={boundary.phase}
+                        className="fill-muted-foreground"
+                      />
+                    )}
                   />
                 ))}
 
@@ -589,12 +614,13 @@ export function ProjectionChart({
                   x={retirementXValue}
                   stroke="hsl(var(--muted-foreground))"
                   strokeDasharray="5 5"
-                  label={{
-                    value: 'Retirement',
-                    position: 'top',
-                    fill: 'hsl(var(--muted-foreground))',
-                    fontSize: 12,
-                  }}
+                  label={({ viewBox }) => (
+                    <ReferenceLineLabel
+                      viewBox={viewBox}
+                      value="Retirement"
+                      className="fill-muted-foreground"
+                    />
+                  )}
                 />
                 {/* Shortfall marker */}
                 {shortfallXValue !== null && (
@@ -602,12 +628,13 @@ export function ProjectionChart({
                     x={shortfallXValue}
                     stroke="hsl(var(--destructive))"
                     strokeDasharray="5 5"
-                    label={{
-                      value: 'Shortfall',
-                      position: 'top',
-                      fill: 'hsl(var(--destructive))',
-                      fontSize: 12,
-                    }}
+                    label={({ viewBox }) => (
+                      <ReferenceLineLabel
+                        viewBox={viewBox}
+                        value="Shortfall"
+                        className="fill-destructive"
+                      />
+                    )}
                   />
                 )}
                 {/* Epic 10.3: Depletion Target Age Marker */}
@@ -616,12 +643,13 @@ export function ProjectionChart({
                     x={depletionTargetXValue}
                     stroke="hsl(var(--primary))"
                     strokeDasharray="5 5"
-                    label={{
-                      value: `Target Age ${depletionTargetAge}`,
-                      position: 'top',
-                      fill: 'hsl(var(--primary))',
-                      fontSize: 12,
-                    }}
+                    label={({ viewBox }) => (
+                      <ReferenceLineLabel
+                        viewBox={viewBox}
+                        value={`Target Age ${depletionTargetAge}`}
+                        className="fill-primary"
+                      />
+                    )}
                   />
                 )}
                 {/* Epic 10.3: Target Trajectory Line */}
