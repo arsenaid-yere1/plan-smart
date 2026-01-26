@@ -18,12 +18,39 @@ import {
   estimateAnnualDebtPayments,
   estimateHealthcareCosts,
 } from '@/lib/projections/assumptions';
-import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions, type SpendingPhaseConfig } from '@/lib/projections/types';
+import { ACCOUNT_TAX_CATEGORY, type BalanceByType, type ProjectionInput, type IncomeStream, type ProjectionAssumptions, type SpendingPhaseConfig, type DepletionTarget, type ReserveConfig } from '@/lib/projections/types';
 import { generateProjectionWarnings, type ProjectionWarning } from '@/lib/projections/warnings';
 import { createSecureQuery } from '@/db/secure-query';
+import { calculateDepletionFeedback } from '@/lib/projections/depletion-feedback';
 import type { RiskTolerance } from '@/types/database';
 import type { InvestmentAccountJson, DebtJson, IncomeExpensesJson, IncomeStreamJson, IncomeSourceJson } from '@/db/schema/financial-snapshot';
 import { createTimer } from '@/lib/monitoring/performance';
+
+/**
+ * Calculate the absolute reserve floor from reserve configuration
+ * Epic 10.2: Reserve preservation
+ */
+function calculateReserveFloor(
+  reserve: ReserveConfig | undefined,
+  initialPortfolio: number,
+  depletionTarget: DepletionTarget
+): number | undefined {
+  if (!reserve || !depletionTarget.enabled) {
+    return undefined;
+  }
+
+  switch (reserve.type) {
+    case 'derived':
+      // Reserve = 100% - targetPercentageSpent
+      return initialPortfolio * (1 - depletionTarget.targetPercentageSpent / 100);
+    case 'percentage':
+      return initialPortfolio * ((reserve.amount ?? 0) / 100);
+    case 'absolute':
+      return reserve.amount ?? 0;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Validate age relationships for projection input
@@ -217,6 +244,15 @@ async function calculateProjection(
     socialSecurityMonthly?: number;
   });
 
+  // Epic 10: Get depletion target from snapshot (override support can be added later)
+  const depletionTarget = (snapshot.depletionTarget as DepletionTarget | null) ?? undefined;
+
+  // Epic 10.2: Calculate reserve floor if depletion target has reserve config
+  const totalPortfolio = balancesByType.taxDeferred + balancesByType.taxFree + balancesByType.taxable;
+  const reserveFloor = depletionTarget?.enabled && depletionTarget?.reserve
+    ? calculateReserveFloor(depletionTarget.reserve, totalPortfolio, depletionTarget)
+    : undefined;
+
   // Build projection input with defaults and overrides
   const projectionInput: ProjectionInput = {
     currentAge,
@@ -239,6 +275,9 @@ async function calculateProjection(
     spendingPhaseConfig: (overrides.spendingPhaseConfig as SpendingPhaseConfig | undefined)
       ?? (snapshot.spendingPhases as SpendingPhaseConfig | null)
       ?? undefined,
+    // Epic 10: Depletion target and reserve floor
+    depletionTarget,
+    reserveFloor,
   };
 
   // Validate age relationships
@@ -263,6 +302,11 @@ async function calculateProjection(
   const timer = createTimer();
   const result = runProjection(projectionInput);
   const calculationTimeMs = timer.getElapsed();
+
+  // Epic 10.3: Calculate depletion feedback if depletion target enabled
+  const depletionFeedback = projectionInput.depletionTarget?.enabled
+    ? calculateDepletionFeedback(projectionInput, result.records)
+    : null;
 
   if (process.env.NODE_ENV === 'development') {
     console.log(`Projection calculated in ${calculationTimeMs}ms`);
@@ -300,14 +344,19 @@ async function calculateProjection(
       expectedReturn: projectionInput.expectedReturn,
       inflationRate: projectionInput.inflationRate,
       contributionGrowthRate: projectionInput.contributionGrowthRate,
-      incomeStreams: projectionInput.incomeStreams, // New field
-      spendingPhaseConfig: projectionInput.spendingPhaseConfig, // Epic 9
+      incomeStreams: projectionInput.incomeStreams,
+      spendingPhaseConfig: projectionInput.spendingPhaseConfig,
+      // Epic 10: Depletion target inputs
+      depletionTarget: projectionInput.depletionTarget,
+      reserveFloor: projectionInput.reserveFloor,
       // Derived values for transparency
       annualExpenses,
       annualDebtPayments,
       annualContribution,
       startingBalancesByType: balancesByType,
     },
+    // Epic 10.3: Depletion feedback
+    depletionFeedback,
     meta: {
       calculationTimeMs,
       warnings: warnings.length > 0 ? warnings : undefined,

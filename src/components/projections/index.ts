@@ -7,3 +7,4 @@ export { SpendingTrajectoryChart } from './SpendingTrajectoryChart';
 export { SpendingImpactSummary } from './SpendingImpactSummary';
 export { SpendingCompareTab } from './SpendingCompareTab';
 export { SpendingPhaseEditModal } from './SpendingPhaseEditModal';
+export { DepletionFeedbackSummary } from './DepletionFeedbackSummary';

@@ -9,12 +9,12 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronDown, AlertCircle, Info } from 'lucide-react';
-import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, SpendingCompareTab, SpendingPhaseEditModal, type Assumptions } from '@/components/projections';
+import { ProjectionChart, ProjectionTable, AssumptionsPanel, ExportPanel, SpendingCompareTab, SpendingPhaseEditModal, DepletionFeedbackSummary, type Assumptions } from '@/components/projections';
 import { ScenarioInput, ScenarioExplanation } from '@/components/scenarios';
 import { InsightsSection } from '@/components/insights';
 import type { ScenarioExplanationResponse } from '@/lib/scenarios/types';
 import { getRetirementStatus, type RetirementStatus } from '@/lib/projections';
-import type { ProjectionResult, SpendingPhaseConfig } from '@/lib/projections/types';
+import type { ProjectionResult, SpendingPhaseConfig, DepletionFeedback, DepletionTarget } from '@/lib/projections/types';
 import type { ProjectionWarning } from '@/lib/projections/warnings';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,9 @@ interface PlansClientProps {
   monthlySpending: number;
   planId: string;
   initialSpendingConfig?: SpendingPhaseConfig | null;
+  // Epic 10.3: Depletion feedback
+  initialDepletionFeedback?: DepletionFeedback | null;
+  depletionTarget?: DepletionTarget | null;
 }
 
 export function PlansClient({
@@ -36,6 +39,8 @@ export function PlansClient({
   monthlySpending,
   planId,
   initialSpendingConfig,
+  initialDepletionFeedback,
+  depletionTarget,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(currentAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
@@ -45,6 +50,11 @@ export function PlansClient({
   const [inputWarnings, setInputWarnings] = useState<ProjectionWarning[]>([]);
   const [mobileAssumptionsOpen, setMobileAssumptionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'assets' | 'compare'>('assets');
+
+  // Epic 10.3: Depletion feedback state
+  const [depletionFeedback, setDepletionFeedback] = useState<DepletionFeedback | null>(
+    initialDepletionFeedback ?? null
+  );
 
   // Scenario state
   const [isScenarioActive, setIsScenarioActive] = useState(false);
@@ -106,6 +116,13 @@ export function PlansClient({
         const data = await response.json();
         setProjection(data.projection);
         setValidationError(null);
+
+        // Epic 10.3: Update depletion feedback from API response
+        if (data.depletionFeedback) {
+          setDepletionFeedback(data.depletionFeedback);
+        } else {
+          setDepletionFeedback(null);
+        }
 
         // Extract warnings from response
         if (data.meta?.inputWarnings) {
@@ -177,6 +194,10 @@ export function PlansClient({
       if (response.ok) {
         const data = await response.json();
         setProjection(data.projection);
+        // Epic 10.3: Update depletion feedback
+        if (data.depletionFeedback) {
+          setDepletionFeedback(data.depletionFeedback);
+        }
       }
     } catch (error) {
       console.error('Failed to refetch projection:', error);
@@ -498,6 +519,15 @@ export function PlansClient({
             </Card>
           </div>
 
+          {/* Epic 10.3: Depletion Feedback Summary */}
+          {depletionFeedback && depletionTarget?.enabled && (
+            <DepletionFeedbackSummary
+              feedback={depletionFeedback}
+              depletionTarget={depletionTarget}
+              currentPlannedSpending={monthlySpending * 12}
+            />
+          )}
+
           {/* Tab Navigation */}
           <div className="border-b">
             <nav className="flex gap-4" aria-label="Projection views">
@@ -541,6 +571,9 @@ export function PlansClient({
                   shortfallAge={shortfallAge}
                   spendingEnabled={spendingConfig?.enabled ?? false}
                   onPhaseClick={setEditingPhaseId}
+                  reserveFloor={projection.summary.reserveFloor}
+                  depletionTargetAge={depletionTarget?.enabled ? depletionTarget.targetAge : undefined}
+                  showTargetTrajectory={depletionTarget?.enabled}
                 />
               </div>
 

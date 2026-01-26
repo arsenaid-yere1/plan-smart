@@ -133,6 +133,45 @@ export interface ReserveConfig {
 }
 
 /**
+ * Epic 10.3: Phase-based spending breakdown
+ */
+export interface PhaseSpendingBreakdown {
+  phaseName: string;
+  startAge: number;
+  endAge: number;
+  monthlySpending: number;
+  annualSpending: number;
+  yearsInPhase: number;
+}
+
+/**
+ * Epic 10.3: Trajectory status assessment
+ */
+export type TrajectoryStatus = 'on_track' | 'underspending' | 'overspending';
+
+/**
+ * Epic 10.3: Depletion feedback showing sustainable spending
+ */
+export interface DepletionFeedback {
+  /** Sustainable monthly spending to hit depletion target */
+  sustainableMonthlySpending: number;
+  /** Sustainable annual spending to hit depletion target */
+  sustainableAnnualSpending: number;
+  /** Phase-based breakdown when phases enabled */
+  phaseBreakdown?: PhaseSpendingBreakdown[];
+  /** Status comparing current plan to sustainable rate */
+  trajectoryStatus: TrajectoryStatus;
+  /** Human-readable status message */
+  statusMessage: string;
+  /** Warning messages for edge cases */
+  warningMessages: string[];
+  /** Projected balance at target age with current spending */
+  projectedReserveAtTarget: number;
+  /** Age when portfolio would deplete with current spending, or null */
+  projectedDepletionAge: number | null;
+}
+
+/**
  * Core inputs required for projection calculation
  * Derived from financial snapshot + optional overrides
  */

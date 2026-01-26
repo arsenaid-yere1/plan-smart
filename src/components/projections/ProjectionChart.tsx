@@ -36,6 +36,9 @@ interface ProjectionChartProps {
   onPhaseClick?: (phaseId: string) => void; // Handler for click-to-edit
   // Epic 10.2: Reserve floor for dual-area visualization
   reserveFloor?: number;
+  // Epic 10.3: Depletion target visualization
+  depletionTargetAge?: number;
+  showTargetTrajectory?: boolean;
 }
 
 function formatCurrency(value: number): string {
@@ -65,6 +68,8 @@ export function ProjectionChart({
   spendingEnabled = false,
   onPhaseClick,
   reserveFloor,
+  depletionTargetAge,
+  showTargetTrajectory = true,
 }: ProjectionChartProps) {
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
@@ -233,6 +238,42 @@ export function ProjectionChart({
     const currentYear = new Date().getFullYear();
     return currentYear + (shortfallAge - currentAge);
   }, [xAxisType, shortfallAge, currentAge]);
+
+  // Epic 10.3: Depletion target X value
+  const depletionTargetXValue = useMemo(() => {
+    if (!depletionTargetAge) return null;
+    if (xAxisType === 'age') {
+      return depletionTargetAge;
+    }
+    const currentYear = new Date().getFullYear();
+    return currentYear + (depletionTargetAge - currentAge);
+  }, [xAxisType, depletionTargetAge, currentAge]);
+
+  // Epic 10.3: Target trajectory calculation
+  const targetTrajectoryData = useMemo(() => {
+    if (!depletionTargetAge || !showTargetTrajectory || !reserveFloor || viewMode !== 'balance') {
+      return null;
+    }
+
+    const startBalance = chartData[0]?.displayBalance ?? 0;
+    const endBalance = adjustForInflation
+      ? reserveFloor / Math.pow(1 + inflationRate, depletionTargetAge - currentAge)
+      : reserveFloor;
+
+    // Generate trajectory points only for ages we have data
+    return chartData
+      .filter(r => r.age >= currentAge && r.age <= depletionTargetAge)
+      .map(r => {
+        const progress = (r.age - currentAge) / (depletionTargetAge - currentAge);
+        // Linear interpolation for simple visualization
+        const targetBalance = startBalance - (startBalance - endBalance) * progress;
+
+        return {
+          xValue: r.xValue,
+          targetBalance,
+        };
+      });
+  }, [chartData, depletionTargetAge, reserveFloor, showTargetTrajectory, currentAge, adjustForInflation, inflationRate, viewMode]);
 
   const minBalance = Math.min(...records.map((r) => r.balance));
   const hasNegativeBalance = minBalance < 0;
@@ -569,6 +610,33 @@ export function ProjectionChart({
                     }}
                   />
                 )}
+                {/* Epic 10.3: Depletion Target Age Marker */}
+                {depletionTargetXValue !== null && (
+                  <ReferenceLine
+                    x={depletionTargetXValue}
+                    stroke="hsl(var(--primary))"
+                    strokeDasharray="5 5"
+                    label={{
+                      value: `Target Age ${depletionTargetAge}`,
+                      position: 'top',
+                      fill: 'hsl(var(--primary))',
+                      fontSize: 12,
+                    }}
+                  />
+                )}
+                {/* Epic 10.3: Target Trajectory Line */}
+                {targetTrajectoryData && (
+                  <Line
+                    type="monotone"
+                    data={targetTrajectoryData}
+                    dataKey="targetBalance"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeDasharray="8 4"
+                    strokeWidth={1}
+                    dot={false}
+                    name="Target Trajectory"
+                  />
+                )}
                 {/* Epic 10.2: Reserve visualization */}
                 {chartDataWithReserve && (
                   <>
@@ -698,6 +766,19 @@ export function ProjectionChart({
               <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
               <span>Retirement Start</span>
             </div>
+            {/* Epic 10.3: Depletion target legend items */}
+            {depletionTargetAge && showTargetTrajectory && (
+              <div className="flex items-center gap-2">
+                <div className="h-0.5 w-4 border-b-2 border-dashed border-muted-foreground" />
+                <span>Target Trajectory</span>
+              </div>
+            )}
+            {depletionTargetAge && (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-0.5 border-l-2 border-dashed border-primary" />
+                <span>Target Age</span>
+              </div>
+            )}
             {hasNegativeBalance && (
               <div className="flex items-center gap-2">
                 <div className="h-0.5 w-4 bg-destructive" />

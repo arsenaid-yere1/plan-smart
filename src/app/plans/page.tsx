@@ -18,7 +18,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { runProjection } from '@/lib/projections';
-import type { ProjectionInput } from '@/lib/projections/types';
+import { calculateDepletionFeedback } from '@/lib/projections/depletion-feedback';
+import type { ProjectionInput, DepletionTarget } from '@/lib/projections/types';
 import {
   DEFAULT_INFLATION_RATE,
   DEFAULT_MAX_AGE,
@@ -252,6 +253,27 @@ export default async function PlansPage() {
   // Epic 9: Get spending phase config
   const spendingPhaseConfig = snapshot.spendingPhases as SpendingPhaseConfigJson | null;
 
+  // Epic 10: Get depletion target from snapshot
+  const depletionTarget = (snapshot.depletionTarget as DepletionTarget | null) ?? undefined;
+
+  // Epic 10.2: Calculate reserve floor if depletion target has reserve config
+  const totalPortfolio = balancesByType.taxDeferred + balancesByType.taxFree + balancesByType.taxable;
+  let reserveFloor: number | undefined;
+  if (depletionTarget?.enabled && depletionTarget?.reserve) {
+    const reserve = depletionTarget.reserve;
+    switch (reserve.type) {
+      case 'derived':
+        reserveFloor = totalPortfolio * (1 - depletionTarget.targetPercentageSpent / 100);
+        break;
+      case 'percentage':
+        reserveFloor = totalPortfolio * ((reserve.amount ?? 0) / 100);
+        break;
+      case 'absolute':
+        reserveFloor = reserve.amount ?? 0;
+        break;
+    }
+  }
+
   // Build projection input using currentAssumptions (may have user customizations)
   const projectionInput: ProjectionInput = {
     currentAge,
@@ -271,6 +293,9 @@ export default async function PlansPage() {
     incomeStreams,
     annualDebtPayments,
     spendingPhaseConfig: spendingPhaseConfig as SpendingPhaseConfig | undefined,
+    // Epic 10: Depletion target and reserve floor
+    depletionTarget,
+    reserveFloor,
   };
 
   // Run projection with error handling
@@ -282,6 +307,11 @@ export default async function PlansPage() {
   } catch {
     projectionError = true;
   }
+
+  // Epic 10.3: Calculate depletion feedback if depletion target enabled
+  const depletionFeedback = !projectionError && projectionInput.depletionTarget?.enabled
+    ? calculateDepletionFeedback(projectionInput, projection!.records)
+    : null;
 
   // Handle projection error
   if (projectionError) {
@@ -314,6 +344,8 @@ export default async function PlansPage() {
         monthlySpending={monthlySpending}
         planId={plan.id}
         initialSpendingConfig={spendingPhaseConfig as SpendingPhaseConfig | null}
+        initialDepletionFeedback={depletionFeedback}
+        depletionTarget={depletionTarget}
       />
     </PageContainer>
   );
