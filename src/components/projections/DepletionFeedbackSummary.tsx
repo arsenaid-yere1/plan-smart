@@ -53,7 +53,7 @@ export function DepletionFeedbackSummary({
   feedback,
   depletionTarget,
   currentPlannedSpending,
-  defaultOpen = true,
+  defaultOpen = false,
 }: DepletionFeedbackSummaryProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const { trajectoryStatus, sustainableMonthlySpending, sustainableAnnualSpending, phaseBreakdown } = feedback;
