@@ -59,26 +59,27 @@ function formatTooltipCurrency(value: number): string {
   }).format(value);
 }
 
-// Custom label component for ReferenceLine that properly renders with CSS classes
-function ReferenceLineLabel({
-  viewBox,
-  value,
-  className,
-}: {
-  viewBox?: { x?: number; y?: number };
-  value: string;
-  className: string;
-}) {
-  if (!viewBox?.x) return null;
+// Custom label component for ReferenceLine that properly renders with CSS variables
+// Recharts passes viewBox with coordinates, and we pass our own labelText
+interface ReferenceLabelProps {
+  viewBox?: { x?: number; y?: number; width?: number; height?: number };
+  labelText: string;
+  colorVar: 'muted-foreground' | 'destructive' | 'primary';
+}
+
+function ReferenceLineLabel({ viewBox, labelText, colorVar }: ReferenceLabelProps) {
+  const x = viewBox?.x ?? 0;
+  // Use CSS variable via style - this resolves at render time
+  const style = { fill: `hsl(var(--${colorVar}))` };
   return (
     <text
-      x={viewBox.x}
+      x={x}
       y={12}
-      className={className}
+      style={style}
       textAnchor="middle"
       fontSize={12}
     >
-      {value}
+      {labelText}
     </text>
   );
 }
@@ -571,8 +572,8 @@ export function ProjectionChart({
                     label={({ viewBox }) => (
                       <ReferenceLineLabel
                         viewBox={viewBox}
-                        value={boundary.phase}
-                        className="fill-muted-foreground"
+                        labelText={boundary.phase}
+                        colorVar="muted-foreground"
                       />
                     )}
                   />
@@ -617,8 +618,8 @@ export function ProjectionChart({
                   label={({ viewBox }) => (
                     <ReferenceLineLabel
                       viewBox={viewBox}
-                      value="Retirement"
-                      className="fill-muted-foreground"
+                      labelText="Retirement"
+                      colorVar="muted-foreground"
                     />
                   )}
                 />
@@ -631,8 +632,8 @@ export function ProjectionChart({
                     label={({ viewBox }) => (
                       <ReferenceLineLabel
                         viewBox={viewBox}
-                        value="Shortfall"
-                        className="fill-destructive"
+                        labelText="Shortfall"
+                        colorVar="destructive"
                       />
                     )}
                   />
@@ -646,8 +647,8 @@ export function ProjectionChart({
                     label={({ viewBox }) => (
                       <ReferenceLineLabel
                         viewBox={viewBox}
-                        value={`Target Age ${depletionTargetAge}`}
-                        className="fill-primary"
+                        labelText={`Target Age ${depletionTargetAge}`}
+                        colorVar="primary"
                       />
                     )}
                   />
