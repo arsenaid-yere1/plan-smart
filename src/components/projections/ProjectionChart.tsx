@@ -309,6 +309,28 @@ export function ProjectionChart({
   const minBalance = Math.min(...records.map((r) => r.balance));
   const hasNegativeBalance = minBalance < 0;
 
+  // Calculate Y-axis domain based on current view and data
+  // This fixes issues where stacked areas don't auto-scale correctly
+  const yAxisDomain = useMemo((): [number | 'auto', number | 'auto'] => {
+    if (viewMode === 'spending') {
+      if (spendingData.length === 0) return [0, 'auto'];
+      const maxSpending = Math.max(...spendingData.map(d => d.spending ?? 0));
+      return [0, maxSpending > 0 ? maxSpending * 1.1 : 'auto'];
+    }
+
+    // For balance view with reserve (stacked areas)
+    if (chartDataWithReserve) {
+      const maxBalance = Math.max(...chartDataWithReserve.map(d =>
+        (d.reservePortion ?? 0) + (d.balanceAboveReserve ?? 0)
+      ));
+      const minVal = hasNegativeBalance ? minBalance : 0;
+      return [minVal, maxBalance > 0 ? maxBalance * 1.05 : 'auto'];
+    }
+
+    // For balance view without reserve, let Recharts auto-calculate
+    return ['auto', 'auto'];
+  }, [viewMode, spendingData, chartDataWithReserve, hasNegativeBalance, minBalance]);
+
   return (
     <div className="w-full">
       {/* Toggle Controls */}
@@ -456,6 +478,7 @@ export function ProjectionChart({
               axisLine={{ stroke: 'hsl(var(--border))' }}
             />
             <YAxis
+              domain={yAxisDomain}
               tickFormatter={formatCurrency}
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
