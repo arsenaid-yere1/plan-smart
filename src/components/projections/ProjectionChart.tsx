@@ -42,6 +42,9 @@ interface ProjectionChartProps {
 }
 
 function formatCurrency(value: number): string {
+  if (value == null || Number.isNaN(value)) {
+    return '$0';
+  }
   if (value >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(1)}M`;
   }
@@ -52,6 +55,9 @@ function formatCurrency(value: number): string {
 }
 
 function formatTooltipCurrency(value: number): string {
+  if (value == null || Number.isNaN(value)) {
+    return '$0';
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -97,6 +103,9 @@ export function ProjectionChart({
 
     const data: ChartDataPoint[] = [];
 
+    // Ensure inflationRate is valid for calculations
+    const safeInflationRate = inflationRate ?? 0.025;
+
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       const isRetirement = record.age >= retirementAge;
@@ -104,7 +113,7 @@ export function ProjectionChart({
 
       // Calculate inflation adjustment factor
       const yearsFromNow = record.age - currentAge;
-      const inflationFactor = Math.pow(1 + inflationRate, yearsFromNow);
+      const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromNow);
       const realBalance = record.balance / inflationFactor;
       const displayBalance = adjustForInflation ? realBalance : record.balance;
 
@@ -157,10 +166,13 @@ export function ProjectionChart({
   const chartDataWithReserve = useMemo(() => {
     if (!reserveFloor || viewMode !== 'balance') return null;
 
+    // Ensure inflationRate is valid for calculations
+    const safeInflationRate = inflationRate ?? 0.025;
+
     return chartData.map((record) => {
       // Calculate inflation-adjusted reserve floor for display consistency
       const yearsFromNow = record.age - currentAge;
-      const inflationFactor = Math.pow(1 + inflationRate, yearsFromNow);
+      const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromNow);
       const displayReserveFloor = adjustForInflation ? reserveFloor / inflationFactor : reserveFloor;
       const displayBalance = record.displayBalance;
 
@@ -180,14 +192,17 @@ export function ProjectionChart({
   const spendingData = useMemo(() => {
     if (viewMode !== 'spending') return [];
 
+    // Ensure inflationRate is valid for calculations
+    const safeInflationRate = inflationRate ?? 0.025;
+
     return records
       .filter((record) => record.age >= retirementAge)
       .map((record) => {
         const yearsFromRetirement = record.age - retirementAge;
-        const inflationFactor = Math.pow(1 + inflationRate, yearsFromRetirement);
+        const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromRetirement);
 
         // Total spending = outflows (includes healthcare)
-        const nominalSpending = record.outflows;
+        const nominalSpending = record.outflows ?? 0;
         const realSpending = nominalSpending / inflationFactor;
         const displaySpending = adjustForInflation ? realSpending : nominalSpending;
 
@@ -263,14 +278,17 @@ export function ProjectionChart({
     }
 
     const yearsToTarget = depletionTargetAge - currentAge;
-    // Avoid division by zero - need at least 1 year difference
-    if (yearsToTarget <= 0) {
+    // Avoid division by zero or NaN - need at least 1 year difference
+    if (Number.isNaN(yearsToTarget) || yearsToTarget <= 0) {
       return null;
     }
 
+    // Ensure inflationRate is valid for calculations
+    const safeInflationRate = inflationRate ?? 0.025;
+
     const startBalance = chartData[0]?.displayBalance ?? 0;
     const endBalance = adjustForInflation
-      ? reserveFloor / Math.pow(1 + inflationRate, yearsToTarget)
+      ? reserveFloor / Math.pow(1 + safeInflationRate, yearsToTarget)
       : reserveFloor;
 
     // Generate trajectory points only for ages we have data

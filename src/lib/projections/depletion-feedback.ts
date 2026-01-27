@@ -23,12 +23,18 @@ export function calculateDepletionFeedback(
   }
 
   const targetAge = depletionTarget.targetAge;
+
+  // Validate required fields are present
+  if (targetAge == null || Number.isNaN(targetAge)) {
+    return createDisabledFeedback('Target age is not configured');
+  }
+
   const targetReserve = reserveFloor ?? 0;
   const currentPortfolio = calculateTotalPortfolio(input.balancesByType);
   const retirementYears = Math.max(0, targetAge - retirementAge);
 
   // Only calculate for retirement period
-  if (retirementYears <= 0) {
+  if (Number.isNaN(retirementYears) || retirementYears <= 0) {
     return createDisabledFeedback('Target age must be after retirement');
   }
 
@@ -105,7 +111,10 @@ function calculateTotalPortfolio(balancesByType: { taxDeferred: number; taxFree:
  * Calculate real return (nominal return adjusted for inflation)
  */
 function calculateRealReturn(nominalReturn: number, inflationRate: number): number {
-  return (1 + nominalReturn) / (1 + inflationRate) - 1;
+  // Use safe defaults if values are undefined/NaN
+  const safeNominal = nominalReturn ?? 0.07;
+  const safeInflation = inflationRate ?? 0.025;
+  return (1 + safeNominal) / (1 + safeInflation) - 1;
 }
 
 /**
@@ -118,6 +127,11 @@ function calculateSustainableWithdrawal(
   years: number,
   realReturn: number
 ): number {
+  // Handle NaN or invalid inputs
+  if (Number.isNaN(years) || Number.isNaN(realReturn) || Number.isNaN(currentPortfolio)) {
+    return 0;
+  }
+
   // Amount available for spending over the period
   const spendablePortfolio = currentPortfolio - targetReserve;
 
@@ -156,7 +170,7 @@ function calculateCurrentPlannedSpending(
   );
 
   if (retirementRecords.length === 0) {
-    return annualEssentialExpenses + annualDiscretionaryExpenses;
+    return (annualEssentialExpenses ?? 0) + (annualDiscretionaryExpenses ?? 0);
   }
 
   // Calculate average actual spending (uses phase-adjusted values from engine)
