@@ -262,16 +262,22 @@ export function ProjectionChart({
       return null;
     }
 
+    const yearsToTarget = depletionTargetAge - currentAge;
+    // Avoid division by zero - need at least 1 year difference
+    if (yearsToTarget <= 0) {
+      return null;
+    }
+
     const startBalance = chartData[0]?.displayBalance ?? 0;
     const endBalance = adjustForInflation
-      ? reserveFloor / Math.pow(1 + inflationRate, depletionTargetAge - currentAge)
+      ? reserveFloor / Math.pow(1 + inflationRate, yearsToTarget)
       : reserveFloor;
 
     // Generate trajectory points only for ages we have data
     return chartData
       .filter(r => r.age >= currentAge && r.age <= depletionTargetAge)
       .map(r => {
-        const progress = (r.age - currentAge) / (depletionTargetAge - currentAge);
+        const progress = (r.age - currentAge) / yearsToTarget;
         // Linear interpolation for simple visualization
         const targetBalance = startBalance - (startBalance - endBalance) * progress;
 
