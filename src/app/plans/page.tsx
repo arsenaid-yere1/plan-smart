@@ -254,7 +254,11 @@ export default async function PlansPage() {
   const spendingPhaseConfig = snapshot.spendingPhases as SpendingPhaseConfigJson | null;
 
   // Epic 10: Get depletion target from snapshot
-  const depletionTarget = (snapshot.depletionTarget as DepletionTarget | null) ?? undefined;
+  // Validate that required fields are present before using
+  const rawDepletionTarget = snapshot.depletionTarget as DepletionTarget | null;
+  const depletionTarget = rawDepletionTarget?.targetAge != null && rawDepletionTarget?.targetPercentageSpent != null
+    ? rawDepletionTarget
+    : undefined;
 
   // Epic 10.2: Calculate reserve floor if depletion target has reserve config
   const totalPortfolio = balancesByType.taxDeferred + balancesByType.taxFree + balancesByType.taxable;

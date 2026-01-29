@@ -572,8 +572,8 @@ export function PlansClient({
                   spendingEnabled={spendingConfig?.enabled ?? false}
                   onPhaseClick={setEditingPhaseId}
                   reserveFloor={projection.summary.reserveFloor}
-                  depletionTargetAge={depletionTarget?.enabled ? depletionTarget.targetAge : undefined}
-                  showTargetTrajectory={depletionTarget?.enabled}
+                  depletionTargetAge={depletionTarget?.enabled && depletionTarget?.targetAge != null ? depletionTarget.targetAge : undefined}
+                  showTargetTrajectory={depletionTarget?.enabled && depletionTarget?.targetAge != null}
                 />
               </div>
 
