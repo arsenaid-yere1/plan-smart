@@ -263,7 +263,7 @@ export function ProjectionChart({
 
   // Epic 10.3: Depletion target X value
   const depletionTargetXValue = useMemo(() => {
-    if (!depletionTargetAge) return null;
+    if (depletionTargetAge == null) return null;
     if (xAxisType === 'age') {
       return depletionTargetAge;
     }
@@ -273,7 +273,7 @@ export function ProjectionChart({
 
   // Epic 10.3: Target trajectory calculation
   const targetTrajectoryData = useMemo(() => {
-    if (!depletionTargetAge || !showTargetTrajectory || !reserveFloor || viewMode !== 'balance') {
+    if (depletionTargetAge == null || !showTargetTrajectory || !reserveFloor || viewMode !== 'balance') {
       return null;
     }
 
@@ -459,7 +459,7 @@ export function ProjectionChart({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData)}
-            margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
+            margin={{ top: 20, right: 60, left: 0, bottom: 0 }}
             onClick={(e) => {
               if (viewMode === 'spending' && onPhaseClick) {
                 const event = e as unknown as { activePayload?: Array<{ payload?: { phaseId?: string } }> };
