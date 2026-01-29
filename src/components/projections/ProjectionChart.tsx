@@ -286,7 +286,12 @@ export function ProjectionChart({
     // Ensure inflationRate is valid for calculations
     const safeInflationRate = inflationRate ?? 0.025;
 
-    const startBalance = chartData[0]?.displayBalance ?? 0;
+    const startBalance = chartData[0]?.displayBalance;
+    // Don't show trajectory if we don't have valid balance data
+    if (startBalance == null || startBalance <= 0) {
+      return null;
+    }
+
     const endBalance = adjustForInflation
       ? reserveFloor / Math.pow(1 + safeInflationRate, yearsToTarget)
       : reserveFloor;
@@ -665,7 +670,7 @@ export function ProjectionChart({
                   />
                 )}
                 {/* Epic 10.3: Depletion Target Age Marker */}
-                {depletionTargetXValue !== null && (
+                {depletionTargetAge != null && depletionTargetXValue !== null && (
                   <ReferenceLine
                     x={depletionTargetXValue}
                     stroke="hsl(var(--primary))"
@@ -821,13 +826,13 @@ export function ProjectionChart({
               <span>Retirement Start</span>
             </div>
             {/* Epic 10.3: Depletion target legend items */}
-            {depletionTargetAge && showTargetTrajectory && (
+            {depletionTargetAge != null && showTargetTrajectory && targetTrajectoryData && (
               <div className="flex items-center gap-2">
                 <div className="h-0.5 w-4 border-b-2 border-dashed border-muted-foreground" />
                 <span>Target Trajectory</span>
               </div>
             )}
-            {depletionTargetAge && (
+            {depletionTargetAge != null && (
               <div className="flex items-center gap-2">
                 <div className="h-4 w-0.5 border-l-2 border-dashed border-primary" />
                 <span>Target Age</span>
