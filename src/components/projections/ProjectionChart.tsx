@@ -174,6 +174,14 @@ export function ProjectionChart({
 
   // Epic 10.2: Reserve chart data transformation
   const chartDataWithReserve = useMemo(() => {
+    // DEBUG - REMOVE AFTER FIXING
+    console.log('[ProjectionChart] chartDataWithReserve check:', {
+      reserveFloor,
+      viewMode,
+      chartDataLength: chartData.length,
+      firstChartData: chartData[0],
+    });
+
     if (!reserveFloor || viewMode !== 'balance') return null;
 
     // Ensure inflationRate is valid for calculations
@@ -361,13 +369,17 @@ export function ProjectionChart({
 
       // Guard against -Infinity (empty array) or NaN
       if (!Number.isFinite(maxBalance) || maxBalance <= 0) {
+        console.log('[ProjectionChart] yAxisDomain returning auto due to invalid maxBalance');
         return [0, 'auto'];
       }
       const minVal = hasNegativeBalance ? minBalance : 0;
-      return [minVal, maxBalance * 1.05];
+      const result: [number, number] = [minVal, maxBalance * 1.05];
+      console.log('[ProjectionChart] yAxisDomain result:', result);
+      return result;
     }
 
     // For balance view without reserve, let Recharts auto-calculate
+    console.log('[ProjectionChart] yAxisDomain returning auto (no reserve data)');
     return ['auto', 'auto'];
   }, [viewMode, spendingData, chartDataWithReserve, hasNegativeBalance, minBalance]);
 
