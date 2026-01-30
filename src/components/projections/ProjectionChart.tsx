@@ -84,6 +84,18 @@ export function ProjectionChart({
   depletionTargetAge,
   showTargetTrajectory = true,
 }: ProjectionChartProps) {
+  // Debug logging - remove after fixing
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[ProjectionChart] Props:', {
+      recordsLength: records?.length,
+      firstRecord: records?.[0],
+      reserveFloor,
+      depletionTargetAge,
+      currentAge,
+      retirementAge,
+    });
+  }
+
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('balance');
