@@ -543,8 +543,9 @@ export function ProjectionChart({
             <YAxis
               domain={yAxisDomain}
               tickFormatter={(value) => {
-                console.log('[YAxis tickFormatter] value:', value, typeof value);
-                return formatCurrency(value);
+                const formatted = formatCurrency(value);
+                console.log('[YAxis tickFormatter] value:', value, '→', formatted);
+                return formatted;
               }}
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
