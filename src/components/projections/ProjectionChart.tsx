@@ -311,6 +311,10 @@ export function ProjectionChart({
         return {
           xValue: r.xValue,
           targetBalance,
+          // Include fields needed by tooltip
+          age: r.age,
+          year: r.year,
+          isTargetTrajectory: true, // Flag to identify trajectory points in tooltip
         };
       });
   }, [chartData, depletionTargetAge, reserveFloor, showTargetTrajectory, currentAge, adjustForInflation, inflationRate, viewMode]);
@@ -558,6 +562,28 @@ export function ProjectionChart({
                 };
                 const isNegative = data.displayBalance < 0;
                 const hasReserve = reserveFloor !== undefined && data.displayReserveFloor !== undefined;
+
+                // Check if this is a target trajectory point
+                const isTargetTrajectory = 'isTargetTrajectory' in data && data.isTargetTrajectory === true;
+                const trajectoryData = data as typeof data & { targetBalance?: number };
+
+                // Handle target trajectory tooltip differently
+                if (isTargetTrajectory && trajectoryData.targetBalance !== undefined) {
+                  return (
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-md">
+                      <p className="text-sm font-medium text-foreground">
+                        {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
+                      </p>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Target Balance: {formatTooltipCurrency(trajectoryData.targetBalance)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Goal trajectory to reserve floor
+                      </p>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-md">
                     <p className="text-sm font-medium text-foreground">
