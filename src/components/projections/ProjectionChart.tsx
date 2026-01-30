@@ -550,7 +550,8 @@ export function ProjectionChart({
                 }
 
                 // Handle balance view tooltip
-                const data = payload[0].payload as ProjectionRecord & {
+                // Find the main chart data (has displayBalance) vs trajectory data (has isTargetTrajectory)
+                type BalancePayload = ProjectionRecord & {
                   xValue: number;
                   isRetirement: boolean;
                   displayBalance: number;
@@ -560,22 +561,92 @@ export function ProjectionChart({
                   balanceAboveReserve?: number;
                   displayReserveFloor?: number;
                 };
-                const isNegative = data.displayBalance < 0;
-                const hasReserve = reserveFloor !== undefined && data.displayReserveFloor !== undefined;
+                type TrajectoryPayload = {
+                  xValue: number;
+                  targetBalance: number;
+                  age: number;
+                  year: number;
+                  isTargetTrajectory: true;
+                };
 
-                // Check if this is a target trajectory point
-                const isTargetTrajectory = 'isTargetTrajectory' in data && data.isTargetTrajectory === true;
-                const trajectoryData = data as typeof data & { targetBalance?: number };
+                // Check all payload entries to find main chart data vs trajectory data
+                const mainChartEntry = payload.find(
+                  p => p.payload && 'displayBalance' in p.payload && !('isTargetTrajectory' in p.payload)
+                );
+                const trajectoryEntry = payload.find(
+                  p => p.payload && 'isTargetTrajectory' in p.payload && p.payload.isTargetTrajectory === true
+                );
 
-                // Handle target trajectory tooltip differently
-                if (isTargetTrajectory && trajectoryData.targetBalance !== undefined) {
+                // Prefer main chart data if available, otherwise show trajectory
+                if (mainChartEntry) {
+                  const data = mainChartEntry.payload as BalancePayload;
+                  const isNegative = data.displayBalance < 0;
+                  const hasReserve = reserveFloor !== undefined && data.displayReserveFloor !== undefined;
+
+                  return (
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-md">
+                      <p className="text-sm font-medium text-foreground">
+                        {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
+                      </p>
+                      <p
+                        className={`text-sm font-medium ${isNegative ? 'text-destructive' : 'text-foreground'}`}
+                      >
+                        {adjustForInflation ? "Today's $: " : 'Future $: '}
+                        {formatTooltipCurrency(data.displayBalance)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {adjustForInflation
+                          ? `(${formatTooltipCurrency(data.nominalBalance)} in future dollars)`
+                          : `(${formatTooltipCurrency(data.realBalance)} in today's dollars)`}
+                      </p>
+                      {/* Epic 10.2: Reserve breakdown */}
+                      {hasReserve && data.displayBalance > 0 && (
+                        <>
+                          <p className="text-sm text-green-600 dark:text-green-400">
+                            Available: {formatTooltipCurrency(data.balanceAboveReserve ?? 0)}
+                          </p>
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            Reserve: {formatTooltipCurrency(data.reservePortion ?? 0)}
+                          </p>
+                          {data.reserveConstrained && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                              Spending reduced to protect reserve
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {isNegative && (
+                        <p className="text-xs font-medium text-destructive">
+                          ⚠ Funds depleted
+                        </p>
+                      )}
+                      {data.inflows > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Income: {formatTooltipCurrency(data.inflows)}
+                        </p>
+                      )}
+                      {data.outflows > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Expenses: {formatTooltipCurrency(data.outflows)}
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {data.activePhaseName || (data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase')}
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Show trajectory tooltip only if no main chart data at this point
+                if (trajectoryEntry) {
+                  const data = trajectoryEntry.payload as TrajectoryPayload;
                   return (
                     <div className="rounded-lg border border-border bg-card p-3 shadow-md">
                       <p className="text-sm font-medium text-foreground">
                         {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
                       </p>
                       <p className="text-sm font-medium text-muted-foreground">
-                        Target Balance: {formatTooltipCurrency(trajectoryData.targetBalance)}
+                        Target Balance: {formatTooltipCurrency(data.targetBalance)}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Goal trajectory to reserve floor
@@ -583,6 +654,11 @@ export function ProjectionChart({
                     </div>
                   );
                 }
+
+                // Fallback to first payload entry
+                const data = payload[0].payload as BalancePayload;
+                const isNegative = data.displayBalance < 0;
+                const hasReserve = reserveFloor !== undefined && data.displayReserveFloor !== undefined;
 
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-md">
