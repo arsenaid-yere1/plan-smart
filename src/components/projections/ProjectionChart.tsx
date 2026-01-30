@@ -505,7 +505,18 @@ export function ProjectionChart({
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData)}
+            data={(() => {
+              const dataToUse = viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const firstItem = dataToUse?.[0] as any;
+              console.log('[ComposedChart] data sample:', {
+                length: dataToUse?.length,
+                first: firstItem,
+                hasReservePortion: firstItem?.reservePortion !== undefined,
+                hasBalanceAboveReserve: firstItem?.balanceAboveReserve !== undefined,
+              });
+              return dataToUse;
+            })()}
             margin={{ top: 20, right: 60, left: 0, bottom: 0 }}
             onClick={(e) => {
               if (viewMode === 'spending' && onPhaseClick) {
@@ -531,11 +542,15 @@ export function ProjectionChart({
             />
             <YAxis
               domain={yAxisDomain}
-              tickFormatter={formatCurrency}
+              tickFormatter={(value) => {
+                console.log('[YAxis tickFormatter] value:', value, typeof value);
+                return formatCurrency(value);
+              }}
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               width={60}
+              allowDataOverflow={true}
             />
             <Tooltip
               content={({ active, payload }) => {
