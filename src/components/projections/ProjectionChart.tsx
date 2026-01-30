@@ -561,44 +561,19 @@ export function ProjectionChart({
                   balanceAboveReserve?: number;
                   displayReserveFloor?: number;
                 };
-                type TrajectoryPayload = {
-                  xValue: number;
-                  targetBalance: number;
-                  age: number;
-                  year: number;
-                  isTargetTrajectory: true;
-                };
 
-                // Check all payload entries to find main chart data vs trajectory data
-                // The dataKey tells us which series the user is hovering over
-                const trajectoryEntry = payload.find(
-                  p => p.dataKey === 'targetBalance'
-                );
+                // Find the main chart data entry
                 const mainChartEntry = payload.find(
                   p => p.payload && 'displayBalance' in p.payload && !('isTargetTrajectory' in p.payload)
                 );
 
-                // If hovering specifically on trajectory line (targetBalance dataKey), show trajectory tooltip
-                if (trajectoryEntry && trajectoryEntry.payload) {
-                  const data = trajectoryEntry.payload as TrajectoryPayload;
-                  if (data.isTargetTrajectory && data.targetBalance !== undefined) {
-                    return (
-                      <div className="rounded-lg border border-border bg-card p-3 shadow-md">
-                        <p className="text-sm font-medium text-foreground">
-                          {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
-                        </p>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Target Balance: {formatTooltipCurrency(data.targetBalance)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Goal trajectory to reserve floor
-                        </p>
-                      </div>
-                    );
-                  }
-                }
+                // Find target trajectory value at this x position (if exists)
+                const currentXValue = mainChartEntry?.payload?.xValue as number | undefined;
+                const trajectoryPoint = currentXValue !== undefined
+                  ? targetTrajectoryData?.find(t => t.xValue === currentXValue)
+                  : undefined;
 
-                // Otherwise show main chart tooltip
+                // Show main chart tooltip with optional trajectory info
                 if (mainChartEntry) {
                   const data = mainChartEntry.payload as BalancePayload;
                   const isNegative = data.displayBalance < 0;
@@ -654,6 +629,12 @@ export function ProjectionChart({
                       <p className="mt-1 text-xs text-muted-foreground">
                         {data.activePhaseName || (data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase')}
                       </p>
+                      {/* Epic 10.3: Target trajectory info */}
+                      {trajectoryPoint && (
+                        <p className="mt-1 text-xs text-muted-foreground border-t border-border pt-1">
+                          Target: {formatTooltipCurrency(trajectoryPoint.targetBalance)}
+                        </p>
+                      )}
                     </div>
                   );
                 }
@@ -817,6 +798,9 @@ export function ProjectionChart({
                     strokeDasharray="8 4"
                     strokeWidth={1}
                     dot={false}
+                    activeDot={false}
+                    legendType="none"
+                    tooltipType="none"
                     name="Target Trajectory"
                   />
                 )}
