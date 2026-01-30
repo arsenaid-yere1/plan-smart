@@ -84,17 +84,15 @@ export function ProjectionChart({
   depletionTargetAge,
   showTargetTrajectory = true,
 }: ProjectionChartProps) {
-  // Debug logging - remove after fixing
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ProjectionChart] Props:', {
-      recordsLength: records?.length,
-      firstRecord: records?.[0],
-      reserveFloor,
-      depletionTargetAge,
-      currentAge,
-      retirementAge,
-    });
-  }
+  // DEBUG - REMOVE AFTER FIXING
+  console.log('[ProjectionChart] Props:', {
+    recordsLength: records?.length,
+    firstRecord: records?.[0],
+    reserveFloor,
+    depletionTargetAge,
+    currentAge,
+    retirementAge,
+  });
 
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
@@ -352,16 +350,14 @@ export function ProjectionChart({
       );
       const maxBalance = Math.max(...balances);
 
-      // Debug logging - remove after fixing
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[ProjectionChart] yAxisDomain debug:', {
-          chartDataLength: chartDataWithReserve.length,
-          firstRecord: chartDataWithReserve[0],
-          maxBalance,
-          balancesSample: balances.slice(0, 3),
-          reserveFloor,
-        });
-      }
+      // DEBUG - REMOVE AFTER FIXING
+      console.log('[ProjectionChart] yAxisDomain debug:', {
+        chartDataLength: chartDataWithReserve.length,
+        firstRecord: chartDataWithReserve[0],
+        maxBalance,
+        balancesSample: balances.slice(0, 3),
+        reserveFloor,
+      });
 
       // Guard against -Infinity (empty array) or NaN
       if (!Number.isFinite(maxBalance) || maxBalance <= 0) {
