@@ -84,16 +84,6 @@ export function ProjectionChart({
   depletionTargetAge,
   showTargetTrajectory = true,
 }: ProjectionChartProps) {
-  // DEBUG - REMOVE AFTER FIXING
-  console.log('[ProjectionChart] Props:', {
-    recordsLength: records?.length,
-    firstRecord: records?.[0],
-    reserveFloor,
-    depletionTargetAge,
-    currentAge,
-    retirementAge,
-  });
-
   const [xAxisType, setXAxisType] = useState<XAxisType>('age');
   const [adjustForInflation, setAdjustForInflation] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('balance');
@@ -174,14 +164,6 @@ export function ProjectionChart({
 
   // Epic 10.2: Reserve chart data transformation
   const chartDataWithReserve = useMemo(() => {
-    // DEBUG - REMOVE AFTER FIXING
-    console.log('[ProjectionChart] chartDataWithReserve check:', {
-      reserveFloor,
-      viewMode,
-      chartDataLength: chartData.length,
-      firstChartData: chartData[0],
-    });
-
     if (!reserveFloor || viewMode !== 'balance') return null;
 
     // Ensure inflationRate is valid for calculations
@@ -358,28 +340,15 @@ export function ProjectionChart({
       );
       const maxBalance = Math.max(...balances);
 
-      // DEBUG - REMOVE AFTER FIXING
-      console.log('[ProjectionChart] yAxisDomain debug:', {
-        chartDataLength: chartDataWithReserve.length,
-        firstRecord: chartDataWithReserve[0],
-        maxBalance,
-        balancesSample: balances.slice(0, 3),
-        reserveFloor,
-      });
-
       // Guard against -Infinity (empty array) or NaN
       if (!Number.isFinite(maxBalance) || maxBalance <= 0) {
-        console.log('[ProjectionChart] yAxisDomain returning auto due to invalid maxBalance');
         return [0, 'auto'];
       }
       const minVal = hasNegativeBalance ? minBalance : 0;
-      const result: [number, number] = [minVal, maxBalance * 1.05];
-      console.log('[ProjectionChart] yAxisDomain result:', result);
-      return result;
+      return [minVal, maxBalance * 1.05];
     }
 
     // For balance view without reserve, let Recharts auto-calculate
-    console.log('[ProjectionChart] yAxisDomain returning auto (no reserve data)');
     return ['auto', 'auto'];
   }, [viewMode, spendingData, chartDataWithReserve, hasNegativeBalance, minBalance]);
 
@@ -505,18 +474,7 @@ export function ProjectionChart({
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={(() => {
-              const dataToUse = viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const firstItem = dataToUse?.[0] as any;
-              console.log('[ComposedChart] data sample:', {
-                length: dataToUse?.length,
-                first: firstItem,
-                hasReservePortion: firstItem?.reservePortion !== undefined,
-                hasBalanceAboveReserve: firstItem?.balanceAboveReserve !== undefined,
-              });
-              return dataToUse;
-            })()}
+            data={viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData)}
             margin={{ top: 20, right: 60, left: 0, bottom: 0 }}
             onClick={(e) => {
               if (viewMode === 'spending' && onPhaseClick) {
@@ -542,16 +500,14 @@ export function ProjectionChart({
             />
             <YAxis
               domain={yAxisDomain}
-              tickFormatter={(value) => {
-                const formatted = formatCurrency(value);
-                console.log('[YAxis tickFormatter] value:', value, '→', formatted);
-                return formatted;
-              }}
+              tickFormatter={formatCurrency}
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
-              width={60}
-              allowDataOverflow={true}
+              width={80}
+              type="number"
+              scale="linear"
+              allowDecimals={false}
             />
             <Tooltip
               content={({ active, payload }) => {
