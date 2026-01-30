@@ -171,19 +171,23 @@ export function ProjectionChart({
 
     return chartData.map((record) => {
       // Calculate inflation-adjusted reserve floor for display consistency
-      const yearsFromNow = record.age - currentAge;
+      const yearsFromNow = (record.age ?? currentAge) - currentAge;
       const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromNow);
       const displayReserveFloor = adjustForInflation ? reserveFloor / inflationFactor : reserveFloor;
-      const displayBalance = record.displayBalance;
+      const displayBalance = record.displayBalance ?? 0;
+
+      // Guard against NaN values
+      const safeReserveFloor = Number.isFinite(displayReserveFloor) ? displayReserveFloor : 0;
+      const safeBalance = Number.isFinite(displayBalance) ? displayBalance : 0;
 
       return {
         ...record,
         // Reserve portion is the minimum of balance and reserve floor
-        reservePortion: Math.max(0, Math.min(displayBalance, displayReserveFloor)),
+        reservePortion: Math.max(0, Math.min(safeBalance, safeReserveFloor)),
         // Available portion is what's above the reserve floor
-        balanceAboveReserve: Math.max(0, displayBalance - displayReserveFloor),
+        balanceAboveReserve: Math.max(0, safeBalance - safeReserveFloor),
         // Display reserve floor for reference line
-        displayReserveFloor,
+        displayReserveFloor: safeReserveFloor,
       };
     });
   }, [chartData, reserveFloor, viewMode, currentAge, inflationRate, adjustForInflation]);
@@ -311,8 +315,10 @@ export function ProjectionChart({
       });
   }, [chartData, depletionTargetAge, reserveFloor, showTargetTrajectory, currentAge, adjustForInflation, inflationRate, viewMode]);
 
-  const minBalance = Math.min(...records.map((r) => r.balance));
-  const hasNegativeBalance = minBalance < 0;
+  const minBalance = records.length > 0
+    ? Math.min(...records.map((r) => r.balance ?? 0))
+    : 0;
+  const hasNegativeBalance = Number.isFinite(minBalance) && minBalance < 0;
 
   // Calculate Y-axis domain based on current view and data
   // This fixes issues where stacked areas don't auto-scale correctly
@@ -320,16 +326,37 @@ export function ProjectionChart({
     if (viewMode === 'spending') {
       if (spendingData.length === 0) return [0, 'auto'];
       const maxSpending = Math.max(...spendingData.map(d => d.spending ?? 0));
-      return [0, maxSpending > 0 ? maxSpending * 1.1 : 'auto'];
+      // Guard against -Infinity or NaN
+      if (!Number.isFinite(maxSpending) || maxSpending <= 0) {
+        return [0, 'auto'];
+      }
+      return [0, maxSpending * 1.1];
     }
 
     // For balance view with reserve (stacked areas)
-    if (chartDataWithReserve) {
-      const maxBalance = Math.max(...chartDataWithReserve.map(d =>
+    if (chartDataWithReserve && chartDataWithReserve.length > 0) {
+      const balances = chartDataWithReserve.map(d =>
         (d.reservePortion ?? 0) + (d.balanceAboveReserve ?? 0)
-      ));
+      );
+      const maxBalance = Math.max(...balances);
+
+      // Debug logging - remove after fixing
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ProjectionChart] yAxisDomain debug:', {
+          chartDataLength: chartDataWithReserve.length,
+          firstRecord: chartDataWithReserve[0],
+          maxBalance,
+          balancesSample: balances.slice(0, 3),
+          reserveFloor,
+        });
+      }
+
+      // Guard against -Infinity (empty array) or NaN
+      if (!Number.isFinite(maxBalance) || maxBalance <= 0) {
+        return [0, 'auto'];
+      }
       const minVal = hasNegativeBalance ? minBalance : 0;
-      return [minVal, maxBalance > 0 ? maxBalance * 1.05 : 'auto'];
+      return [minVal, maxBalance * 1.05];
     }
 
     // For balance view without reserve, let Recharts auto-calculate
