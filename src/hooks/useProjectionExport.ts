@@ -72,7 +72,20 @@ export function useProjectionExport() {
     ];
 
     // Data headers
-    const headers = ['Age', 'Year', 'Balance', 'Income', 'Expenses', 'Net Change', 'Phase'];
+    const headers = [
+      'Age',
+      'Year',
+      'Balance',
+      'Tax-Deferred',
+      'Tax-Free',
+      'Taxable',
+      'Income',
+      'Expenses',
+      'RMD Required',
+      'RMD Taken',
+      'Net Change',
+      'Phase',
+    ];
 
     // Calculate net change and phase for each record
     const rows = records.map((record, index) => {
@@ -85,8 +98,13 @@ export function useProjectionExport() {
         record.age,
         record.year,
         record.balance.toFixed(2),
+        record.balanceByType.taxDeferred.toFixed(2),
+        record.balanceByType.taxFree.toFixed(2),
+        record.balanceByType.taxable.toFixed(2),
         record.inflows.toFixed(2),
         record.outflows.toFixed(2),
+        (record.rmd?.rmdRequired ?? 0).toFixed(2),
+        (record.rmd?.rmdTaken ?? 0).toFixed(2),
         netChange.toFixed(2),
         phase,
       ];
@@ -187,8 +205,13 @@ export function useProjectionExport() {
         record.age.toString(),
         record.year.toString(),
         formatCurrency(record.balance),
+        formatCurrency(record.balanceByType.taxDeferred),
+        formatCurrency(record.balanceByType.taxFree),
+        formatCurrency(record.balanceByType.taxable),
         formatCurrency(record.inflows),
         formatCurrency(record.outflows),
+        formatCurrency(record.rmd?.rmdRequired ?? 0),
+        formatCurrency(record.rmd?.rmdTaken ?? 0),
         formatCurrency(netChange),
         phase,
       ];
@@ -196,9 +219,9 @@ export function useProjectionExport() {
 
     autoTable(doc, {
       startY: y,
-      head: [['Age', 'Year', 'Balance', 'Income', 'Expenses', 'Net Change', 'Phase']],
+      head: [['Age', 'Year', 'Balance', 'Tax-Def', 'Tax-Free', 'Taxable', 'Income', 'Expenses', 'RMD Req', 'RMD Taken', 'Net Chg', 'Phase']],
       body: tableData,
-      styles: { fontSize: 8 },
+      styles: { fontSize: 6 },
       headStyles: { fillColor: [66, 66, 66] },
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });

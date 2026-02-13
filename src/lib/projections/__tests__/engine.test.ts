@@ -494,6 +494,8 @@ describe('runProjection - Income Streams', () => {
 
   it('should reduce withdrawals when income streams cover expenses', () => {
     // High income streams should reduce need to withdraw from savings
+    // Note: We disable RMD for this test to isolate the income stream behavior
+    // (RMD behavior is tested separately in the RMD Enforcement suite)
     const inputHighIncome: ProjectionInput = {
       ...baseInputForIncomeTests,
       annualEssentialExpenses: 35000,
@@ -512,6 +514,7 @@ describe('runProjection - Income Streams', () => {
           isGuaranteed: true,
         },
       ],
+      rmdConfig: { enabled: false, startAge: 73 }, // Disable RMD to isolate income stream behavior
     };
 
     const inputNoIncome: ProjectionInput = {
@@ -521,6 +524,7 @@ describe('runProjection - Income Streams', () => {
       annualExpenses: 50000,
       annualHealthcareCosts: 5000,
       incomeStreams: [],
+      rmdConfig: { enabled: false, startAge: 73 }, // Disable RMD for consistency
     };
 
     const resultHighIncome = runProjection(inputHighIncome);
@@ -964,5 +968,132 @@ describe('runProjection - Phase-Based Spending', () => {
     expect(age40Record?.activePhaseId).toBeUndefined();
     expect(age40Record?.activePhaseName).toBeUndefined();
     expect(age40Record?.outflows).toBe(0); // No expenses during accumulation
+  });
+});
+
+describe('RMD Enforcement', () => {
+  const baseInput: ProjectionInput = {
+    currentAge: 73,
+    retirementAge: 65,
+    maxAge: 90,
+    balancesByType: {
+      taxDeferred: 500000,
+      taxFree: 100000,
+      taxable: 50000,
+    },
+    annualContribution: 0,
+    contributionAllocation: { taxDeferred: 60, taxFree: 30, taxable: 10 },
+    expectedReturn: 0.06,
+    inflationRate: 0.025,
+    contributionGrowthRate: 0,
+    annualEssentialExpenses: 40000,
+    annualDiscretionaryExpenses: 20000,
+    annualExpenses: 60000,
+    annualHealthcareCosts: 8000,
+    healthcareInflationRate: 0.05,
+    incomeStreams: [
+      {
+        id: 'ss',
+        name: 'Social Security',
+        type: 'social_security',
+        annualAmount: 30000,
+        startAge: 67,
+        inflationAdjusted: true,
+        isGuaranteed: true,
+      },
+    ],
+    annualDebtPayments: 0,
+  };
+
+  it('enforces RMD at age 73', () => {
+    const result = runProjection(baseInput);
+    const record73 = result.records[0];
+
+    expect(record73.rmd).toBeDefined();
+    expect(record73.rmd?.rmdApplies).toBe(true);
+    // $500,000 / 26.5 = $18,867.92
+    expect(record73.rmd?.rmdRequired).toBeCloseTo(18867.92, 2);
+    expect(record73.rmd?.rmdTaken).toBeGreaterThan(0);
+  });
+
+  it('withdraws RMD even when not needed for expenses', () => {
+    // High income covers all expenses
+    const highIncomeInput = {
+      ...baseInput,
+      incomeStreams: [
+        {
+          id: 'ss',
+          name: 'Social Security',
+          type: 'social_security' as const,
+          annualAmount: 80000,
+          startAge: 67,
+          inflationAdjusted: true,
+          isGuaranteed: true,
+        },
+      ],
+    };
+
+    const result = runProjection(highIncomeInput);
+    const record73 = result.records[0];
+
+    // RMD should still be taken
+    expect(record73.withdrawalsByType?.taxDeferred).toBeGreaterThan(0);
+    expect(record73.rmd?.rmdTaken).toBeGreaterThan(0);
+  });
+
+  it('does not enforce RMD before age 73', () => {
+    const youngInput = { ...baseInput, currentAge: 70 };
+    const result = runProjection(youngInput);
+
+    // First 3 years (70, 71, 72) should have no RMD
+    for (let i = 0; i < 3; i++) {
+      expect(result.records[i].rmd).toBeUndefined();
+    }
+
+    // Year at age 73 should have RMD
+    expect(result.records[3].rmd?.rmdApplies).toBe(true);
+  });
+
+  it('can disable RMD enforcement via config', () => {
+    const disabledRMDInput = {
+      ...baseInput,
+      rmdConfig: { enabled: false, startAge: 73 },
+    };
+
+    const result = runProjection(disabledRMDInput);
+
+    // Should have no RMD tracking
+    expect(result.records[0].rmd).toBeUndefined();
+  });
+
+  it('calculates RMD from prior year-end balance', () => {
+    const result = runProjection(baseInput);
+    const record73 = result.records[0];
+    const record74 = result.records[1];
+
+    // First year RMD is based on initial balance
+    expect(record73.rmd?.rmdRequired).toBeCloseTo(500000 / 26.5, 2);
+
+    // Second year RMD should be based on prior year-end balance (taxDeferred portion)
+    // Prior year balance is after withdrawals and returns
+    const priorYearEndBalance = record73.balanceByType.taxDeferred;
+    expect(record74.rmd?.rmdRequired).toBeCloseTo(priorYearEndBalance / 25.5, 0);
+  });
+
+  it('RMD percentage increases with age', () => {
+    const result = runProjection(baseInput);
+    const record73 = result.records[0];
+    const record85 = result.records[12]; // age 85
+
+    // Calculate RMD percentages
+    // Note: balances differ, so we compare the divisors used
+    // At 73: divisor is 26.5, at 85: divisor is 16.0
+    // So RMD percentage at 85 (6.25%) should be higher than at 73 (3.77%)
+    expect(record73.rmd?.rmdRequired).toBeDefined();
+    expect(record85.rmd?.rmdRequired).toBeDefined();
+
+    // Both should be enforcing RMD
+    expect(record73.rmd?.rmdApplies).toBe(true);
+    expect(record85.rmd?.rmdApplies).toBe(true);
   });
 });

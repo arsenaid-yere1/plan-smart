@@ -62,5 +62,18 @@ export function generateProjectionWarnings(input: ProjectionInput): ProjectionWa
     });
   }
 
+  // RMD approaching warning (ages 70-72 with significant tax-deferred balance)
+  const taxDeferredBalance = input.balancesByType.taxDeferred;
+  if (input.currentAge >= 70 && input.currentAge < 73 && taxDeferredBalance > 100000) {
+    const formatCurrency = (value: number) =>
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+
+    warnings.push({
+      field: 'rmd',
+      message: `You're approaching age 73 when Required Minimum Distributions (RMDs) begin. With ${formatCurrency(taxDeferredBalance)} in tax-deferred accounts, you'll be required to withdraw a minimum amount each year starting at age 73.`,
+      severity: 'info',
+    });
+  }
+
   return warnings;
 }

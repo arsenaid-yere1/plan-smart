@@ -172,6 +172,30 @@ export interface DepletionFeedback {
 }
 
 /**
+ * RMD (Required Minimum Distribution) configuration
+ */
+export interface RMDConfig {
+  /** Whether RMD enforcement is enabled (default: true) */
+  enabled: boolean;
+  /** Age at which RMDs begin (default: 73, will be 75 in 2033+) */
+  startAge: number;
+}
+
+/**
+ * RMD tracking for a projection year
+ */
+export interface RMDTracking {
+  /** Whether RMD applies this year */
+  rmdApplies: boolean;
+  /** Calculated RMD amount for the year */
+  rmdRequired: number;
+  /** Actual withdrawal from tax-deferred accounts */
+  rmdTaken: number;
+  /** Amount withdrawn beyond RMD (for expenses) */
+  excessOverRmd: number;
+}
+
+/**
  * Core inputs required for projection calculation
  * Derived from financial snapshot + optional overrides
  */
@@ -224,6 +248,9 @@ export interface ProjectionInput {
 
   /** Epic 10.2: Pre-calculated absolute reserve floor amount */
   reserveFloor?: number;
+
+  /** RMD configuration (default: enabled, startAge 73) */
+  rmdConfig?: RMDConfig;
 }
 
 /**
@@ -296,6 +323,9 @@ export interface ProjectionRecord {
   actualDiscretionarySpending?: number;
   /** Unmet spending need due to reserve constraint */
   spendingShortfall?: number;
+
+  /** RMD tracking (only populated if RMD applies) */
+  rmd?: RMDTracking;
 }
 
 /**

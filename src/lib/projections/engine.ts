@@ -7,7 +7,9 @@ import type {
   IncomeStream,
   SpendingPhaseConfig,
   SpendingPhase,
+  RMDTracking,
 } from './types';
+import { calculateRMD, DEFAULT_RMD_CONFIG } from './rmd';
 
 /**
  * Epic 10.2: Result of reserve-constrained spending calculation
@@ -54,6 +56,83 @@ export function withdrawFromAccounts(
   }
 
   return { withdrawals, shortfall: remaining };
+}
+
+/**
+ * Execute tax-aware withdrawal strategy with RMD enforcement
+ *
+ * When RMD applies (age 73+):
+ * 1. Calculate and withdraw RMD from tax-deferred first
+ * 2. If more needed, continue with normal order (taxable -> remaining taxDeferred -> taxFree)
+ *
+ * @param amountNeeded - Total withdrawal needed for expenses
+ * @param balances - Current account balances by tax type
+ * @param rmdRequired - Required minimum distribution for this year (0 if not applicable)
+ * @returns Withdrawal result with amounts by type and any shortfall
+ */
+export function withdrawFromAccountsWithRMD(
+  amountNeeded: number,
+  balances: BalanceByType,
+  rmdRequired: number
+): WithdrawalResult & { rmdTracking?: RMDTracking } {
+  const withdrawals: BalanceByType = { taxDeferred: 0, taxFree: 0, taxable: 0 };
+  let remaining = amountNeeded;
+
+  // Track RMD specifics
+  let rmdTaken = 0;
+  const rmdApplies = rmdRequired > 0;
+
+  // Step 1: If RMD applies, withdraw RMD from tax-deferred first
+  if (rmdApplies && balances.taxDeferred > 0) {
+    // Take the full RMD (or whatever is available if less)
+    const rmdWithdrawal = Math.min(rmdRequired, balances.taxDeferred);
+    withdrawals.taxDeferred = rmdWithdrawal;
+    rmdTaken = rmdWithdrawal;
+
+    // RMD may cover some or all of the needed amount
+    remaining = Math.max(0, remaining - rmdWithdrawal);
+  }
+
+  // Step 2: If more needed, continue with normal ordering
+  // (taxable first, then any remaining tax-deferred, then tax-free)
+
+  // 2a. Withdraw from taxable accounts
+  if (remaining > 0 && balances.taxable > 0) {
+    const fromTaxable = Math.min(remaining, balances.taxable);
+    withdrawals.taxable = fromTaxable;
+    remaining -= fromTaxable;
+  }
+
+  // 2b. Withdraw additional from tax-deferred (beyond RMD)
+  if (remaining > 0 && balances.taxDeferred > withdrawals.taxDeferred) {
+    const availableDeferred = balances.taxDeferred - withdrawals.taxDeferred;
+    const fromDeferred = Math.min(remaining, availableDeferred);
+    withdrawals.taxDeferred += fromDeferred;
+    remaining -= fromDeferred;
+  }
+
+  // 2c. Withdraw from tax-free accounts last
+  if (remaining > 0 && balances.taxFree > 0) {
+    const fromTaxFree = Math.min(remaining, balances.taxFree);
+    withdrawals.taxFree = fromTaxFree;
+    remaining -= fromTaxFree;
+  }
+
+  // Calculate excess over RMD
+  const excessOverRmd = rmdApplies
+    ? Math.max(0, withdrawals.taxDeferred - rmdRequired)
+    : 0;
+
+  return {
+    withdrawals,
+    shortfall: remaining,
+    rmdTracking: rmdApplies ? {
+      rmdApplies: true,
+      rmdRequired,
+      rmdTaken,
+      excessOverRmd,
+    } : undefined,
+  };
 }
 
 /**
@@ -309,6 +388,9 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
     let currentActualDiscretionary: number | undefined;
     let currentShortfall: number | undefined;
 
+    // RMD tracking for this year
+    let currentRmd: RMDTracking | undefined;
+
     if (!isRetired) {
       // ACCUMULATION PHASE
       // Calculate contribution with growth rate applied
@@ -355,6 +437,20 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       // Calculate total income from all active streams
       const totalIncome = calculateTotalIncome(input.incomeStreams, age, inflationMultiplier);
 
+      // Calculate RMD if applicable
+      const rmdConfig = input.rmdConfig ?? DEFAULT_RMD_CONFIG;
+      let rmdRequired = 0;
+
+      if (rmdConfig.enabled && age >= rmdConfig.startAge) {
+        // RMD is based on PRIOR year-end balance
+        // For first year, use current balance; otherwise use previous record
+        const priorYearDeferredBalance = age === input.currentAge
+          ? input.balancesByType.taxDeferred
+          : records[records.length - 1]?.balanceByType.taxDeferred ?? 0;
+
+        rmdRequired = calculateRMD(priorYearDeferredBalance, age);
+      }
+
       // Epic 10.2: Calculate reserve-constrained spending
       const spendingResult = calculateReserveConstrainedSpending(
         balances,
@@ -364,9 +460,16 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         input.reserveFloor
       );
 
-      // Execute tax-aware withdrawal with constrained amount
-      const withdrawalResult = withdrawFromAccounts(spendingResult.totalWithdrawal, balances);
+      // Determine total withdrawal needed
+      // If RMD is greater than spending needs, we still must withdraw the RMD
+      const withdrawalNeeded = Math.max(spendingResult.totalWithdrawal, rmdRequired);
+
+      // Execute RMD-aware withdrawal
+      const withdrawalResult = withdrawFromAccountsWithRMD(withdrawalNeeded, balances, rmdRequired);
       withdrawalsByType = withdrawalResult.withdrawals;
+
+      // Track RMD in record
+      currentRmd = withdrawalResult.rmdTracking;
 
       // Update balances
       balances = subtractWithdrawals(balances, withdrawalResult.withdrawals);
@@ -447,6 +550,8 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       actualEssentialSpending: currentActualEssential,
       actualDiscretionarySpending: currentActualDiscretionary,
       spendingShortfall: currentShortfall,
+      // RMD tracking
+      rmd: currentRmd,
     });
 
     // Capture retirement balance to match chart data point at retirement age

@@ -15,7 +15,7 @@ import {
 import type { ProjectionRecord } from '@/lib/projections/types';
 
 type XAxisType = 'age' | 'year';
-type ViewMode = 'balance' | 'spending';
+type ViewMode = 'balance' | 'spending' | 'tax-breakdown';
 
 // Phase colors matching existing design system
 const PHASE_COLORS: Record<string, string> = {
@@ -191,6 +191,55 @@ export function ProjectionChart({
       };
     });
   }, [chartData, reserveFloor, viewMode, currentAge, inflationRate, adjustForInflation]);
+
+  // Tax-categorized balance data transformation
+  const taxBreakdownData = useMemo(() => {
+    if (viewMode !== 'tax-breakdown') return null;
+
+    const safeInflationRate = inflationRate ?? 0.025;
+
+    return records.map((record) => {
+      const yearsFromNow = record.age - currentAge;
+      const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromNow);
+
+      // Get balances by type
+      const taxDeferred = record.balanceByType.taxDeferred;
+      const taxFree = record.balanceByType.taxFree;
+      const taxable = record.balanceByType.taxable;
+
+      // Apply inflation adjustment if enabled
+      const displayTaxDeferred = adjustForInflation ? taxDeferred / inflationFactor : taxDeferred;
+      const displayTaxFree = adjustForInflation ? taxFree / inflationFactor : taxFree;
+      const displayTaxable = adjustForInflation ? taxable / inflationFactor : taxable;
+
+      return {
+        ...record,
+        xValue: xAxisType === 'age' ? record.age : record.year,
+        displayTaxDeferred: Math.max(0, displayTaxDeferred),
+        displayTaxFree: Math.max(0, displayTaxFree),
+        displayTaxable: Math.max(0, displayTaxable),
+        // Total for tooltip
+        displayTotal: Math.max(0, displayTaxDeferred + displayTaxFree + displayTaxable),
+        // Nominal values for tooltip
+        nominalTaxDeferred: taxDeferred,
+        nominalTaxFree: taxFree,
+        nominalTaxable: taxable,
+        isRetirement: record.age >= retirementAge,
+      };
+    });
+  }, [records, viewMode, currentAge, inflationRate, adjustForInflation, xAxisType, retirementAge]);
+
+  // Y-axis domain for tax breakdown view
+  const taxBreakdownYDomain = useMemo((): [number, number | 'auto'] => {
+    if (!taxBreakdownData || taxBreakdownData.length === 0) return [0, 'auto'];
+
+    const maxTotal = Math.max(
+      ...taxBreakdownData.map(d => d.displayTaxDeferred + d.displayTaxFree + d.displayTaxable)
+    );
+
+    if (!Number.isFinite(maxTotal) || maxTotal <= 0) return [0, 'auto'];
+    return [0, maxTotal * 1.05];
+  }, [taxBreakdownData]);
 
   // Spending data transformation for spending view
   const spendingData = useMemo(() => {
@@ -434,29 +483,41 @@ export function ProjectionChart({
           </div>
         </div>
 
-        {/* View Mode Toggle - only show if spending phases enabled */}
-        {spendingEnabled && (
-          <div className="flex items-center gap-2">
-            <span id="view-mode-label" className="text-sm text-muted-foreground">
-              Chart:
-            </span>
-            <div
-              className="inline-flex rounded-lg border border-border p-1"
-              role="group"
-              aria-labelledby="view-mode-label"
+        {/* View Mode Toggle - always show for tax breakdown */}
+        <div className="flex items-center gap-2">
+          <span id="view-mode-label" className="text-sm text-muted-foreground">
+            View:
+          </span>
+          <div
+            className="inline-flex rounded-lg border border-border p-1"
+            role="group"
+            aria-labelledby="view-mode-label"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('balance')}
+              aria-pressed={viewMode === 'balance'}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                viewMode === 'balance'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => setViewMode('balance')}
-                aria-pressed={viewMode === 'balance'}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                  viewMode === 'balance'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Balance
-              </button>
+              Balance
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('tax-breakdown')}
+              aria-pressed={viewMode === 'tax-breakdown'}
+              className={`rounded-md px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                viewMode === 'tax-breakdown'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              By Account Type
+            </button>
+            {spendingEnabled && (
               <button
                 type="button"
                 onClick={() => setViewMode('spending')}
@@ -469,16 +530,22 @@ export function ProjectionChart({
               >
                 Spending
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Chart Container */}
       <div className="h-64 w-full sm:h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={viewMode === 'spending' ? spendingData : (chartDataWithReserve ?? chartData)}
+            data={
+              viewMode === 'spending'
+                ? spendingData
+                : viewMode === 'tax-breakdown'
+                  ? (taxBreakdownData ?? [])
+                  : (chartDataWithReserve ?? chartData)
+            }
             margin={{ top: 20, right: 60, left: 0, bottom: 0 }}
             onClick={(e) => {
               if (viewMode === 'spending' && onPhaseClick) {
@@ -503,7 +570,11 @@ export function ProjectionChart({
               axisLine={{ stroke: 'hsl(var(--border))' }}
             />
             <YAxis
-              domain={yAxisDomain}
+              domain={
+                viewMode === 'tax-breakdown'
+                  ? taxBreakdownYDomain
+                  : yAxisDomain
+              }
               tickFormatter={formatCurrency}
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
@@ -544,6 +615,41 @@ export function ProjectionChart({
                       )}
                       <p className="mt-1 text-xs" style={{ color: phaseColor }}>
                         {data.phase ?? 'Retirement Phase'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Handle tax breakdown view tooltip
+                if (viewMode === 'tax-breakdown') {
+                  const data = payload[0].payload as NonNullable<typeof taxBreakdownData>[0];
+
+                  return (
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-md">
+                      <p className="text-sm font-medium text-foreground">
+                        {xAxisType === 'age' ? `Age ${data.age}` : `Year ${data.year}`}
+                      </p>
+                      <p className="text-sm font-medium text-foreground">
+                        Total: {formatTooltipCurrency(data.displayTotal)}
+                      </p>
+                      <div className="mt-2 space-y-1 text-sm">
+                        <p style={{ color: 'hsl(145 60% 45%)' }}>
+                          Tax-Free (Roth): {formatTooltipCurrency(data.displayTaxFree)}
+                        </p>
+                        <p style={{ color: 'hsl(35 90% 55%)' }}>
+                          Tax-Deferred (401k/IRA): {formatTooltipCurrency(data.displayTaxDeferred)}
+                        </p>
+                        <p style={{ color: 'hsl(215 20% 65%)' }}>
+                          Taxable (Brokerage): {formatTooltipCurrency(data.displayTaxable)}
+                        </p>
+                      </div>
+                      {!adjustForInflation && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Values in future dollars
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase'}
                       </p>
                     </div>
                   );
@@ -626,6 +732,17 @@ export function ProjectionChart({
                           Expenses: {formatTooltipCurrency(data.outflows)}
                         </p>
                       )}
+                      {/* RMD Information */}
+                      {data.rmd?.rmdApplies && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            RMD: {formatTooltipCurrency(data.rmd.rmdRequired)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Taken: {formatTooltipCurrency(data.rmd.rmdTaken)}
+                          </p>
+                        </div>
+                      )}
                       <p className="mt-1 text-xs text-muted-foreground">
                         {data.activePhaseName || (data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase')}
                       </p>
@@ -691,6 +808,17 @@ export function ProjectionChart({
                         Expenses: {formatTooltipCurrency(data.outflows)}
                       </p>
                     )}
+                    {/* RMD Information */}
+                    {data.rmd?.rmdApplies && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          RMD: {formatTooltipCurrency(data.rmd.rmdRequired)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Taken: {formatTooltipCurrency(data.rmd.rmdTaken)}
+                        </p>
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-muted-foreground">
                       {data.activePhaseName || (data.isRetirement ? 'Retirement Phase' : 'Accumulation Phase')}
                     </p>
@@ -733,6 +861,53 @@ export function ProjectionChart({
                     strokeWidth: 2,
                     cursor: onPhaseClick ? 'pointer' : 'default',
                   }}
+                />
+              </>
+            )}
+
+            {/* Tax Breakdown view elements */}
+            {viewMode === 'tax-breakdown' && taxBreakdownData && (
+              <>
+                {/* Retirement age marker */}
+                <ReferenceLine
+                  x={retirementXValue}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="5 5"
+                  label={{
+                    value: 'Retirement',
+                    position: 'top',
+                    fill: LABEL_COLORS.muted,
+                    fontSize: 12,
+                  }}
+                />
+                {/* Stacked areas for tax categories */}
+                {/* Order: Taxable (bottom), Tax-Deferred (middle), Tax-Free (top) */}
+                <Area
+                  type="monotone"
+                  dataKey="displayTaxable"
+                  stackId="tax"
+                  fill="hsl(215 20% 65%)"
+                  stroke="hsl(215 20% 45%)"
+                  strokeWidth={1}
+                  name="Taxable"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="displayTaxDeferred"
+                  stackId="tax"
+                  fill="hsl(35 90% 55%)"
+                  stroke="hsl(35 90% 40%)"
+                  strokeWidth={1}
+                  name="Tax-Deferred"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="displayTaxFree"
+                  stackId="tax"
+                  fill="hsl(145 60% 45%)"
+                  stroke="hsl(145 60% 35%)"
+                  strokeWidth={1}
+                  name="Tax-Free"
                 />
               </>
             )}
@@ -889,7 +1064,35 @@ export function ProjectionChart({
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-        {viewMode === 'spending' ? (
+        {viewMode === 'tax-breakdown' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: 'hsl(145 60% 45%)' }}
+              />
+              <span>Tax-Free (Roth)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: 'hsl(35 90% 55%)' }}
+              />
+              <span>Tax-Deferred (401k/IRA)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: 'hsl(215 20% 65%)' }}
+              />
+              <span>Taxable (Brokerage)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-0.5 border-l-2 border-dashed border-muted-foreground" />
+              <span>Retirement Start</span>
+            </div>
+          </>
+        ) : viewMode === 'spending' ? (
           <>
             <div className="flex items-center gap-2">
               <div className="h-3 w-4 rounded-sm bg-primary/20" />
