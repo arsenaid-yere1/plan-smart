@@ -568,6 +568,8 @@ export function ProjectionChart({
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
+              interval="preserveStartEnd"
+              minTickGap={30}
             />
             <YAxis
               domain={
