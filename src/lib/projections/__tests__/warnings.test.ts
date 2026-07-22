@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateProjectionWarnings } from '../warnings';
-import type { ProjectionInput } from '../types';
+import type { ProjectionInput, ProjectionResult } from '../types';
 
 describe('generateProjectionWarnings', () => {
   const baseInput: ProjectionInput = {
@@ -21,6 +21,31 @@ describe('generateProjectionWarnings', () => {
     incomeStreams: [],
     annualDebtPayments: 0,
   };
+
+  const projectionWithRmd = (rmdRequired: number): ProjectionResult => ({
+    records: [{
+      age: 73,
+      year: 2063,
+      balance: 1000000,
+      inflows: 0,
+      outflows: 0,
+      balanceByType: { taxDeferred: 800000, taxFree: 150000, taxable: 50000 },
+      rmd: {
+        rmdApplies: true,
+        rmdRequired,
+        rmdTaken: rmdRequired,
+        excessOverRmd: 0,
+      },
+    }],
+    summary: {
+      startingBalance: 1000000,
+      endingBalance: 1000000,
+      totalContributions: 0,
+      totalWithdrawals: rmdRequired,
+      yearsUntilDepletion: null,
+      projectedRetirementBalance: 1000000,
+    },
+  });
 
   it('should warn for high inflation (> 8%)', () => {
     const input = { ...baseInput, inflationRate: 0.10 };
@@ -161,5 +186,46 @@ describe('generateProjectionWarnings', () => {
     expect(warnings.some((warning) =>
       warning.field === 'rmd' && warning.message.includes('current-employer')
     )).toBe(true);
+  });
+
+  it('should warn users ages 70-72 with significant tax-deferred balances about RMDs', () => {
+    const input = {
+      ...baseInput,
+      currentAge: 71,
+      balancesByType: { ...baseInput.balancesByType, taxDeferred: 300000 },
+    };
+
+    const warnings = generateProjectionWarnings(input);
+    const rmdWarning = warnings.find(warning => warning.field === 'rmd');
+
+    expect(rmdWarning).toEqual(expect.objectContaining({ severity: 'info' }));
+    expect(rmdWarning?.message).toContain('$300,000');
+    expect(rmdWarning?.message).toContain('age 73');
+  });
+
+  it('should not warn about approaching RMDs outside ages 70-72', () => {
+    const input = {
+      ...baseInput,
+      currentAge: 73,
+      balancesByType: { ...baseInput.balancesByType, taxDeferred: 300000 },
+    };
+
+    const warnings = generateProjectionWarnings(input);
+
+    expect(warnings.find(warning => warning.field === 'rmd')).toBeUndefined();
+  });
+
+  it('should warn when projected RMDs exceed $50,000 per year', () => {
+    const warnings = generateProjectionWarnings(baseInput, projectionWithRmd(50000.01));
+    const rmdWarning = warnings.find(warning => warning.field === 'rmd');
+
+    expect(rmdWarning).toEqual(expect.objectContaining({ severity: 'info' }));
+    expect(rmdWarning?.message).toContain('exceed $50,000/year');
+  });
+
+  it('should not warn when projected RMDs equal $50,000 per year', () => {
+    const warnings = generateProjectionWarnings(baseInput, projectionWithRmd(50000));
+
+    expect(warnings.find(warning => warning.field === 'rmd')).toBeUndefined();
   });
 });

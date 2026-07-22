@@ -38,6 +38,12 @@ const mockExportData: ExportData = {
       inflows: 20000,
       outflows: 0,
       balanceByType: { taxDeferred: 88900, taxFree: 25400, taxable: 12700 },
+      rmd: {
+        rmdApplies: true,
+        rmdRequired: 3500,
+        rmdTaken: 3500,
+        excessOverRmd: 0,
+      },
     },
   ],
   summary: {
@@ -71,6 +77,7 @@ describe('useProjectionExport', () => {
   let originalCreateElement: typeof document.createElement;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockCreateObjectURL = vi.fn().mockReturnValue('blob:mock-url');
     mockRevokeObjectURL = vi.fn();
     mockClick = vi.fn();
@@ -152,6 +159,21 @@ describe('useProjectionExport', () => {
       expect(csv).toContain('1234.00');
       expect(csv).toContain('3766.00');
     });
+
+    it('includes tax-category and RMD columns in CSV output', async () => {
+      const { result } = renderHook(() => useProjectionExport());
+
+      act(() => {
+        result.current.exportCSV(mockExportData, { retirementAge: 65 });
+      });
+
+      const blob = vi.mocked(mockCreateObjectURL).mock.calls[0][0] as Blob;
+      const csv = await blob.text();
+
+      expect(csv).toContain('Tax-Deferred,Tax-Free,Taxable');
+      expect(csv).toContain('RMD Required,RMD Taken');
+      expect(csv).toContain('3500.00,3500.00');
+    });
   });
 
   describe('exportPDF', () => {
@@ -170,6 +192,15 @@ describe('useProjectionExport', () => {
       // Verify jspdf-autotable was called
       const autoTable = await import('jspdf-autotable');
       expect(autoTable.default).toHaveBeenCalled();
+      expect(autoTable.default).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          head: [expect.arrayContaining(['Tax-Def', 'Tax-Free', 'Taxable', 'RMD Req', 'RMD Taken'])],
+          body: expect.arrayContaining([
+            expect.arrayContaining(['$3,500', '$3,500']),
+          ]),
+        })
+      );
     });
   });
 });

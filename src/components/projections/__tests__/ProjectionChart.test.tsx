@@ -217,6 +217,26 @@ describe('ProjectionChart', () => {
     // Should still render without errors
     expect(screen.getByText('View by:')).toBeInTheDocument();
   });
+
+  it('toggles to the tax breakdown view and shows its legend', () => {
+    render(
+      <ProjectionChart
+        records={mockRecords}
+        retirementAge={65}
+        currentAge={30}
+      />
+    );
+
+    const taxBreakdownButton = screen.getByRole('button', { name: 'By Account Type' });
+    fireEvent.click(taxBreakdownButton);
+
+    expect(taxBreakdownButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Balance' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('Tax-Free (Roth)')).toBeInTheDocument();
+    expect(screen.getByText('Tax-Deferred (401k/IRA)')).toBeInTheDocument();
+    expect(screen.getByText('Taxable (Brokerage)')).toBeInTheDocument();
+    expect(screen.queryByText('Total Balance')).not.toBeInTheDocument();
+  });
 });
 
 // Test data for spending view

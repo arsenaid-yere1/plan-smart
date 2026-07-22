@@ -1,4 +1,4 @@
-import type { ProjectionInput } from './types';
+import type { ProjectionInput, ProjectionResult } from './types';
 
 export interface ProjectionWarning {
   field: string;
@@ -9,7 +9,10 @@ export interface ProjectionWarning {
 /**
  * Generate warnings for unusual but valid projection inputs
  */
-export function generateProjectionWarnings(input: ProjectionInput): ProjectionWarning[] {
+export function generateProjectionWarnings(
+  input: ProjectionInput,
+  result?: ProjectionResult
+): ProjectionWarning[] {
   const warnings: ProjectionWarning[] = [];
 
   // Very high inflation warning (> 8%)
@@ -86,6 +89,15 @@ export function generateProjectionWarnings(input: ProjectionInput): ProjectionWa
     warnings.push({
       field: 'rmd',
       message: `Your projection applies aggregate RMDs beginning at age ${rmdStartAge}, before your planned retirement age. It does not model the exception that may apply to some current-employer retirement plans.`,
+      severity: 'info',
+    });
+  }
+
+  // Large projected RMD warning
+  if (result?.records.some(record => (record.rmd?.rmdRequired ?? 0) > 50000)) {
+    warnings.push({
+      field: 'rmd',
+      message: 'Your projected RMDs exceed $50,000/year. Consider Roth conversions before age 73 to reduce future RMDs and tax burden.',
       severity: 'info',
     });
   }

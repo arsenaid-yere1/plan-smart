@@ -87,10 +87,10 @@ async function calculateProjection(
   }
 
   const diagnosticWarnings = collectProjectionInputWarnings(snapshot);
-  const inputWarnings = generateProjectionWarnings(projectionInput);
   const timer = createTimer();
   const result = runProjection(projectionInput);
   const calculationTimeMs = timer.getElapsed();
+  const inputWarnings = generateProjectionWarnings(projectionInput, result);
   const depletionFeedback = projectionInput.depletionTarget?.enabled
     ? calculateDepletionFeedback(projectionInput, result.records)
     : null;

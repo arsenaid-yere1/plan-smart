@@ -890,7 +890,7 @@ Add new legend section:
 - [x] TypeScript compiles without errors: `npm run typecheck`
 - [x] Linting passes: `npm run lint`
 - [x] Existing chart tests still pass
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 
 #### Manual Verification
 - [ ] Navigate to plans page with projection data
@@ -1004,8 +1004,8 @@ const rows = records.map(record => [
 #### Automated Verification
 - [x] TypeScript compiles without errors: `npm run typecheck`
 - [x] Linting passes: `npm run lint`
-- [x] All tests pass: `npm test` (projection tests - UI component tests have pre-existing issues)
-- [x] Build succeeds: `npm run build`
+- [ ] All tests pass: `npm test` (projection tests pass; unrelated email/auth and ProjectionTable tests still fail)
+- [ ] Build succeeds: `npm run build`
 
 #### Manual Verification
 - [ ] Hover over data point at age 73+ to see RMD in tooltip

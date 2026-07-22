@@ -198,7 +198,7 @@ export function ProjectionChart({
 
     const safeInflationRate = inflationRate ?? 0.025;
 
-    return records.map((record) => {
+    return chartData.map((record) => {
       const yearsFromNow = record.age - currentAge;
       const inflationFactor = Math.pow(1 + safeInflationRate, yearsFromNow);
 
@@ -227,7 +227,7 @@ export function ProjectionChart({
         isRetirement: record.age >= retirementAge,
       };
     });
-  }, [records, viewMode, currentAge, inflationRate, adjustForInflation, xAxisType, retirementAge]);
+  }, [chartData, viewMode, currentAge, inflationRate, adjustForInflation, xAxisType, retirementAge]);
 
   // Y-axis domain for tax breakdown view
   const taxBreakdownYDomain = useMemo((): [number, number | 'auto'] => {
@@ -248,7 +248,7 @@ export function ProjectionChart({
     // Ensure inflationRate is valid for calculations
     const safeInflationRate = inflationRate ?? 0.025;
 
-    return records
+    return chartData
       .filter((record) => record.age >= retirementAge)
       .map((record) => {
         const yearsFromRetirement = record.age - retirementAge;
@@ -260,9 +260,8 @@ export function ProjectionChart({
         const displaySpending = adjustForInflation ? realSpending : nominalSpending;
 
         return {
+          ...record,
           xValue: xAxisType === 'age' ? record.age : record.year,
-          age: record.age,
-          year: record.year,
           spending: displaySpending,
           nominalSpending,
           realSpending,
@@ -273,7 +272,7 @@ export function ProjectionChart({
           healthcareExpenses: record.healthcareExpenses,
         };
       });
-  }, [records, retirementAge, inflationRate, adjustForInflation, xAxisType, viewMode]);
+  }, [chartData, retirementAge, inflationRate, adjustForInflation, xAxisType, viewMode]);
 
   // Phase boundary calculation
   const phaseBoundaries = useMemo(() => {
