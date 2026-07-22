@@ -16,8 +16,12 @@ import { calculateRMD, DEFAULT_RMD_CONFIG } from './rmd';
  */
 interface ReserveConstrainedSpending {
   essentialWithdrawal: number;
+  healthcareWithdrawal: number;
   discretionaryWithdrawal: number;
   totalWithdrawal: number;
+  actualEssentialSpending: number;
+  actualHealthcareSpending: number;
+  actualDiscretionarySpending: number;
   reductionStage: 'none' | 'discretionary_reduced' | 'essentials_only' | 'essentials_reduced';
   shortfall: number;
   reserveConstrained: boolean;
@@ -147,17 +151,47 @@ function applyReturns(balances: BalanceByType, returnRate: number): BalanceByTyp
 }
 
 /**
- * Add contributions allocated by percentage
+ * Add resolved contribution dollars by tax category.
  */
 function addContributions(
   balances: BalanceByType,
-  annualContribution: number,
-  allocation: BalanceByType
+  contributions: BalanceByType
 ): BalanceByType {
   return {
-    taxDeferred: balances.taxDeferred + (annualContribution * allocation.taxDeferred / 100),
-    taxFree: balances.taxFree + (annualContribution * allocation.taxFree / 100),
-    taxable: balances.taxable + (annualContribution * allocation.taxable / 100),
+    taxDeferred: balances.taxDeferred + contributions.taxDeferred,
+    taxFree: balances.taxFree + contributions.taxFree,
+    taxable: balances.taxable + contributions.taxable,
+  };
+}
+
+function resolveAnnualContributions(
+  input: ProjectionInput,
+  yearsFromStart: number
+): BalanceByType {
+  const growthMultiplier = Math.pow(1 + input.contributionGrowthRate, yearsFromStart);
+  const gross = input.annualContributionsByType
+    ? {
+        taxDeferred: input.annualContributionsByType.taxDeferred * growthMultiplier,
+        taxFree: input.annualContributionsByType.taxFree * growthMultiplier,
+        taxable: input.annualContributionsByType.taxable * growthMultiplier,
+      }
+    : {
+        taxDeferred: input.annualContribution * growthMultiplier * input.contributionAllocation.taxDeferred / 100,
+        taxFree: input.annualContribution * growthMultiplier * input.contributionAllocation.taxFree / 100,
+        taxable: input.annualContribution * growthMultiplier * input.contributionAllocation.taxable / 100,
+      };
+
+  const grossTotal = totalBalance(gross);
+  if (grossTotal <= 0) {
+    return { taxDeferred: 0, taxFree: 0, taxable: 0 };
+  }
+
+  const effectiveTotal = Math.max(0, grossTotal - input.annualDebtPayments);
+  const scale = effectiveTotal / grossTotal;
+  return {
+    taxDeferred: gross.taxDeferred * scale,
+    taxFree: gross.taxFree * scale,
+    taxable: gross.taxable * scale,
   };
 }
 
@@ -267,77 +301,74 @@ export function calculatePhaseAdjustedExpenses(
 function calculateReserveConstrainedSpending(
   balances: BalanceByType,
   essentialExpenses: number,
+  healthcareExpenses: number,
   discretionaryExpenses: number,
   totalIncome: number,
   reserveFloor: number | undefined
 ): ReserveConstrainedSpending {
   const currentTotal = totalBalance(balances);
+  const protectedExpenses = essentialExpenses + healthcareExpenses;
+  const incomeForProtected = Math.min(totalIncome, protectedExpenses);
+  const remainingIncome = Math.max(0, totalIncome - incomeForProtected);
+  const incomeForDiscretionary = Math.min(remainingIncome, discretionaryExpenses);
 
-  // No reserve configured - no constraint
-  if (reserveFloor === undefined) {
-    const totalNeeded = Math.max(0, essentialExpenses + discretionaryExpenses - totalIncome);
-    return {
-      essentialWithdrawal: Math.max(0, essentialExpenses - totalIncome),
-      discretionaryWithdrawal: discretionaryExpenses,
-      totalWithdrawal: totalNeeded,
-      reductionStage: 'none',
-      shortfall: 0,
-      reserveConstrained: false,
-    };
+  const essentialShare = protectedExpenses > 0 ? essentialExpenses / protectedExpenses : 0;
+  const healthcareShare = protectedExpenses > 0 ? healthcareExpenses / protectedExpenses : 0;
+  const essentialIncome = incomeForProtected * essentialShare;
+  const healthcareIncome = incomeForProtected * healthcareShare;
+
+  const essentialNeed = Math.max(0, essentialExpenses - essentialIncome);
+  const healthcareNeed = Math.max(0, healthcareExpenses - healthcareIncome);
+  const protectedNeed = essentialNeed + healthcareNeed;
+  const discretionaryNeed = Math.max(0, discretionaryExpenses - incomeForDiscretionary);
+  const totalNeeded = protectedNeed + discretionaryNeed;
+
+  const reserveAvailable = reserveFloor === undefined
+    ? currentTotal
+    : Math.max(0, currentTotal - reserveFloor);
+  const available = Math.min(currentTotal, reserveAvailable);
+  const portfolioForProtected = Math.min(available, protectedNeed);
+  const remainingPortfolio = Math.max(0, available - portfolioForProtected);
+  const portfolioForDiscretionary = Math.min(remainingPortfolio, discretionaryNeed);
+
+  const essentialWithdrawal = protectedNeed > 0
+    ? portfolioForProtected * essentialNeed / protectedNeed
+    : 0;
+  const healthcareWithdrawal = protectedNeed > 0
+    ? portfolioForProtected * healthcareNeed / protectedNeed
+    : 0;
+  const totalWithdrawal = essentialWithdrawal + healthcareWithdrawal + portfolioForDiscretionary;
+
+  const actualEssentialSpending = essentialIncome + essentialWithdrawal;
+  const actualHealthcareSpending = healthcareIncome + healthcareWithdrawal;
+  const actualDiscretionarySpending = incomeForDiscretionary + portfolioForDiscretionary;
+  const actualTotal = actualEssentialSpending + actualHealthcareSpending + actualDiscretionarySpending;
+  const plannedTotal = essentialExpenses + healthcareExpenses + discretionaryExpenses;
+  const shortfall = Math.max(0, plannedTotal - actualTotal);
+  const reserveConstrained = reserveFloor !== undefined && totalNeeded > reserveAvailable;
+
+  let reductionStage: ReserveConstrainedSpending['reductionStage'] = 'none';
+  if (shortfall > 0) {
+    if (actualEssentialSpending < essentialExpenses || actualHealthcareSpending < healthcareExpenses) {
+      reductionStage = 'essentials_reduced';
+    } else if (actualDiscretionarySpending <= incomeForDiscretionary) {
+      reductionStage = 'essentials_only';
+    } else {
+      reductionStage = 'discretionary_reduced';
+    }
   }
 
-  const availableAboveReserve = Math.max(0, currentTotal - reserveFloor);
-
-  // Calculate what's needed from portfolio (after income)
-  const essentialFromPortfolio = Math.max(0, essentialExpenses - totalIncome);
-  const discretionaryFromPortfolio = discretionaryExpenses; // Discretionary fully from portfolio
-  const totalNeeded = essentialFromPortfolio + discretionaryFromPortfolio;
-
-  // Stage 1: No constraint needed
-  if (availableAboveReserve >= totalNeeded) {
-    return {
-      essentialWithdrawal: essentialFromPortfolio,
-      discretionaryWithdrawal: discretionaryFromPortfolio,
-      totalWithdrawal: totalNeeded,
-      reductionStage: 'none',
-      shortfall: 0,
-      reserveConstrained: false,
-    };
-  }
-
-  // Stage 2: Reduce discretionary proportionally, preserve essentials
-  if (availableAboveReserve >= essentialFromPortfolio) {
-    const remainingForDiscretionary = availableAboveReserve - essentialFromPortfolio;
-    return {
-      essentialWithdrawal: essentialFromPortfolio,
-      discretionaryWithdrawal: remainingForDiscretionary,
-      totalWithdrawal: availableAboveReserve,
-      reductionStage: 'discretionary_reduced',
-      shortfall: discretionaryFromPortfolio - remainingForDiscretionary,
-      reserveConstrained: true,
-    };
-  }
-
-  // Stage 3: Essentials only (no discretionary)
-  if (availableAboveReserve > 0) {
-    return {
-      essentialWithdrawal: availableAboveReserve,
-      discretionaryWithdrawal: 0,
-      totalWithdrawal: availableAboveReserve,
-      reductionStage: 'essentials_only',
-      shortfall: essentialFromPortfolio - availableAboveReserve + discretionaryFromPortfolio,
-      reserveConstrained: true,
-    };
-  }
-
-  // Stage 4: Reserve depleted - nothing available
   return {
-    essentialWithdrawal: 0,
-    discretionaryWithdrawal: 0,
-    totalWithdrawal: 0,
-    reductionStage: 'essentials_reduced',
-    shortfall: totalNeeded,
-    reserveConstrained: true,
+    essentialWithdrawal,
+    healthcareWithdrawal,
+    discretionaryWithdrawal: portfolioForDiscretionary,
+    totalWithdrawal,
+    actualEssentialSpending,
+    actualHealthcareSpending,
+    actualDiscretionarySpending,
+    reductionStage,
+    shortfall,
+    reserveConstrained,
   };
 }
 
@@ -355,6 +386,7 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
   let balances = { ...input.balancesByType };
   let totalContributions = 0;
   let totalWithdrawals = 0;
+  let totalRmdSurplusReinvested = 0;
   let yearsUntilDepletion: number | null = null;
   let projectedRetirementBalance = 0;
 
@@ -377,40 +409,39 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
     let withdrawalsByType: BalanceByType | undefined;
     let currentEssentialExpenses: number | undefined;
     let currentDiscretionaryExpenses: number | undefined;
+    let currentHealthcareExpenses: number | undefined;
     let currentActivePhaseId: string | undefined;
     let currentActivePhaseName: string | undefined;
 
     // Epic 10.2: Reserve tracking variables for this year
-    let currentReserveBalance: number | undefined;
     let currentReserveConstrained: boolean | undefined;
     let currentReductionStage: 'none' | 'discretionary_reduced' | 'essentials_only' | 'essentials_reduced' | undefined;
     let currentActualEssential: number | undefined;
     let currentActualDiscretionary: number | undefined;
+    let currentActualHealthcare: number | undefined;
     let currentShortfall: number | undefined;
 
     // RMD tracking for this year
     let currentRmd: RMDTracking | undefined;
+    const rmdConfig = input.rmdConfig ?? DEFAULT_RMD_CONFIG;
+    let rmdRequired = 0;
+    if (rmdConfig.enabled && age >= rmdConfig.startAge) {
+      const priorYearDeferredBalance = age === input.currentAge
+        ? input.balancesByType.taxDeferred
+        : records[records.length - 1]?.balanceByType.taxDeferred ?? 0;
+      rmdRequired = calculateRMD(priorYearDeferredBalance, age);
+    }
+
+    let portfolioSpendingNeed = 0;
+    let spendingResult: ReserveConstrainedSpending | undefined;
 
     if (!isRetired) {
       // ACCUMULATION PHASE
-      // Calculate contribution with growth rate applied
-      const growthMultiplier = Math.pow(1 + input.contributionGrowthRate, yearsFromStart);
-      const grownContribution = input.annualContribution * growthMultiplier;
-
-      // Effective contribution = grown contribution - debt payments
-      const effectiveContribution = Math.max(
-        0,
-        grownContribution - input.annualDebtPayments
-      );
-
-      // Add contributions first
-      balances = addContributions(balances, effectiveContribution, input.contributionAllocation);
+      const contributions = resolveAnnualContributions(input, yearsFromStart);
+      const effectiveContribution = totalBalance(contributions);
+      balances = addContributions(balances, contributions);
       inflows = effectiveContribution;
       totalContributions += effectiveContribution;
-
-      // Then apply returns (end of year model)
-      balances = applyReturns(balances, input.expectedReturn);
-
     } else {
       // DRAWDOWN PHASE
       const inflationMultiplier = Math.pow(1 + input.inflationRate, yearsFromRetirement);
@@ -437,54 +468,19 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       // Calculate total income from all active streams
       const totalIncome = calculateTotalIncome(input.incomeStreams, age, inflationMultiplier);
 
-      // Calculate RMD if applicable
-      const rmdConfig = input.rmdConfig ?? DEFAULT_RMD_CONFIG;
-      let rmdRequired = 0;
-
-      if (rmdConfig.enabled && age >= rmdConfig.startAge) {
-        // RMD is based on PRIOR year-end balance
-        // For first year, use current balance; otherwise use previous record
-        const priorYearDeferredBalance = age === input.currentAge
-          ? input.balancesByType.taxDeferred
-          : records[records.length - 1]?.balanceByType.taxDeferred ?? 0;
-
-        rmdRequired = calculateRMD(priorYearDeferredBalance, age);
-      }
-
       // Epic 10.2: Calculate reserve-constrained spending
-      const spendingResult = calculateReserveConstrainedSpending(
+      spendingResult = calculateReserveConstrainedSpending(
         balances,
         essentialExpenses,
+        healthcareExpenses,
         discretionaryExpenses,
         totalIncome,
         input.reserveFloor
       );
-
-      // Determine total withdrawal needed
-      // If RMD is greater than spending needs, we still must withdraw the RMD
-      const withdrawalNeeded = Math.max(spendingResult.totalWithdrawal, rmdRequired);
-
-      // Execute RMD-aware withdrawal
-      const withdrawalResult = withdrawFromAccountsWithRMD(withdrawalNeeded, balances, rmdRequired);
-      withdrawalsByType = withdrawalResult.withdrawals;
-
-      // Track RMD in record
-      currentRmd = withdrawalResult.rmdTracking;
-
-      // Update balances
-      balances = subtractWithdrawals(balances, withdrawalResult.withdrawals);
-
-      // Apply returns to remaining balance
-      balances = applyReturns(balances, input.expectedReturn);
-
-      // Track totals
-      const actualWithdrawal = withdrawalResult.withdrawals.taxDeferred +
-        withdrawalResult.withdrawals.taxFree +
-        withdrawalResult.withdrawals.taxable;
+      portfolioSpendingNeed = spendingResult.totalWithdrawal;
 
       inflows = totalIncome;
       outflows = essentialExpenses + discretionaryExpenses + healthcareExpenses; // Original planned
-      totalWithdrawals += actualWithdrawal;
 
       // Epic 10.2: Track reserve constraints
       if (spendingResult.reserveConstrained) {
@@ -500,31 +496,59 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
         }
       }
 
-      // Track depletion year
-      if (yearsUntilDepletion === null && totalBalance(balances) <= 0) {
-        yearsUntilDepletion = yearsFromStart;
-      }
-
-      // Set retirement balance for already-retired case
-      if (isAlreadyRetired && age === input.currentAge) {
-        projectedRetirementBalance = totalBalance(input.balancesByType);
-      }
-
       // Store expense breakdown and phase info in record
       currentEssentialExpenses = Math.round(essentialExpenses * 100) / 100;
       currentDiscretionaryExpenses = Math.round(discretionaryExpenses * 100) / 100;
+      currentHealthcareExpenses = Math.round(healthcareExpenses * 100) / 100;
       currentActivePhaseId = phaseResult.activePhase?.id;
       currentActivePhaseName = phaseResult.activePhase?.name;
 
       // Set reserve tracking fields for record
-      currentReserveBalance = input.reserveFloor !== undefined
-        ? Math.max(0, totalBalance(balances) - input.reserveFloor)
-        : undefined;
       currentReserveConstrained = spendingResult.reserveConstrained;
       currentReductionStage = spendingResult.reductionStage;
-      currentActualEssential = spendingResult.essentialWithdrawal + Math.min(totalIncome, essentialExpenses);
-      currentActualDiscretionary = spendingResult.discretionaryWithdrawal;
+      currentActualEssential = spendingResult.actualEssentialSpending;
+      currentActualHealthcare = spendingResult.actualHealthcareSpending;
+      currentActualDiscretionary = spendingResult.actualDiscretionarySpending;
       currentShortfall = spendingResult.shortfall;
+    }
+
+    if (isRetired || rmdRequired > 0) {
+      const withdrawalResult = withdrawFromAccountsWithRMD(
+        portfolioSpendingNeed,
+        balances,
+        rmdRequired
+      );
+      withdrawalsByType = withdrawalResult.withdrawals;
+
+      const actualWithdrawal = totalBalance(withdrawalResult.withdrawals);
+      const actualPortfolioSpending = Math.min(portfolioSpendingNeed, actualWithdrawal);
+      const rmdTaken = withdrawalResult.rmdTracking?.rmdTaken ?? 0;
+      const rmdUsedForSpending = Math.min(rmdTaken, actualPortfolioSpending);
+      const surplusReinvested = Math.max(0, rmdTaken - rmdUsedForSpending);
+
+      currentRmd = withdrawalResult.rmdTracking
+        ? { ...withdrawalResult.rmdTracking, surplusReinvested }
+        : undefined;
+
+      balances = subtractWithdrawals(balances, withdrawalResult.withdrawals);
+      balances.taxable += surplusReinvested;
+      totalWithdrawals += actualWithdrawal;
+      totalRmdSurplusReinvested += surplusReinvested;
+    }
+
+    // Contributions, withdrawals, and internal RMD transfers occur before returns.
+    balances = applyReturns(balances, input.expectedReturn);
+
+    const currentReserveBalance = isRetired && input.reserveFloor !== undefined
+      ? Math.max(0, totalBalance(balances) - input.reserveFloor)
+      : undefined;
+
+    if (isRetired && yearsUntilDepletion === null && totalBalance(balances) <= 0) {
+      yearsUntilDepletion = yearsFromStart;
+    }
+
+    if (isAlreadyRetired && age === input.currentAge) {
+      projectedRetirementBalance = totalBalance(input.balancesByType);
     }
 
     records.push({
@@ -541,6 +565,7 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       withdrawalsByType,
       essentialExpenses: currentEssentialExpenses,
       discretionaryExpenses: currentDiscretionaryExpenses,
+      healthcareExpenses: currentHealthcareExpenses,
       activePhaseId: currentActivePhaseId,
       activePhaseName: currentActivePhaseName,
       // Epic 10.2: Reserve tracking
@@ -549,6 +574,7 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       reductionStage: currentReductionStage,
       actualEssentialSpending: currentActualEssential,
       actualDiscretionarySpending: currentActualDiscretionary,
+      actualHealthcareSpending: currentActualHealthcare,
       spendingShortfall: currentShortfall,
       // RMD tracking
       rmd: currentRmd,
@@ -567,6 +593,7 @@ export function runProjection(input: ProjectionInput): ProjectionResult {
       endingBalance: Math.max(0, totalBalance(balances)),
       totalContributions: Math.round(totalContributions * 100) / 100,
       totalWithdrawals: Math.round(totalWithdrawals * 100) / 100,
+      totalRmdSurplusReinvested: Math.round(totalRmdSurplusReinvested * 100) / 100,
       yearsUntilDepletion,
       projectedRetirementBalance: Math.round(projectedRetirementBalance * 100) / 100,
       // Epic 10.2: Reserve summary

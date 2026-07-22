@@ -1,4 +1,4 @@
-import type { ProjectionOverrides } from '@/lib/projections/input-builder';
+import type { ProjectionOverrides } from '@/lib/projections/types';
 
 export interface ParsedScenarioField {
   key: keyof ProjectionOverrides;

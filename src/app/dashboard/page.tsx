@@ -11,27 +11,13 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, AlertTriangle, XCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { runProjection, getRetirementStatus } from '@/lib/projections';
-import type { ProjectionInput, ProjectionAssumptions, IncomeStream } from '@/lib/projections/types';
-import {
-  DEFAULT_INFLATION_RATE,
-  DEFAULT_MAX_AGE,
-  DEFAULT_RETURN_RATES,
-  DEFAULT_SS_AGE,
-  DEFAULT_CONTRIBUTION_ALLOCATION,
-  DEFAULT_CONTRIBUTION_GROWTH_RATE,
-  DEFAULT_HEALTHCARE_INFLATION_RATE,
-  estimateHealthcareCosts,
-  estimateSocialSecurityMonthly,
-  deriveAnnualExpenses,
-  estimateAnnualDebtPayments,
-} from '@/lib/projections/assumptions';
-import type { RiskTolerance } from '@/types/database';
-import { ACCOUNT_TAX_CATEGORY, type BalanceByType } from '@/lib/projections/types';
+import { CURRENT_PROJECTION_CALCULATION_VERSION } from '@/lib/projections/version';
+import { buildProjectionInputFromSnapshot } from '@/lib/projections/input-builder';
+import { buildProjectionAssumptions, getStoredProjectionOverrides } from '@/lib/projections/saved-overrides';
+import { shouldRecalculateProjection } from '@/lib/projections/staleness';
 import type {
   InvestmentAccountJson,
   DebtJson,
-  IncomeExpensesJson,
-  IncomeStreamJson,
   RealEstatePropertyJson,
 } from '@/db/schema/financial-snapshot';
 import { DashboardClient } from './dashboard-client';
@@ -148,145 +134,34 @@ export default async function DashboardPage() {
     // Check for existing saved projection
     const savedProjection = await secureQuery.getProjectionForPlan(plan.id);
 
-    if (savedProjection) {
-      // Use saved projection data
-      projectionResultId = savedProjection.id;
-      const summary = savedProjection.summary as {
-        projectedRetirementBalance: number;
-        yearsUntilDepletion: number | null;
-      };
-      const assumptions = savedProjection.assumptions as { retirementAge: number };
+    const resolvedOverrides = getStoredProjectionOverrides(savedProjection?.assumptions);
+    const projectionInput = buildProjectionInputFromSnapshot(snapshot, resolvedOverrides);
+    const needsRefresh = shouldRecalculateProjection(savedProjection, projectionInput);
 
-      projectedBalance = summary.projectedRetirementBalance;
-      yearsUntilDepletion = summary.yearsUntilDepletion;
-      retirementAge = assumptions.retirementAge;
+    const freshProjection = needsRefresh
+      ? runProjection(projectionInput)
+      : {
+          records: savedProjection!.records,
+          summary: savedProjection!.summary,
+        };
 
-      const statusResult = getRetirementStatus(
-        savedProjection.summary as Parameters<typeof getRetirementStatus>[0],
-        currentAge
-      );
-      status = statusResult.status;
-    } else {
-      // No saved projection - create one with defaults
-      const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
-
-      // Calculate balances by tax category
-      const balancesByType: BalanceByType = {
-        taxDeferred: 0,
-        taxFree: 0,
-        taxable: 0,
-      };
-
-      for (const account of accounts) {
-        const category =
-          ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
-          'taxable';
-        balancesByType[category] += account.balance;
-      }
-
-      // Calculate annual contribution
-      const annualContribution = accounts.reduce(
-        (sum, account) => sum + (account.monthlyContribution || 0) * 12,
-        0
-      );
-
-      // Calculate annual expenses (preserve essential vs discretionary)
-      const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
-      let annualExpenses: number;
-      let annualEssentialExpenses: number;
-      let annualDiscretionaryExpenses: number;
-
-      if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
-        annualEssentialExpenses = (incomeExpenses.monthlyEssential || 0) * 12;
-        annualDiscretionaryExpenses = (incomeExpenses.monthlyDiscretionary || 0) * 12;
-        annualExpenses = annualEssentialExpenses + annualDiscretionaryExpenses;
-      } else {
-        annualExpenses = deriveAnnualExpenses(
-          parseFloat(snapshot.annualIncome),
-          parseFloat(snapshot.savingsRate)
-        );
-        annualEssentialExpenses = annualExpenses;
-        annualDiscretionaryExpenses = 0;
-      }
-
-      // Estimate debt payments
-      const debts = (snapshot.debts || []) as DebtJson[];
-      const annualDebtPayments = estimateAnnualDebtPayments(debts);
-
-      // Build income streams
-      let incomeStreams: IncomeStream[];
-      const storedStreams = snapshot.incomeStreams as IncomeStreamJson[] | null;
-
-      if (storedStreams && storedStreams.length > 0) {
-        incomeStreams = storedStreams;
-      } else {
-        const ssMonthly = estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
-        if (ssMonthly > 0) {
-          incomeStreams = [{
-            id: 'ss-auto',
-            name: 'Social Security',
-            type: 'social_security' as const,
-            annualAmount: ssMonthly * 12,
-            startAge: DEFAULT_SS_AGE,
-            endAge: undefined,
-            inflationAdjusted: true,
-            isGuaranteed: true,
-            isSpouse: false,
-          }];
-        } else {
-          incomeStreams = [];
-        }
-      }
-
-      // Build projection input with defaults
-      const riskTolerance = snapshot.riskTolerance as RiskTolerance;
-      const expectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
-
-      const projectionInput: ProjectionInput = {
-        currentAge,
-        retirementAge,
-        maxAge: DEFAULT_MAX_AGE,
-        balancesByType,
-        annualContribution,
-        contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
-        expectedReturn,
-        inflationRate: DEFAULT_INFLATION_RATE,
-        contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
-        annualEssentialExpenses,
-        annualDiscretionaryExpenses,
-        annualExpenses, // backward compatibility
-        annualHealthcareCosts: estimateHealthcareCosts(retirementAge),
-        healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
-        incomeStreams,
-        annualDebtPayments,
-      };
-
-      // Run and save projection
-      const projection = runProjection(projectionInput);
-      const statusResult = getRetirementStatus(projection.summary, currentAge);
-      status = statusResult.status;
-      projectedBalance = projection.summary.projectedRetirementBalance;
-      yearsUntilDepletion = projection.summary.yearsUntilDepletion;
-
-      // Build assumptions for storage
-      const assumptions: ProjectionAssumptions = {
-        expectedReturn: projectionInput.expectedReturn,
-        inflationRate: projectionInput.inflationRate,
-        healthcareInflationRate: projectionInput.healthcareInflationRate,
-        contributionGrowthRate: projectionInput.contributionGrowthRate,
-        retirementAge: projectionInput.retirementAge,
-        maxAge: projectionInput.maxAge,
-      };
-
-      const newProjection = await secureQuery.saveProjectionResult(plan.id, {
+    if (needsRefresh) {
+      const saved = await secureQuery.saveProjectionResult(plan.id, {
         inputs: projectionInput,
-        assumptions,
-        records: projection.records,
-        summary: projection.summary,
+        assumptions: buildProjectionAssumptions(projectionInput, resolvedOverrides),
+        records: freshProjection.records,
+        summary: freshProjection.summary,
+        calculationVersion: CURRENT_PROJECTION_CALCULATION_VERSION,
       });
-
-      projectionResultId = newProjection.id;
+      projectionResultId = saved.id;
+    } else {
+      projectionResultId = savedProjection!.id;
     }
+
+    retirementAge = projectionInput.retirementAge;
+    projectedBalance = freshProjection.summary.projectedRetirementBalance;
+    yearsUntilDepletion = freshProjection.summary.yearsUntilDepletion;
+    status = getRetirementStatus(freshProjection.summary, currentAge).status;
   } catch (error) {
     console.error('Failed to load/run projection:', error);
   }

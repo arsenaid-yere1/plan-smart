@@ -91,8 +91,14 @@ export class SecureQueryBuilder {
       records: typeof projectionResults.$inferInsert['records'];
       summary: typeof projectionResults.$inferInsert['summary'];
       calculationTimeMs?: number;
+      calculationVersion: number;
     }
   ) {
+    const ownedPlan = await this.getPlanById(planId);
+    if (!ownedPlan) {
+      throw new Error('Plan not found or access denied');
+    }
+
     const [result] = await db
       .insert(projectionResults)
       .values({
@@ -108,8 +114,10 @@ export class SecureQueryBuilder {
           records: data.records,
           summary: data.summary,
           calculationTimeMs: data.calculationTimeMs,
+          calculationVersion: data.calculationVersion,
           updatedAt: new Date(),
         },
+        setWhere: eq(projectionResults.userId, this.userId),
       })
       .returning();
 

@@ -30,6 +30,7 @@ export const projectionResults = pgTable('projection_results', {
 
   // Metadata
   calculationTimeMs: integer('calculation_time_ms'),
+  calculationVersion: integer('calculation_version').default(1).notNull(),
 
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),

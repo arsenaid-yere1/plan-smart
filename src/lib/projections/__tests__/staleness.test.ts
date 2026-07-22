@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { checkProjectionStaleness } from '../staleness';
+import { checkProjectionStaleness, shouldRecalculateProjection } from '../staleness';
 import type { ProjectionInput } from '../types';
 
 // Helper to create a minimal projection input
 function createBaseInput(overrides: Partial<ProjectionInput> = {}): ProjectionInput {
   return {
     currentAge: 30,
+    birthYear: 1996,
     retirementAge: 65,
     maxAge: 95,
     balancesByType: {
@@ -14,6 +15,11 @@ function createBaseInput(overrides: Partial<ProjectionInput> = {}): ProjectionIn
       taxable: 50000,
     },
     annualContribution: 20000,
+    annualContributionsByType: {
+      taxDeferred: 12000,
+      taxFree: 4000,
+      taxable: 4000,
+    },
     contributionAllocation: {
       taxDeferred: 60,
       taxFree: 20,
@@ -29,11 +35,75 @@ function createBaseInput(overrides: Partial<ProjectionInput> = {}): ProjectionIn
     healthcareInflationRate: 0.05,
     incomeStreams: [],
     annualDebtPayments: 0,
+    rmdConfig: { enabled: true, startAge: 75 },
     ...overrides,
   };
 }
 
 describe('checkProjectionStaleness', () => {
+  it('detects calculation version changes', () => {
+    const input = createBaseInput();
+    const result = checkProjectionStaleness(input, input, 1, 2);
+
+    expect(result.changedFields).toContain('calculationVersion');
+    expect(result.changes.calculationVersion).toEqual({ previous: 1, current: 2 });
+  });
+
+  it.each([
+    ['birthYear', { birthYear: 1995 }],
+    ['annualEssentialExpenses', { annualEssentialExpenses: 45000 }],
+    ['annualDiscretionaryExpenses', { annualDiscretionaryExpenses: 25000 }],
+    ['reserveFloor', { reserveFloor: 50000 }],
+    ['annualContributionsByType', {
+      annualContributionsByType: { taxDeferred: 10000, taxFree: 6000, taxable: 4000 },
+    }],
+    ['rmdConfig', { rmdConfig: { enabled: true, startAge: 73 } }],
+    ['depletionTarget', {
+      depletionTarget: {
+        enabled: true,
+        targetPercentageSpent: 75,
+        targetAge: 90,
+        reserve: { type: 'derived' as const },
+      },
+    }],
+  ] as const)('detects %s changes', (field, overrides) => {
+    const result = checkProjectionStaleness(
+      createBaseInput(),
+      createBaseInput(overrides as Partial<ProjectionInput>)
+    );
+
+    expect(result.changedFields).toContain(field);
+  });
+
+  it('treats legacy missing optional fields safely as stale', () => {
+    const current = createBaseInput();
+    const legacy = { ...current };
+    delete legacy.birthYear;
+    delete legacy.annualContributionsByType;
+    delete legacy.rmdConfig;
+
+    const result = checkProjectionStaleness(legacy, current);
+
+    expect(result.isStale).toBe(true);
+    expect(result.changedFields).toEqual(expect.arrayContaining([
+      'birthYear',
+      'annualContributionsByType',
+      'rmdConfig',
+    ]));
+  });
+
+  it('recalculates missing, legacy-version, and changed projections', () => {
+    const current = createBaseInput();
+
+    expect(shouldRecalculateProjection(null, current)).toBe(true);
+    expect(shouldRecalculateProjection({ inputs: current, calculationVersion: 1 }, current)).toBe(true);
+    expect(shouldRecalculateProjection({ inputs: current, calculationVersion: 2 }, current)).toBe(false);
+    expect(shouldRecalculateProjection(
+      { inputs: current, calculationVersion: 2 },
+      createBaseInput({ expectedReturn: 0.06 })
+    )).toBe(true);
+  });
+
   describe('basic field changes', () => {
     it('should detect no changes when inputs are identical', () => {
       const input = createBaseInput();

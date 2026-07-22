@@ -24,7 +24,8 @@ interface SummaryData {
 interface SummaryMeta {
   cached: boolean;
   generatedAt: string;
-  projectionVersion: string;
+  projectionFingerprint: string;
+  calculationVersion: number;
   model: string;
 }
 
@@ -219,7 +220,7 @@ export function AISummary({
         {meta && (
           <p className="text-xs text-muted-foreground">
             {meta.cached ? 'Cached summary' : 'Freshly generated'} •
-            Version {meta.projectionVersion}
+            Calculation v{meta.calculationVersion} • Result {meta.projectionFingerprint}
           </p>
         )}
       </CardContent>

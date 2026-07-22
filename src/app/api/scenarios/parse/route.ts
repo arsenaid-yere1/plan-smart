@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { getServerUser } from '@/lib/auth/server';
 import { SCENARIO_PARSE_PROMPT } from '@/lib/ai/prompts/scenario-parse';
 import type { ParsedScenario, ParsedScenarioField } from '@/lib/scenarios/types';
-import type { ProjectionOverrides } from '@/lib/projections/input-builder';
+import type { ProjectionOverrides } from '@/lib/projections/types';
 
 const FIELD_LABELS: Record<string, string> = {
   expectedReturn: 'Expected Return',

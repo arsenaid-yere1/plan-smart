@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/auth/server';
 import { createSecureQuery } from '@/db/secure-query';
+import { buildProjectionInputFromSnapshot } from '@/lib/projections/input-builder';
+import { getStoredProjectionOverrides } from '@/lib/projections/saved-overrides';
+import { checkProjectionStaleness } from '@/lib/projections/staleness';
+import { CURRENT_PROJECTION_CALCULATION_VERSION } from '@/lib/projections/version';
 
 interface RouteParams {
   params: Promise<{ planId: string }>;
@@ -38,5 +42,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  return NextResponse.json({ projectionResult }, { status: 200 });
+  const snapshot = await secureQuery.getFinancialSnapshot();
+  if (!snapshot) {
+    return NextResponse.json({ message: 'No financial snapshot found' }, { status: 404 });
+  }
+
+  const currentInputs = buildProjectionInputFromSnapshot(
+    snapshot,
+    getStoredProjectionOverrides(projectionResult.assumptions)
+  );
+  const staleness = checkProjectionStaleness(
+    projectionResult.inputs,
+    currentInputs,
+    projectionResult.calculationVersion,
+    CURRENT_PROJECTION_CALCULATION_VERSION
+  );
+
+  return NextResponse.json({
+    projectionResult,
+    isStale: staleness.isStale,
+    changedFields: staleness.changedFields,
+    storedCalculationVersion: projectionResult.calculationVersion,
+    currentCalculationVersion: CURRENT_PROJECTION_CALCULATION_VERSION,
+  }, { status: 200 });
 }

@@ -27,6 +27,8 @@ const mockExportData: ExportData = {
       balance: 100000,
       inflows: 20000,
       outflows: 0,
+      healthcareExpenses: 1234,
+      rmd: { rmdApplies: true, rmdRequired: 5000, rmdTaken: 5000, excessOverRmd: 0, surplusReinvested: 3766 },
       balanceByType: { taxDeferred: 70000, taxFree: 20000, taxable: 10000 },
     },
     {
@@ -58,6 +60,7 @@ const mockExportData: ExportData = {
   },
   currentAge: 30,
   monthlySpending: 5000,
+  calculationVersion: 2,
 };
 
 describe('useProjectionExport', () => {
@@ -135,6 +138,19 @@ describe('useProjectionExport', () => {
 
       const blobArg = vi.mocked(mockCreateObjectURL).mock.calls[0][0] as Blob;
       expect(blobArg.type).toBe('text/csv;charset=utf-8;');
+    });
+
+    it('exports calculation provenance, healthcare, and RMD surplus values', async () => {
+      const { result } = renderHook(() => useProjectionExport());
+      act(() => result.current.exportCSV(mockExportData, { retirementAge: 65 }));
+
+      const blob = vi.mocked(mockCreateObjectURL).mock.calls[0][0] as Blob;
+      const csv = await blob.text();
+      expect(csv).toContain('Calculation Version,2');
+      expect(csv).toContain('Healthcare Expenses');
+      expect(csv).toContain('RMD Surplus Moved to Taxable');
+      expect(csv).toContain('1234.00');
+      expect(csv).toContain('3766.00');
     });
   });
 

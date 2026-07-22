@@ -66,6 +66,17 @@ export const UNIFORM_LIFETIME_TABLE: Record<number, number> = {
  */
 export const DEFAULT_RMD_START_AGE = 73;
 
+/** Return the SECURE 2.0 required beginning age for a birth cohort. */
+export function getRmdStartAge(birthYear: number): number {
+  if (birthYear <= 1950) {
+    return 72;
+  }
+  if (birthYear <= 1959) {
+    return 73;
+  }
+  return 75;
+}
+
 /**
  * Get the distribution period (life expectancy factor) for a given age
  * @param age - Account owner's age

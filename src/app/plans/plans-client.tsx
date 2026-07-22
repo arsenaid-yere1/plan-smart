@@ -29,6 +29,8 @@ interface PlansClientProps {
   // Epic 10.3: Depletion feedback
   initialDepletionFeedback?: DepletionFeedback | null;
   depletionTarget?: DepletionTarget | null;
+  initialInputWarnings?: ProjectionWarning[];
+  calculationVersion: number;
 }
 
 export function PlansClient({
@@ -41,13 +43,15 @@ export function PlansClient({
   initialSpendingConfig,
   initialDepletionFeedback,
   depletionTarget,
+  initialInputWarnings = [],
+  calculationVersion,
 }: PlansClientProps) {
   const [assumptions, setAssumptions] = useState<Assumptions>(currentAssumptions);
   const [projection, setProjection] = useState<ProjectionResult>(initialProjection);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [inputWarnings, setInputWarnings] = useState<ProjectionWarning[]>([]);
+  const [inputWarnings, setInputWarnings] = useState<ProjectionWarning[]>(initialInputWarnings);
   const [mobileAssumptionsOpen, setMobileAssumptionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'assets' | 'compare'>('assets');
 
@@ -80,7 +84,7 @@ export function PlansClient({
     if (!hasChanges) {
       setProjection(initialProjection);
       setValidationError(null);
-      setInputWarnings([]);
+      setInputWarnings(initialInputWarnings);
       return;
     }
 
@@ -143,7 +147,7 @@ export function PlansClient({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [assumptions, currentAssumptions, initialProjection, planId]);
+  }, [assumptions, currentAssumptions, initialProjection, initialInputWarnings, planId]);
 
   const handleReset = useCallback(() => {
     setAssumptions(defaultAssumptions);
@@ -463,6 +467,7 @@ export function PlansClient({
                 defaultAssumptions,
                 currentAge,
                 monthlySpending,
+                calculationVersion,
               }}
             />
           </div>

@@ -6,6 +6,7 @@ import type {
   ProjectionInput,
   ProjectionRecord,
 } from '@/lib/projections/types';
+import { LEGACY_PROJECTION_CALCULATION_VERSION } from '@/lib/projections/version';
 
 const saveProjectionSchema = z.object({
   planId: z.string().uuid(),
@@ -64,12 +65,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Caller-supplied calculations are legacy by definition. Current-version
+  // results must be calculated and persisted by /api/projections/calculate.
   const result = await secureQuery.saveProjectionResult(planId, {
     inputs,
     assumptions,
     records,
     summary,
     calculationTimeMs,
+    calculationVersion: LEGACY_PROJECTION_CALCULATION_VERSION,
   });
 
   return NextResponse.json({ projectionResult: result }, { status: 200 });

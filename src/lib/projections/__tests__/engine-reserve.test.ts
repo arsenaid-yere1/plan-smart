@@ -177,4 +177,47 @@ describe('runProjection with reserve floor', () => {
     expect(result.summary.yearsReserveConstrained).toBeGreaterThan(20);
     expect(result.summary.firstReserveConstraintAge).toBe(65);
   });
+
+  it('protects healthcare with essentials and reduces both proportionally', () => {
+    const result = runProjection({
+      ...baseInput,
+      maxAge: 65,
+      balancesByType: { taxDeferred: 0, taxFree: 0, taxable: 100000 },
+      expectedReturn: 0,
+      inflationRate: 0,
+      annualEssentialExpenses: 15000,
+      annualDiscretionaryExpenses: 10000,
+      annualExpenses: 25000,
+      annualHealthcareCosts: 10000,
+      healthcareInflationRate: 0,
+      reserveFloor: 80000,
+    });
+    const record = result.records[0];
+
+    expect(record.actualEssentialSpending).toBe(12000);
+    expect(record.actualHealthcareSpending).toBe(8000);
+    expect(record.actualDiscretionarySpending).toBe(0);
+    expect(record.spendingShortfall).toBe(15000);
+    expect(record.reductionStage).toBe('essentials_reduced');
+  });
+
+  it('does not treat an RMD bucket transfer as a reserve breach', () => {
+    const result = runProjection({
+      ...baseInput,
+      currentAge: 73,
+      retirementAge: 76,
+      maxAge: 73,
+      balancesByType: { taxDeferred: 265000, taxFree: 0, taxable: 0 },
+      annualContribution: 0,
+      expectedReturn: 0,
+      reserveFloor: 265000,
+      rmdConfig: { enabled: true, startAge: 73 },
+    });
+    const record = result.records[0];
+
+    expect(record.balance).toBe(265000);
+    expect(record.rmd?.surplusReinvested).toBe(10000);
+    expect(record.reserveConstrained).toBeUndefined();
+    expect(result.summary.yearsReserveConstrained).toBe(0);
+  });
 });

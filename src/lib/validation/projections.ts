@@ -279,3 +279,10 @@ export const projectionRequestSchema = z.object({
 });
 
 export type ProjectionRequestInput = z.infer<typeof projectionRequestSchema>;
+
+/** Complete POST body for a persisted or ad-hoc projection calculation. */
+export const projectionCalculateRequestSchema = projectionRequestSchema.extend({
+  planId: z.string().uuid('Plan ID must be a valid UUID').optional(),
+});
+
+export type ProjectionCalculateRequestInput = z.infer<typeof projectionCalculateRequestSchema>;

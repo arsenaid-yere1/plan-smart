@@ -4,6 +4,7 @@ import {
   spendingPhaseConfigSchema,
   incomeStreamSchema,
   contributionAllocationSchema,
+  projectionCalculateRequestSchema,
   projectionRequestSchema,
 } from '../projections';
 
@@ -485,5 +486,22 @@ describe('projectionRequestSchema', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('projectionCalculateRequestSchema', () => {
+  it('accepts an optional UUID plan ID with projection overrides', () => {
+    const result = projectionCalculateRequestSchema.safeParse({
+      planId: '4f8ba18b-497b-4a8c-b8d8-cd487abe00f8',
+      expectedReturn: 0.06,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid plan ID', () => {
+    const result = projectionCalculateRequestSchema.safeParse({ planId: 'not-a-uuid' });
+
+    expect(result.success).toBe(false);
   });
 });

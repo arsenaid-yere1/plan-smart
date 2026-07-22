@@ -140,4 +140,26 @@ describe('generateProjectionWarnings', () => {
     const warnings = generateProjectionWarnings(input);
     expect(warnings.find(w => w.field === 'retirementAge')).toBeUndefined();
   });
+
+  it('uses the configured cohort RMD age for the approaching warning', () => {
+    const warnings = generateProjectionWarnings({
+      ...baseInput,
+      currentAge: 72,
+      retirementAge: 72,
+      balancesByType: { ...baseInput.balancesByType, taxDeferred: 200000 },
+      rmdConfig: { enabled: true, startAge: 75 },
+    });
+    expect(warnings.find((warning) => warning.field === 'rmd')?.message).toContain('age 75');
+  });
+
+  it('warns when aggregate RMDs begin before planned retirement', () => {
+    const warnings = generateProjectionWarnings({
+      ...baseInput,
+      retirementAge: 76,
+      rmdConfig: { enabled: true, startAge: 75 },
+    });
+    expect(warnings.some((warning) =>
+      warning.field === 'rmd' && warning.message.includes('current-employer')
+    )).toBe(true);
+  });
 });

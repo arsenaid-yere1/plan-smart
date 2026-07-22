@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   runProjection,
   withdrawFromAccounts,
+  withdrawFromAccountsWithRMD,
   calculatePhaseAdjustedExpenses,
 } from '../engine';
 import type { ProjectionInput, BalanceByType, SpendingPhaseConfig } from '../types';
@@ -1095,5 +1096,167 @@ describe('RMD Enforcement', () => {
     // Both should be enforcing RMD
     expect(record73.rmd?.rmdApplies).toBe(true);
     expect(record85.rmd?.rmdApplies).toBe(true);
+  });
+});
+
+describe('Phase 0 projection integrity', () => {
+  const oneYearRetiree = (overrides: Partial<ProjectionInput> = {}): ProjectionInput => ({
+    currentAge: 65,
+    retirementAge: 65,
+    maxAge: 65,
+    balancesByType: { taxDeferred: 0, taxFree: 0, taxable: 100000 },
+    annualContribution: 0,
+    contributionAllocation: { taxDeferred: 60, taxFree: 30, taxable: 10 },
+    expectedReturn: 0,
+    inflationRate: 0,
+    contributionGrowthRate: 0,
+    annualEssentialExpenses: 10000,
+    annualDiscretionaryExpenses: 5000,
+    annualExpenses: 15000,
+    annualHealthcareCosts: 4000,
+    healthcareInflationRate: 0,
+    incomeStreams: [],
+    annualDebtPayments: 0,
+    rmdConfig: { enabled: false, startAge: 73 },
+    ...overrides,
+  });
+
+  it('funds healthcare from the portfolio and reports actual healthcare spending', () => {
+    const result = runProjection(oneYearRetiree());
+    const record = result.records[0];
+
+    expect(result.summary.totalWithdrawals).toBe(19000);
+    expect(result.summary.endingBalance).toBe(81000);
+    expect(record.healthcareExpenses).toBe(4000);
+    expect(record.actualHealthcareSpending).toBe(4000);
+  });
+
+  it('applies income across protected and discretionary spending', () => {
+    const result = runProjection(oneYearRetiree({
+      incomeStreams: [{
+        id: 'pension',
+        name: 'Pension',
+        type: 'pension',
+        annualAmount: 20000,
+        startAge: 65,
+        inflationAdjusted: false,
+        isGuaranteed: true,
+      }],
+    }));
+
+    expect(result.summary.totalWithdrawals).toBe(0);
+    expect(result.summary.endingBalance).toBe(100000);
+    expect(result.records[0].spendingShortfall).toBe(0);
+  });
+
+  it('routes contribution dollars by category and scales them proportionally for debt', () => {
+    const input: ProjectionInput = {
+      ...oneYearRetiree(),
+      currentAge: 30,
+      retirementAge: 31,
+      maxAge: 30,
+      balancesByType: { taxDeferred: 0, taxFree: 0, taxable: 0 },
+      annualContribution: 10000,
+      annualContributionsByType: { taxDeferred: 6000, taxFree: 3000, taxable: 1000 },
+      annualDebtPayments: 5000,
+    };
+
+    const result = runProjection(input);
+
+    expect(result.records[0].balanceByType).toEqual({
+      taxDeferred: 3000,
+      taxFree: 1500,
+      taxable: 500,
+    });
+    expect(result.summary.totalContributions).toBe(5000);
+  });
+
+  it('retains the legacy allocation fallback when category dollars are absent', () => {
+    const input: ProjectionInput = {
+      ...oneYearRetiree(),
+      currentAge: 30,
+      retirementAge: 31,
+      maxAge: 30,
+      balancesByType: { taxDeferred: 0, taxFree: 0, taxable: 0 },
+      annualContribution: 10000,
+      contributionAllocation: { taxDeferred: 60, taxFree: 30, taxable: 10 },
+    };
+
+    expect(runProjection(input).records[0].balanceByType).toEqual({
+      taxDeferred: 6000,
+      taxFree: 3000,
+      taxable: 1000,
+    });
+  });
+
+  it('takes and reinvests an RMD before modeled retirement', () => {
+    const input: ProjectionInput = {
+      ...oneYearRetiree(),
+      currentAge: 73,
+      retirementAge: 76,
+      maxAge: 73,
+      balancesByType: { taxDeferred: 265000, taxFree: 0, taxable: 0 },
+      annualHealthcareCosts: 0,
+      rmdConfig: { enabled: true, startAge: 73 },
+    };
+    const record = runProjection(input).records[0];
+
+    expect(record.rmd?.rmdRequired).toBe(10000);
+    expect(record.rmd?.surplusReinvested).toBe(10000);
+    expect(record.balanceByType).toEqual({
+      taxDeferred: 255000,
+      taxFree: 0,
+      taxable: 10000,
+    });
+  });
+
+  it('respects an age-75 cohort configuration', () => {
+    const input: ProjectionInput = {
+      ...oneYearRetiree(),
+      currentAge: 74,
+      retirementAge: 76,
+      maxAge: 75,
+      balancesByType: { taxDeferred: 246000, taxFree: 0, taxable: 0 },
+      annualHealthcareCosts: 0,
+      rmdConfig: { enabled: true, startAge: 75 },
+    };
+    const result = runProjection(input);
+
+    expect(result.records[0].rmd).toBeUndefined();
+    expect(result.records[1].rmd?.rmdRequired).toBe(10000);
+  });
+
+  it('moves only the unused portion of an RMD to taxable assets', () => {
+    const result = runProjection(oneYearRetiree({
+      currentAge: 73,
+      retirementAge: 73,
+      maxAge: 73,
+      balancesByType: { taxDeferred: 265000, taxFree: 0, taxable: 0 },
+      annualEssentialExpenses: 6000,
+      annualDiscretionaryExpenses: 0,
+      annualExpenses: 6000,
+      annualHealthcareCosts: 0,
+      rmdConfig: { enabled: true, startAge: 73 },
+    }));
+    const record = result.records[0];
+
+    expect(record.rmd?.rmdTaken).toBe(10000);
+    expect(record.rmd?.surplusReinvested).toBe(4000);
+    expect(record.balanceByType.taxDeferred).toBe(255000);
+    expect(record.balanceByType.taxable).toBe(4000);
+    expect(result.summary.endingBalance).toBe(259000);
+    expect(result.summary.totalWithdrawals).toBe(10000);
+    expect(result.summary.totalRmdSurplusReinvested).toBe(4000);
+  });
+
+  it('does not use other account types to manufacture an RMD shortfall', () => {
+    const result = withdrawFromAccountsWithRMD(
+      0,
+      { taxDeferred: 5000, taxFree: 10000, taxable: 10000 },
+      8000
+    );
+
+    expect(result.withdrawals).toEqual({ taxDeferred: 5000, taxFree: 0, taxable: 0 });
+    expect(result.rmdTracking?.rmdTaken).toBe(5000);
   });
 });

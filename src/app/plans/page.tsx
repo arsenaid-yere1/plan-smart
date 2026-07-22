@@ -19,33 +19,22 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { runProjection } from '@/lib/projections';
 import { calculateDepletionFeedback } from '@/lib/projections/depletion-feedback';
-import type { ProjectionInput, DepletionTarget } from '@/lib/projections/types';
+import type { DepletionTarget } from '@/lib/projections/types';
 import {
   DEFAULT_INFLATION_RATE,
-  DEFAULT_MAX_AGE,
   DEFAULT_RETURN_RATES,
-  DEFAULT_SS_AGE,
-  DEFAULT_CONTRIBUTION_ALLOCATION,
-  DEFAULT_CONTRIBUTION_GROWTH_RATE,
-  DEFAULT_HEALTHCARE_INFLATION_RATE,
-  estimateHealthcareCosts,
-  estimateSocialSecurityMonthly,
-  deriveAnnualExpenses,
-  estimateAnnualDebtPayments,
 } from '@/lib/projections/assumptions';
 import type { RiskTolerance } from '@/types/database';
+import type { SpendingPhaseConfigJson } from '@/db/schema/financial-snapshot';
+import type { SpendingPhaseConfig } from '@/lib/projections/types';
+import { buildProjectionInputFromSnapshot } from '@/lib/projections/input-builder';
 import {
-  ACCOUNT_TAX_CATEGORY,
-  type BalanceByType,
-} from '@/lib/projections/types';
-import type {
-  InvestmentAccountJson,
-  DebtJson,
-  IncomeExpensesJson,
-  IncomeStreamJson,
-  SpendingPhaseConfigJson,
-} from '@/db/schema/financial-snapshot';
-import type { IncomeStream, SpendingPhaseConfig } from '@/lib/projections/types';
+  buildProjectionAssumptions,
+  getStoredProjectionOverrides,
+} from '@/lib/projections/saved-overrides';
+import { shouldRecalculateProjection } from '@/lib/projections/staleness';
+import { generateProjectionWarnings } from '@/lib/projections/warnings';
+import { CURRENT_PROJECTION_CALCULATION_VERSION } from '@/lib/projections/version';
 import { PlansClient } from './plans-client';
 
 export const metadata: Metadata = {
@@ -129,10 +118,6 @@ export default async function PlansPage() {
     );
   }
 
-  // Calculate current age from birth year
-  const currentYear = new Date().getFullYear();
-  const currentAge = currentYear - snapshot.birthYear;
-
   // Get or create a default plan
   const secureQuery = createSecureQuery(user.id);
   const userPlans = await secureQuery.getUserPlans();
@@ -149,26 +134,6 @@ export default async function PlansPage() {
   // Check for existing saved projection
   const savedProjection = await secureQuery.getProjectionForPlan(plan.id);
 
-  // Calculate annual expenses (preserve essential vs discretionary)
-  const incomeExpenses = snapshot.incomeExpenses as IncomeExpensesJson | null;
-  let annualExpenses: number;
-  let annualEssentialExpenses: number;
-  let annualDiscretionaryExpenses: number;
-
-  if (incomeExpenses?.monthlyEssential || incomeExpenses?.monthlyDiscretionary) {
-    annualEssentialExpenses = (incomeExpenses.monthlyEssential || 0) * 12;
-    annualDiscretionaryExpenses = (incomeExpenses.monthlyDiscretionary || 0) * 12;
-    annualExpenses = annualEssentialExpenses + annualDiscretionaryExpenses;
-  } else {
-    annualExpenses = deriveAnnualExpenses(
-      parseFloat(snapshot.annualIncome),
-      parseFloat(snapshot.savingsRate)
-    );
-    annualEssentialExpenses = annualExpenses;
-    annualDiscretionaryExpenses = 0;
-  }
-  const monthlySpending = Math.round(annualExpenses / 12);
-
   // Default assumptions from profile data
   const riskTolerance = snapshot.riskTolerance as RiskTolerance;
   const profileExpectedReturn = DEFAULT_RETURN_RATES[riskTolerance];
@@ -180,127 +145,17 @@ export default async function PlansPage() {
     retirementAge: profileRetirementAge,
   };
 
-  // Get saved assumptions if they exist (user may have customized them)
-  const savedAssumptions = savedProjection?.assumptions as {
-    expectedReturn: number;
-    inflationRate: number;
-    retirementAge: number;
-  } | undefined;
-
-  // Use saved assumptions or defaults
-  const currentAssumptions = savedAssumptions
-    ? {
-        expectedReturn: savedAssumptions.expectedReturn,
-        inflationRate: savedAssumptions.inflationRate,
-        retirementAge: savedAssumptions.retirementAge,
-      }
-    : defaultAssumptions;
-
-  // Always recalculate projection with current snapshot data
-  // This ensures profile changes (like spending phases) are reflected
-  const accounts = (snapshot.investmentAccounts || []) as InvestmentAccountJson[];
-
-  // Calculate balances by tax category
-  const balancesByType: BalanceByType = {
-    taxDeferred: 0,
-    taxFree: 0,
-    taxable: 0,
+  const resolvedOverrides = getStoredProjectionOverrides(savedProjection?.assumptions);
+  const projectionInput = buildProjectionInputFromSnapshot(snapshot, resolvedOverrides);
+  const currentAge = projectionInput.currentAge;
+  const monthlySpending = Math.round(projectionInput.annualExpenses / 12);
+  const currentAssumptions = {
+    expectedReturn: projectionInput.expectedReturn,
+    inflationRate: projectionInput.inflationRate,
+    retirementAge: projectionInput.retirementAge,
   };
-
-  for (const account of accounts) {
-    const category =
-      ACCOUNT_TAX_CATEGORY[account.type as keyof typeof ACCOUNT_TAX_CATEGORY] ||
-      'taxable';
-    balancesByType[category] += account.balance;
-  }
-
-  // Calculate annual contribution from monthly contributions
-  const annualContribution = accounts.reduce(
-    (sum, account) => sum + (account.monthlyContribution || 0) * 12,
-    0
-  );
-
-  // Estimate debt payments
-  const debts = (snapshot.debts || []) as DebtJson[];
-  const annualDebtPayments = estimateAnnualDebtPayments(debts);
-
-  // Build income streams with backward compatibility
-  let incomeStreams: IncomeStream[];
-  const storedStreams = snapshot.incomeStreams as IncomeStreamJson[] | null;
-
-  if (storedStreams && storedStreams.length > 0) {
-    incomeStreams = storedStreams;
-  } else {
-    // Backward compatibility: generate Social Security stream
-    const ssMonthly = estimateSocialSecurityMonthly(parseFloat(snapshot.annualIncome));
-    if (ssMonthly > 0) {
-      incomeStreams = [{
-        id: 'ss-auto',
-        name: 'Social Security',
-        type: 'social_security' as const,
-        annualAmount: ssMonthly * 12,
-        startAge: DEFAULT_SS_AGE,
-        endAge: undefined,
-        inflationAdjusted: true,
-        isGuaranteed: true,
-        isSpouse: false,
-      }];
-    } else {
-      incomeStreams = [];
-    }
-  }
-
-  // Epic 9: Get spending phase config
   const spendingPhaseConfig = snapshot.spendingPhases as SpendingPhaseConfigJson | null;
-
-  // Epic 10: Get depletion target from snapshot
-  // Validate that required fields are present before using
-  const rawDepletionTarget = snapshot.depletionTarget as DepletionTarget | null;
-  const depletionTarget = rawDepletionTarget?.targetAge != null && rawDepletionTarget?.targetPercentageSpent != null
-    ? rawDepletionTarget
-    : undefined;
-
-  // Epic 10.2: Calculate reserve floor if depletion target has reserve config
-  const totalPortfolio = balancesByType.taxDeferred + balancesByType.taxFree + balancesByType.taxable;
-  let reserveFloor: number | undefined;
-  if (depletionTarget?.enabled && depletionTarget?.reserve) {
-    const reserve = depletionTarget.reserve;
-    switch (reserve.type) {
-      case 'derived':
-        reserveFloor = totalPortfolio * (1 - depletionTarget.targetPercentageSpent / 100);
-        break;
-      case 'percentage':
-        reserveFloor = totalPortfolio * ((reserve.amount ?? 0) / 100);
-        break;
-      case 'absolute':
-        reserveFloor = reserve.amount ?? 0;
-        break;
-    }
-  }
-
-  // Build projection input using currentAssumptions (may have user customizations)
-  const projectionInput: ProjectionInput = {
-    currentAge,
-    retirementAge: currentAssumptions.retirementAge,
-    maxAge: DEFAULT_MAX_AGE,
-    balancesByType,
-    annualContribution,
-    contributionAllocation: DEFAULT_CONTRIBUTION_ALLOCATION,
-    expectedReturn: currentAssumptions.expectedReturn,
-    inflationRate: currentAssumptions.inflationRate,
-    contributionGrowthRate: DEFAULT_CONTRIBUTION_GROWTH_RATE,
-    annualEssentialExpenses,
-    annualDiscretionaryExpenses,
-    annualExpenses, // backward compatibility
-    annualHealthcareCosts: estimateHealthcareCosts(currentAssumptions.retirementAge),
-    healthcareInflationRate: DEFAULT_HEALTHCARE_INFLATION_RATE,
-    incomeStreams,
-    annualDebtPayments,
-    spendingPhaseConfig: spendingPhaseConfig as SpendingPhaseConfig | undefined,
-    // Epic 10: Depletion target and reserve floor
-    depletionTarget,
-    reserveFloor,
-  };
+  const depletionTarget = projectionInput.depletionTarget as DepletionTarget | undefined;
 
   // Run projection with error handling
   let projection: ReturnType<typeof runProjection>;
@@ -308,6 +163,15 @@ export default async function PlansPage() {
 
   try {
     projection = runProjection(projectionInput);
+    if (shouldRecalculateProjection(savedProjection, projectionInput)) {
+      await secureQuery.saveProjectionResult(plan.id, {
+        inputs: projectionInput,
+        assumptions: buildProjectionAssumptions(projectionInput, resolvedOverrides),
+        records: projection.records,
+        summary: projection.summary,
+        calculationVersion: CURRENT_PROJECTION_CALCULATION_VERSION,
+      });
+    }
   } catch {
     projectionError = true;
   }
@@ -350,6 +214,8 @@ export default async function PlansPage() {
         initialSpendingConfig={spendingPhaseConfig as SpendingPhaseConfig | null}
         initialDepletionFeedback={depletionFeedback}
         depletionTarget={depletionTarget}
+        initialInputWarnings={generateProjectionWarnings(projectionInput)}
+        calculationVersion={CURRENT_PROJECTION_CALCULATION_VERSION}
       />
     </PageContainer>
   );

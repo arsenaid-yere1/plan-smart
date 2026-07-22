@@ -1,216 +1,167 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from './route';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { POST } from './route';
 
-// Mock auth
+const USER_ID = 'ad1741a6-3cb1-47c1-8ee2-e71b9173e282';
+const PLAN_ID = '8e3651b7-27c1-42aa-b959-f9a8d20b1400';
 const mockGetServerUser = vi.fn();
+const mockGetPlanById = vi.fn();
+const mockGetProjectionForPlan = vi.fn();
+const mockSaveProjectionResult = vi.fn();
+let snapshotRows: unknown[] = [];
+
 vi.mock('@/lib/auth/server', () => ({
   getServerUser: () => mockGetServerUser(),
 }));
 
-// Mock database
-const mockSelect = vi.fn();
-const mockFrom = vi.fn();
-const mockWhere = vi.fn();
-const mockLimit = vi.fn();
-
 vi.mock('@/db/client', () => ({
   db: {
-    select: () => {
-      mockSelect();
-      return {
-        from: (table: unknown) => {
-          mockFrom(table);
-          return {
-            where: (condition: unknown) => {
-              mockWhere(condition);
-              return {
-                limit: (n: number) => {
-                  mockLimit(n);
-                  return Promise.resolve([]);
-                },
-              };
-            },
-          };
-        },
-      };
-    },
+    select: () => ({
+      from: () => ({
+        where: () => ({ limit: () => Promise.resolve(snapshotRows) }),
+      }),
+    }),
   },
 }));
 
-vi.mock('@/db/schema', () => ({
-  financialSnapshot: { userId: 'user_id' },
+vi.mock('@/db/secure-query', () => ({
+  createSecureQuery: () => ({
+    getPlanById: mockGetPlanById,
+    getProjectionForPlan: mockGetProjectionForPlan,
+    saveProjectionResult: mockSaveProjectionResult,
+  }),
 }));
+
+function makeSnapshot(overrides: Record<string, unknown> = {}) {
+  return {
+    id: PLAN_ID,
+    userId: USER_ID,
+    birthYear: 1960,
+    stateOfResidence: 'CA',
+    targetRetirementAge: 67,
+    filingStatus: 'single',
+    annualIncome: '100000',
+    savingsRate: '20',
+    riskTolerance: 'moderate',
+    investmentAccounts: [
+      { id: 'roth', label: 'Roth IRA', type: 'Roth_IRA', balance: 50000, monthlyContribution: 500 },
+    ],
+    primaryResidence: null,
+    debts: [],
+    incomeExpenses: { monthlyEssential: 4000, monthlyDiscretionary: 1000 },
+    incomeStreams: null,
+    incomeSources: null,
+    realEstateProperties: null,
+    spendingPhases: null,
+    depletionTarget: null,
+    createdAt: new Date('2025-01-01T00:00:00Z'),
+    updatedAt: new Date('2025-01-01T00:00:00Z'),
+    ...overrides,
+  };
+}
+
+function request(body: unknown) {
+  return new NextRequest('http://localhost/api/projections/calculate', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
 
 describe('POST /api/projections/calculate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetServerUser.mockResolvedValue({ id: USER_ID });
+    mockGetPlanById.mockResolvedValue({ id: PLAN_ID, userId: USER_ID });
+    mockGetProjectionForPlan.mockResolvedValue(null);
+    mockSaveProjectionResult.mockResolvedValue({ id: 'projection-id' });
+    snapshotRows = [makeSnapshot()];
   });
 
-  it('should return 401 when not authenticated', async () => {
+  it('returns 401 when unauthenticated', async () => {
     mockGetServerUser.mockResolvedValue(null);
-
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.message).toBe('Unauthorized');
+    expect((await POST(request({}))).status).toBe(401);
   });
 
-  it('should return 404 when no financial snapshot exists', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
-    mockLimit.mockResolvedValue([]); // No snapshot
+  it('rejects invalid overrides and plan identifiers before querying', async () => {
+    expect((await POST(request({ expectedReturn: -0.5 }))).status).toBe(400);
+    expect((await POST(request({ planId: 'not-a-uuid' }))).status).toBe(400);
+  });
 
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-
-    const response = await POST(request);
-    const data = await response.json();
-
+  it('returns 404 when the snapshot is missing', async () => {
+    snapshotRows = [];
+    const response = await POST(request({}));
     expect(response.status).toBe(404);
-    expect(data.message).toContain('Financial snapshot not found');
   });
 
-  it('should return 400 for invalid override values', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+  it('allows an already-retired user and returns cohort RMD and routed contributions', async () => {
+    snapshotRows = [makeSnapshot({ birthYear: 1950, targetRetirementAge: 65 })];
+    const response = await POST(request({}));
+    const data = await response.json();
 
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        expectedReturn: -0.5, // Invalid: negative
-      }),
+    expect(response.status).toBe(200);
+    expect(data.inputs.currentAge).toBeGreaterThan(data.inputs.retirementAge);
+    expect(data.inputs.rmdConfig.startAge).toBe(72);
+    expect(data.inputs.annualContributionsByType).toEqual({
+      taxDeferred: 0,
+      taxFree: 6000,
+      taxable: 0,
     });
-
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
   });
 
-  it('should validate contribution allocation sums to 100', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
+  it('rejects a horizon at or before current age', async () => {
+    snapshotRows = [makeSnapshot({ birthYear: 1940, targetRetirementAge: 65 })];
+    const response = await POST(request({ maxAge: 80 }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).message).toContain('must be greater than your current age');
+  });
 
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        contributionAllocation: {
-          taxDeferred: 50,
-          taxFree: 30,
-          taxable: 10, // Sum = 90, not 100
+  it('does not calculate or save for an unowned plan', async () => {
+    mockGetPlanById.mockResolvedValue(null);
+    const response = await POST(request({ planId: PLAN_ID }));
+    expect(response.status).toBe(404);
+    expect(mockSaveProjectionResult).not.toHaveBeenCalled();
+  });
+
+  it('merges partial plan overrides and saves as current version', async () => {
+    mockGetProjectionForPlan.mockResolvedValue({
+      assumptions: {
+        overrides: {
+          expectedReturn: 0.04,
+          inflationRate: 0.03,
+          annualHealthcareCosts: 12345,
+          socialSecurityAge: 70,
+          socialSecurityMonthly: 2500,
         },
-      }),
+      },
     });
 
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
+    const response = await POST(request({ planId: PLAN_ID, expectedReturn: 0.06 }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.inputs.expectedReturn).toBe(0.06);
+    expect(data.inputs.inflationRate).toBe(0.03);
+    expect(data.inputs.incomeStreams[0].startAge).toBe(70);
+    expect(data.meta.calculationVersion).toBe(2);
+    expect(mockSaveProjectionResult).toHaveBeenCalledWith(
+      PLAN_ID,
+      expect.objectContaining({
+        calculationVersion: 2,
+        assumptions: expect.objectContaining({
+          overrides: expect.objectContaining({ annualHealthcareCosts: 12345 }),
+        }),
+      })
+    );
   });
 
-  it('should accept valid incomeStreams override in POST request', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
-
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        incomeStreams: [
-          {
-            id: 'ss-override',
-            name: 'Social Security',
-            type: 'social_security',
-            annualAmount: 30000,
-            startAge: 67,
-            inflationAdjusted: true,
-          },
-          {
-            id: 'pension-override',
-            name: 'Pension',
-            type: 'pension',
-            annualAmount: 20000,
-            startAge: 65,
-            endAge: 80,
-            inflationAdjusted: false,
-          },
-        ],
-      }),
-    });
-
-    const response = await POST(request);
-
-    // Should not fail validation (though will 404 due to no snapshot)
-    expect(response.status).toBe(404);
-  });
-
-  it('should reject invalid incomeStreams with missing required fields', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
-
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        incomeStreams: [
-          {
-            id: 'ss',
-            // Missing name, type, annualAmount, startAge, inflationAdjusted
-          },
-        ],
-      }),
-    });
-
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
-  });
-
-  it('should reject incomeStreams with invalid type', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
-
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        incomeStreams: [
-          {
-            id: 'invalid',
-            name: 'Invalid Stream',
-            type: 'invalid_type', // Not a valid type
-            annualAmount: 10000,
-            startAge: 65,
-            inflationAdjusted: true,
-          },
-        ],
-      }),
-    });
-
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
-  });
-
-  it('should reject incomeStreams with negative annualAmount', async () => {
-    mockGetServerUser.mockResolvedValue({ id: 'test-user-id' });
-
-    const request = new NextRequest('http://localhost:3000/api/projections/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        incomeStreams: [
-          {
-            id: 'ss',
-            name: 'Social Security',
-            type: 'social_security',
-            annualAmount: -5000, // Negative amount
-            startAge: 67,
-            inflationAdjusted: true,
-          },
-        ],
-      }),
-    });
-
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
+  it('retains unknown-account warnings and legacy Social Security overrides', async () => {
+    snapshotRows = [makeSnapshot({
+      investmentAccounts: [
+        { id: 'mystery', label: 'Mystery', type: 'mystery', balance: 1000 },
+      ],
+    })];
+    const response = await POST(request({ socialSecurityAge: 69, socialSecurityMonthly: 2000 }));
+    const data = await response.json();
+    expect(data.inputs.incomeStreams[0].startAge).toBe(69);
+    expect(data.meta.warnings[0]).toContain('Unknown account type');
   });
 });

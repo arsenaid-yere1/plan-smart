@@ -270,6 +270,7 @@ export function ProjectionChart({
           phaseId: record.activePhaseId,
           essentialExpenses: record.essentialExpenses,
           discretionaryExpenses: record.discretionaryExpenses,
+          healthcareExpenses: record.healthcareExpenses,
         };
       });
   }, [records, retirementAge, inflationRate, adjustForInflation, xAxisType, viewMode]);
@@ -540,11 +541,11 @@ export function ProjectionChart({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={
-              viewMode === 'spending'
+              (viewMode === 'spending'
                 ? spendingData
                 : viewMode === 'tax-breakdown'
                   ? (taxBreakdownData ?? [])
-                  : (chartDataWithReserve ?? chartData)
+                  : (chartDataWithReserve ?? chartData)) as typeof chartData
             }
             margin={{ top: 20, right: 60, left: 0, bottom: 0 }}
             onClick={(e) => {
@@ -612,6 +613,7 @@ export function ProjectionChart({
                       {data.essentialExpenses !== undefined && (
                         <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
                           <p>Essential: {formatTooltipCurrency(data.essentialExpenses ?? 0)}</p>
+                          <p>Healthcare: {formatTooltipCurrency(data.healthcareExpenses ?? 0)}</p>
                           <p>Discretionary: {formatTooltipCurrency(data.discretionaryExpenses ?? 0)}</p>
                         </div>
                       )}
@@ -734,6 +736,11 @@ export function ProjectionChart({
                           Expenses: {formatTooltipCurrency(data.outflows)}
                         </p>
                       )}
+                      {(data.healthcareExpenses ?? 0) > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Healthcare: {formatTooltipCurrency(data.healthcareExpenses ?? 0)}
+                        </p>
+                      )}
                       {/* RMD Information */}
                       {data.rmd?.rmdApplies && (
                         <div className="mt-2 pt-2 border-t border-border">
@@ -743,6 +750,11 @@ export function ProjectionChart({
                           <p className="text-xs text-muted-foreground">
                             Taken: {formatTooltipCurrency(data.rmd.rmdTaken)}
                           </p>
+                          {(data.rmd.surplusReinvested ?? 0) > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Moved to taxable: {formatTooltipCurrency(data.rmd.surplusReinvested ?? 0)}
+                            </p>
+                          )}
                         </div>
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -810,6 +822,11 @@ export function ProjectionChart({
                         Expenses: {formatTooltipCurrency(data.outflows)}
                       </p>
                     )}
+                    {(data.healthcareExpenses ?? 0) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Healthcare: {formatTooltipCurrency(data.healthcareExpenses ?? 0)}
+                      </p>
+                    )}
                     {/* RMD Information */}
                     {data.rmd?.rmdApplies && (
                       <div className="mt-2 pt-2 border-t border-border">
@@ -819,6 +836,11 @@ export function ProjectionChart({
                         <p className="text-xs text-muted-foreground">
                           Taken: {formatTooltipCurrency(data.rmd.rmdTaken)}
                         </p>
+                        {(data.rmd.surplusReinvested ?? 0) > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Moved to taxable: {formatTooltipCurrency(data.rmd.surplusReinvested ?? 0)}
+                          </p>
+                        )}
                       </div>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">

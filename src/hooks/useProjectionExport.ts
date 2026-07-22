@@ -11,6 +11,7 @@ export interface ExportData {
   defaultAssumptions: Assumptions;
   currentAge: number;
   monthlySpending: number;
+  calculationVersion: number;
 }
 
 interface ExportOptions {
@@ -46,12 +47,13 @@ function formatPercent(value: number): string {
 export function useProjectionExport() {
   const exportCSV = useCallback((data: ExportData, options: ExportOptions) => {
     const { timestamp, timezone } = formatTimestamp();
-    const { records, summary, assumptions, currentAge, monthlySpending } = data;
+    const { records, summary, assumptions, currentAge, monthlySpending, calculationVersion } = data;
 
     // Build metadata section
     const metadata = [
       ['Export Timestamp', timestamp],
       ['Timezone', timezone],
+      ['Calculation Version', calculationVersion.toString()],
       [''],
       ['=== ASSUMPTIONS ===', ''],
       ['Expected Return', formatPercent(assumptions.expectedReturn)],
@@ -81,8 +83,10 @@ export function useProjectionExport() {
       'Taxable',
       'Income',
       'Expenses',
+      'Healthcare Expenses',
       'RMD Required',
       'RMD Taken',
+      'RMD Surplus Moved to Taxable',
       'Net Change',
       'Phase',
     ];
@@ -103,8 +107,10 @@ export function useProjectionExport() {
         record.balanceByType.taxable.toFixed(2),
         record.inflows.toFixed(2),
         record.outflows.toFixed(2),
+        (record.healthcareExpenses ?? 0).toFixed(2),
         (record.rmd?.rmdRequired ?? 0).toFixed(2),
         (record.rmd?.rmdTaken ?? 0).toFixed(2),
+        (record.rmd?.surplusReinvested ?? 0).toFixed(2),
         netChange.toFixed(2),
         phase,
       ];
@@ -132,7 +138,7 @@ export function useProjectionExport() {
     const { default: autoTable } = await import('jspdf-autotable');
 
     const { timestamp, timezone } = formatTimestamp();
-    const { records, summary, assumptions, currentAge, monthlySpending } = data;
+    const { records, summary, assumptions, currentAge, monthlySpending, calculationVersion } = data;
 
     const doc = new jsPDF();
     let y = 20;
@@ -149,6 +155,8 @@ export function useProjectionExport() {
     y += 5;
     doc.text(`Timezone: ${timezone}`, 14, y);
     y += 10;
+    doc.text(`Calculation version: ${calculationVersion}`, 14, y);
+    y += 5;
 
     // Assumptions section
     doc.setFontSize(14);
@@ -210,8 +218,10 @@ export function useProjectionExport() {
         formatCurrency(record.balanceByType.taxable),
         formatCurrency(record.inflows),
         formatCurrency(record.outflows),
+        formatCurrency(record.healthcareExpenses ?? 0),
         formatCurrency(record.rmd?.rmdRequired ?? 0),
         formatCurrency(record.rmd?.rmdTaken ?? 0),
+        formatCurrency(record.rmd?.surplusReinvested ?? 0),
         formatCurrency(netChange),
         phase,
       ];
@@ -219,7 +229,7 @@ export function useProjectionExport() {
 
     autoTable(doc, {
       startY: y,
-      head: [['Age', 'Year', 'Balance', 'Tax-Def', 'Tax-Free', 'Taxable', 'Income', 'Expenses', 'RMD Req', 'RMD Taken', 'Net Chg', 'Phase']],
+      head: [['Age', 'Year', 'Balance', 'Tax-Def', 'Tax-Free', 'Taxable', 'Income', 'Expenses', 'Healthcare', 'RMD Req', 'RMD Taken', 'RMD to Taxable', 'Net Chg', 'Phase']],
       body: tableData,
       styles: { fontSize: 6 },
       headStyles: { fillColor: [66, 66, 66] },

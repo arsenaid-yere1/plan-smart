@@ -62,15 +62,30 @@ export function generateProjectionWarnings(input: ProjectionInput): ProjectionWa
     });
   }
 
-  // RMD approaching warning (ages 70-72 with significant tax-deferred balance)
+  // RMD approaching warning based on the user's birth cohort.
   const taxDeferredBalance = input.balancesByType.taxDeferred;
-  if (input.currentAge >= 70 && input.currentAge < 73 && taxDeferredBalance > 100000) {
+  const rmdStartAge = input.rmdConfig?.startAge ?? 73;
+  const rmdEnabled = input.rmdConfig?.enabled ?? true;
+  if (
+    rmdEnabled &&
+    input.currentAge >= rmdStartAge - 3 &&
+    input.currentAge < rmdStartAge &&
+    taxDeferredBalance > 100000
+  ) {
     const formatCurrency = (value: number) =>
       new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
     warnings.push({
       field: 'rmd',
-      message: `You're approaching age 73 when Required Minimum Distributions (RMDs) begin. With ${formatCurrency(taxDeferredBalance)} in tax-deferred accounts, you'll be required to withdraw a minimum amount each year starting at age 73.`,
+      message: `You're approaching age ${rmdStartAge} when Required Minimum Distributions (RMDs) begin. With ${formatCurrency(taxDeferredBalance)} in tax-deferred accounts, you'll be required to withdraw a minimum amount each year starting at age ${rmdStartAge}.`,
+      severity: 'info',
+    });
+  }
+
+  if (rmdEnabled && input.retirementAge > rmdStartAge && taxDeferredBalance > 0) {
+    warnings.push({
+      field: 'rmd',
+      message: `Your projection applies aggregate RMDs beginning at age ${rmdStartAge}, before your planned retirement age. It does not model the exception that may apply to some current-employer retirement plans.`,
       severity: 'info',
     });
   }

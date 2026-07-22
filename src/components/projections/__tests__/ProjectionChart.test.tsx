@@ -172,9 +172,10 @@ describe('ProjectionChart', () => {
 
     // Toggle groups should have proper role
     const toggleGroups = screen.getAllByRole('group');
-    expect(toggleGroups.length).toBe(2); // x-axis and inflation toggles
+    expect(toggleGroups.length).toBe(3); // x-axis, inflation, and view-mode toggles
     expect(toggleGroups[0]).toHaveAttribute('aria-labelledby', 'x-axis-label');
     expect(toggleGroups[1]).toHaveAttribute('aria-labelledby', 'inflation-label');
+    expect(toggleGroups[2]).toHaveAttribute('aria-labelledby', 'view-mode-label');
   });
 
   it("shows inflation toggle with Today's $ active by default", () => {

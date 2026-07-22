@@ -48,6 +48,12 @@ export interface IncomeStream {
   isSpouse?: boolean;        // For household income differentiation (SS, pension)
 }
 
+/** Input-facing shape normalized by the shared builder before engine use. */
+export type IncomeStreamOverride = Omit<IncomeStream, 'isGuaranteed' | 'isSpouse'> & {
+  isGuaranteed?: boolean;
+  isSpouse?: boolean;
+};
+
 /**
  * Mapping of account types to tax categories
  */
@@ -67,6 +73,24 @@ export interface BalanceByType {
   taxDeferred: number;
   taxFree: number;
   taxable: number;
+}
+
+/** Optional scenario and persisted-plan overrides applied by the input builder. */
+export interface ProjectionOverrides {
+  expectedReturn?: number;
+  inflationRate?: number;
+  maxAge?: number;
+  contributionGrowthRate?: number;
+  retirementAge?: number;
+  socialSecurityAge?: number;
+  socialSecurityMonthly?: number;
+  incomeStreams?: IncomeStreamOverride[];
+  annualHealthcareCosts?: number;
+  healthcareInflationRate?: number;
+  contributionAllocation?: BalanceByType;
+  spendingPhaseConfig?: SpendingPhaseConfig;
+  depletionTarget?: DepletionTarget;
+  rmdConfig?: RMDConfig;
 }
 
 /**
@@ -193,6 +217,8 @@ export interface RMDTracking {
   rmdTaken: number;
   /** Amount withdrawn beyond RMD (for expenses) */
   excessOverRmd: number;
+  /** Required distribution retained in the household and moved to taxable assets */
+  surplusReinvested?: number;
 }
 
 /**
@@ -201,6 +227,8 @@ export interface RMDTracking {
  */
 export interface ProjectionInput {
   currentAge: number;
+  /** Birth year used to derive cohort-specific RMD timing in generated inputs */
+  birthYear?: number;
   retirementAge: number;
   maxAge: number;
 
@@ -209,6 +237,9 @@ export interface ProjectionInput {
 
   // Annual contribution (derived from monthly * 12)
   annualContribution: number;
+
+  /** Annual contribution dollars by tax destination; takes precedence when set. */
+  annualContributionsByType?: BalanceByType;
 
   // Contribution allocation percentages (must sum to 100)
   contributionAllocation: BalanceByType;
@@ -254,41 +285,6 @@ export interface ProjectionInput {
 }
 
 /**
- * API request schema - optional overrides for projection
- */
-export interface ProjectionRequest {
-  // Override default return rate from risk tolerance
-  expectedReturn?: number;
-
-  // Override default inflation (2.5%)
-  inflationRate?: number;
-
-  // Override default max age (90)
-  maxAge?: number;
-
-  // Annual contribution growth rate (default 0%)
-  contributionGrowthRate?: number;
-
-  // Legacy Social Security parameters (still supported for backward compatibility)
-  socialSecurityAge?: number;
-  socialSecurityMonthly?: number;
-
-  // Income streams override
-  incomeStreams?: IncomeStream[];
-
-  // Healthcare cost overrides
-  annualHealthcareCosts?: number;
-  healthcareInflationRate?: number;
-
-  // Contribution allocation override (must sum to 100)
-  contributionAllocation?: {
-    taxDeferred: number;
-    taxFree: number;
-    taxable: number;
-  };
-}
-
-/**
  * Single year projection record
  */
 export interface ProjectionRecord {
@@ -305,6 +301,7 @@ export interface ProjectionRecord {
   // Epic 8: Expense breakdown during retirement
   essentialExpenses?: number;
   discretionaryExpenses?: number;
+  healthcareExpenses?: number;
 
   // Epic 9: Phase information for UI display
   activePhaseId?: string;
@@ -321,6 +318,8 @@ export interface ProjectionRecord {
   actualEssentialSpending?: number;
   /** Actual discretionary spending after reserve constraint (may be less than planned) */
   actualDiscretionarySpending?: number;
+  /** Actual healthcare spending after reserve constraint (may be less than planned) */
+  actualHealthcareSpending?: number;
   /** Unmet spending need due to reserve constraint */
   spendingShortfall?: number;
 
@@ -338,6 +337,8 @@ export interface ProjectionSummary {
   totalWithdrawals: number;
   yearsUntilDepletion: number | null;
   projectedRetirementBalance: number;
+  /** Gross RMD dollars retained in taxable household assets */
+  totalRmdSurplusReinvested?: number;
 
   // Epic 10.2: Reserve summary
   /** The absolute dollar reserve floor (undefined if no reserve) */
@@ -380,6 +381,8 @@ export interface ProjectionAssumptions {
   contributionGrowthRate: number;
   retirementAge: number;
   maxAge: number;
+  /** Exact effective overrides used to build a current-version projection */
+  overrides?: ProjectionOverrides;
 }
 
 /**

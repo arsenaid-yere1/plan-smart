@@ -4,6 +4,7 @@ import {
   getDistributionPeriod,
   UNIFORM_LIFETIME_TABLE,
   DEFAULT_RMD_START_AGE,
+  getRmdStartAge,
 } from '../rmd';
 
 describe('RMD Calculations', () => {
@@ -77,6 +78,17 @@ describe('RMD Calculations', () => {
   describe('DEFAULT_RMD_START_AGE', () => {
     it('is set to 73 per SECURE 2.0 Act', () => {
       expect(DEFAULT_RMD_START_AGE).toBe(73);
+    });
+  });
+
+  describe('getRmdStartAge', () => {
+    it.each([
+      [1950, 72],
+      [1951, 73],
+      [1959, 73],
+      [1960, 75],
+    ])('returns %i cohort rule for birth year %i', (birthYear, expectedAge) => {
+      expect(getRmdStartAge(birthYear)).toBe(expectedAge);
     });
   });
 });

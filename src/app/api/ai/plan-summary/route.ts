@@ -9,6 +9,10 @@ import { checkAIRegenerationLimit, incrementAIRegenerationCount } from '@/lib/ai
 import { getLifestyleLabel } from '@/lib/ai/lifestyle-label';
 import { validateSummaryResponse } from '@/lib/ai/validate-response';
 import type { ProjectionInput, ProjectionAssumptions, ProjectionSummary } from '@/lib/projections/types';
+import { buildProjectionInputFromSnapshot } from '@/lib/projections/input-builder';
+import { getStoredProjectionOverrides } from '@/lib/projections/saved-overrides';
+import { shouldRecalculateProjection } from '@/lib/projections/staleness';
+import { CURRENT_PROJECTION_CALCULATION_VERSION } from '@/lib/projections/version';
 
 const requestSchema = z.object({
   projectionResultId: z.string().uuid(),
@@ -50,8 +54,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const snapshot = await secureQuery.getFinancialSnapshot();
+    if (!snapshot) {
+      return NextResponse.json({ message: 'Financial snapshot not found' }, { status: 404 });
+    }
+
+    const currentInputs = buildProjectionInputFromSnapshot(
+      snapshot,
+      getStoredProjectionOverrides(projection.assumptions)
+    );
+    if (shouldRecalculateProjection(projection, currentInputs)) {
+      return NextResponse.json(
+        { message: 'Projection must be recalculated before generating an AI summary.' },
+        { status: 409 }
+      );
+    }
+
     // Calculate input hash for caching
-    const inputHash = hashProjectionInputs(projection.inputs as ProjectionInput);
+    const inputHash = hashProjectionInputs(
+      projection.inputs as ProjectionInput,
+      CURRENT_PROJECTION_CALCULATION_VERSION
+    );
 
     // Check cache (unless regenerate requested)
     if (!regenerate) {
@@ -62,7 +85,8 @@ export async function POST(request: NextRequest) {
           meta: {
             cached: true,
             generatedAt: cached.createdAt.toISOString(),
-            projectionVersion: inputHash.slice(0, 8),
+            projectionFingerprint: inputHash.slice(0, 8),
+            calculationVersion: CURRENT_PROJECTION_CALCULATION_VERSION,
             model: cached.model,
           },
         });
@@ -180,7 +204,8 @@ export async function POST(request: NextRequest) {
       meta: {
         cached: false,
         generatedAt: saved.createdAt.toISOString(),
-        projectionVersion: inputHash.slice(0, 8),
+        projectionFingerprint: inputHash.slice(0, 8),
+        calculationVersion: CURRENT_PROJECTION_CALCULATION_VERSION,
         model: 'gpt-4o-mini',
       },
     });

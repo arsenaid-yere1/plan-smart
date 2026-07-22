@@ -1,4 +1,8 @@
-import type { ProjectionInput, BalanceByType, IncomeStream, SpendingPhaseConfig } from './types';
+import type { ProjectionInput } from './types';
+import {
+  CURRENT_PROJECTION_CALCULATION_VERSION,
+  LEGACY_PROJECTION_CALCULATION_VERSION,
+} from './version';
 
 export interface StalenessResult {
   isStale: boolean;
@@ -6,79 +10,118 @@ export interface StalenessResult {
   changes: Record<string, { previous: unknown; current: unknown }>;
 }
 
-/**
- * Check if stored projection inputs differ from current inputs.
- * Returns details about what changed for UI display and AI narrative.
- */
+type StoredProjectionFreshness = {
+  inputs: ProjectionInput;
+  calculationVersion?: number;
+};
+
+const PRIMITIVE_FIELDS: (keyof ProjectionInput)[] = [
+  'currentAge',
+  'birthYear',
+  'retirementAge',
+  'maxAge',
+  'annualContribution',
+  'expectedReturn',
+  'inflationRate',
+  'contributionGrowthRate',
+  'annualEssentialExpenses',
+  'annualDiscretionaryExpenses',
+  'annualExpenses',
+  'annualHealthcareCosts',
+  'healthcareInflationRate',
+  'annualDebtPayments',
+  'reserveFloor',
+];
+
+const STRUCTURED_FIELDS: (keyof ProjectionInput)[] = [
+  'balancesByType',
+  'annualContributionsByType',
+  'contributionAllocation',
+  'incomeStreams',
+  'spendingPhaseConfig',
+  'depletionTarget',
+  'rmdConfig',
+];
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const normalized = value.map(canonicalize);
+    if (normalized.every((item) => item && typeof item === 'object' && 'id' in item)) {
+      return [...normalized].sort((a, b) => {
+        const left = String((a as { id: unknown }).id);
+        const right = String((b as { id: unknown }).id);
+        return left.localeCompare(right);
+      });
+    }
+    return normalized;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalize(entry)])
+    );
+  }
+
+  return value;
+}
+
+function structuredEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(canonicalize(left)) === JSON.stringify(canonicalize(right));
+}
+
+function normalizeStructuredField(field: keyof ProjectionInput, value: unknown): unknown {
+  if (
+    (field === 'spendingPhaseConfig' || field === 'depletionTarget' || field === 'rmdConfig') &&
+    value &&
+    typeof value === 'object' &&
+    'enabled' in value &&
+    (value as { enabled: unknown }).enabled === false
+  ) {
+    return { enabled: false };
+  }
+
+  return value;
+}
+
+/** Compare all projection inputs that can affect engine output. */
 export function checkProjectionStaleness(
   storedInputs: ProjectionInput,
-  currentInputs: ProjectionInput
+  currentInputs: ProjectionInput,
+  storedCalculationVersion?: number,
+  currentCalculationVersion?: number
 ): StalenessResult {
   const changedFields: string[] = [];
   const changes: Record<string, { previous: unknown; current: unknown }> = {};
 
-  // Check primitive fields that affect projection outcomes
-  const fieldsToCheck: (keyof ProjectionInput)[] = [
-    'currentAge',
-    'retirementAge',
-    'maxAge',
-    'annualContribution',
-    'expectedReturn',
-    'inflationRate',
-    'healthcareInflationRate',
-    'annualExpenses',
-    'annualHealthcareCosts',
-    'annualDebtPayments',
-    'contributionGrowthRate',
-  ];
+  const recordChange = (field: string, previous: unknown, current: unknown) => {
+    changedFields.push(field);
+    changes[field] = { previous, current };
+  };
 
-  for (const field of fieldsToCheck) {
-    const storedValue = storedInputs[field];
-    const currentValue = currentInputs[field];
+  if (
+    storedCalculationVersion !== undefined &&
+    currentCalculationVersion !== undefined &&
+    storedCalculationVersion !== currentCalculationVersion
+  ) {
+    recordChange('calculationVersion', storedCalculationVersion, currentCalculationVersion);
+  }
 
-    if (storedValue !== currentValue) {
-      changedFields.push(field);
-      changes[field] = {
-        previous: storedValue,
-        current: currentValue,
-      };
+  for (const field of PRIMITIVE_FIELDS) {
+    if (storedInputs[field] !== currentInputs[field]) {
+      recordChange(field, storedInputs[field], currentInputs[field]);
     }
   }
 
-  // Deep compare balances
-  if (!deepEqualBalances(storedInputs.balancesByType, currentInputs.balancesByType)) {
-    changedFields.push('balancesByType');
-    changes['balancesByType'] = {
-      previous: storedInputs.balancesByType,
-      current: currentInputs.balancesByType,
-    };
-  }
-
-  // Deep compare contribution allocation
-  if (!deepEqualBalances(storedInputs.contributionAllocation, currentInputs.contributionAllocation)) {
-    changedFields.push('contributionAllocation');
-    changes['contributionAllocation'] = {
-      previous: storedInputs.contributionAllocation,
-      current: currentInputs.contributionAllocation,
-    };
-  }
-
-  // Deep compare income streams
-  if (!deepEqualIncomeStreams(storedInputs.incomeStreams, currentInputs.incomeStreams)) {
-    changedFields.push('incomeStreams');
-    changes['incomeStreams'] = {
-      previous: storedInputs.incomeStreams,
-      current: currentInputs.incomeStreams,
-    };
-  }
-
-  // Epic 9: Deep compare spending phase config
-  if (!deepEqualSpendingPhases(storedInputs.spendingPhaseConfig, currentInputs.spendingPhaseConfig)) {
-    changedFields.push('spendingPhaseConfig');
-    changes['spendingPhaseConfig'] = {
-      previous: storedInputs.spendingPhaseConfig,
-      current: currentInputs.spendingPhaseConfig,
-    };
+  for (const field of STRUCTURED_FIELDS) {
+    if (!structuredEqual(
+      normalizeStructuredField(field, storedInputs[field]),
+      normalizeStructuredField(field, currentInputs[field])
+    )) {
+      recordChange(field, storedInputs[field], currentInputs[field]);
+    }
   }
 
   return {
@@ -88,43 +131,23 @@ export function checkProjectionStaleness(
   };
 }
 
-function deepEqualBalances(a: BalanceByType, b: BalanceByType): boolean {
-  return (
-    a.taxDeferred === b.taxDeferred &&
-    a.taxFree === b.taxFree &&
-    a.taxable === b.taxable
-  );
-}
-
-function deepEqualIncomeStreams(a: IncomeStream[], b: IncomeStream[]): boolean {
-  if (a.length !== b.length) return false;
-
-  // Sort by ID for consistent comparison
-  const sortedA = [...a].sort((x, y) => x.id.localeCompare(y.id));
-  const sortedB = [...b].sort((x, y) => x.id.localeCompare(y.id));
-
-  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
-}
-
-function deepEqualSpendingPhases(
-  a: SpendingPhaseConfig | undefined,
-  b: SpendingPhaseConfig | undefined
+/** Decide whether a missing, legacy, or input-stale projection must be rebuilt. */
+export function shouldRecalculateProjection(
+  storedProjection: StoredProjectionFreshness | null | undefined,
+  currentInputs: ProjectionInput,
+  currentCalculationVersion = CURRENT_PROJECTION_CALCULATION_VERSION
 ): boolean {
-  // Both undefined or null
-  if (!a && !b) return true;
-  // One defined, other not
-  if (!a || !b) return false;
-  // Both disabled
-  if (!a.enabled && !b.enabled) return true;
-  // One enabled, other not
-  if (a.enabled !== b.enabled) return false;
+  if (!storedProjection) {
+    return true;
+  }
 
-  // Both enabled - compare phases
-  if (a.phases.length !== b.phases.length) return false;
+  const storedVersion = storedProjection.calculationVersion
+    ?? LEGACY_PROJECTION_CALCULATION_VERSION;
 
-  // Sort by ID for consistent comparison
-  const sortedA = [...a.phases].sort((x, y) => x.id.localeCompare(y.id));
-  const sortedB = [...b.phases].sort((x, y) => x.id.localeCompare(y.id));
-
-  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+  return checkProjectionStaleness(
+    storedProjection.inputs,
+    currentInputs,
+    storedVersion,
+    currentCalculationVersion
+  ).isStale;
 }
