@@ -69,7 +69,7 @@ export const step4Schema = z.object({
 export const completeOnboardingSchema = step1Schema
   .merge(step2Schema)
   .merge(step3Schema)
-  .merge(step4Schema);
+  .safeExtend(step4Schema.shape);
 
 // Epic 2: Investment Account Schema
 export const investmentAccountSchema = z.object({
@@ -153,8 +153,8 @@ export type OnboardingStepIncomeStreamsData = z.infer<typeof stepIncomeStreamsSc
 export const completeOnboardingSchemaV2 = step1Schema
   .merge(step2Schema)
   .merge(step3Schema)
-  .merge(step4Schema)
-  .merge(step2SavingsSchema)
-  .merge(step3IncomeExpensesSchema)
-  .merge(step4AssetsDebtsSchema)
-  .merge(stepIncomeStreamsSchema.partial());
+  .safeExtend(step4Schema.shape)
+  .safeExtend(step2SavingsSchema.shape)
+  .safeExtend(step3IncomeExpensesSchema.shape)
+  .safeExtend(step4AssetsDebtsSchema.shape)
+  .safeExtend(stepIncomeStreamsSchema.partial().shape);
